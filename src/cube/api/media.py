@@ -1,10 +1,15 @@
-"""Camera frames and floorplan assets, proxied from Home Assistant.
+"""Camera frames from Home Assistant, and floorplan assets from disk.
 
-The panel never holds a Home Assistant token, so everything it renders has to come through
-here. Only the camera and floorplans named in the dashboard config are reachable.
+The panel never holds a Home Assistant token, so camera frames come through here. Floorplans
+are served from the resources directory instead: the drawings are only in Home Assistant to
+support the dashboard this replaces, and a floorplan is a picture of somebody's home, so it is
+mounted alongside the container rather than fetched or vendored.
+
+Only the camera and floorplans named in the dashboard config are reachable either way.
 """
 
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
@@ -22,10 +27,14 @@ CACHE_CONTROL_TEMPLATE = "public, max-age={seconds}"
 SVG_CONTENT_TYPE = "image/svg+xml"
 CSS_CONTENT_TYPE = "text/css"
 
+FLOORPLAN_DIRECTORY = "floorplans"
+SVG_SUFFIX = ".svg"
+STYLESHEET_NAME = "floorplan.css"
+
 UNKNOWN_CAMERA_DETAIL = "Unknown camera"
 UNKNOWN_FLOORPLAN_DETAIL = "Unknown floorplan"
-NO_STYLESHEET_DETAIL = "No floorplan stylesheet is configured"
-UPSTREAM_DETAIL = "Home Assistant did not return the asset"
+MISSING_FLOORPLAN_DETAIL = "No drawing for this floorplan in the resources directory"
+UPSTREAM_DETAIL = "Home Assistant did not return the camera frame"
 
 
 @router.get("/camera/{entity_id}/snapshot")
@@ -69,30 +78,39 @@ async def floorplan(name: str, hub: CurrentHub) -> Response:
     if level is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=UNKNOWN_FLOORPLAN_DETAIL)
 
-    path = hub.dashboard.assets.floorplan_path.format(image=level.image)
+    path = hub.settings.resources_path / FLOORPLAN_DIRECTORY / f"{level.image}{SVG_SUFFIX}"
+    if not _within_resources(path, hub) or not path.is_file():
+        logger.warning("No floorplan drawing at %s", path)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MISSING_FLOORPLAN_DETAIL)
 
-    return await _proxy_asset(hub, path, SVG_CONTENT_TYPE)
+    return _serve(path, SVG_CONTENT_TYPE, hub)
 
 
 @router.get("/floorplan-styles.css")
 async def floorplan_styles(hub: CurrentHub) -> Response:
-    path = hub.dashboard.assets.stylesheet_path
-    if not path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NO_STYLESHEET_DETAIL)
+    """Installation-specific floorplan rules.
 
-    return await _proxy_asset(hub, path, CSS_CONTENT_TYPE)
+    The generic class contract ships with the bundle; this is only the overrides an
+    installation adds for its own rooms and fixtures, and is empty when there are none.
+    """
+
+    path = hub.settings.resources_path / STYLESHEET_NAME
+    if not path.is_file():
+        return Response(content="", media_type=CSS_CONTENT_TYPE)
+
+    return _serve(path, CSS_CONTENT_TYPE, hub)
 
 
-async def _proxy_asset(hub, path: str, fallback_content_type: str) -> Response:
-    try:
-        content, content_type = await hub.rest.asset(path)
-    except HTTPError as error:
-        logger.warning("Could not fetch %s: %s", path, error)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=UPSTREAM_DETAIL) from error
-
+def _serve(path: Path, content_type: str, hub) -> Response:
     headers = {CACHE_CONTROL_HEADER: CACHE_CONTROL_TEMPLATE.format(seconds=hub.settings.asset_cache_seconds)}
 
-    return Response(content=content, media_type=content_type or fallback_content_type, headers=headers)
+    return Response(content=path.read_bytes(), media_type=content_type, headers=headers)
+
+
+def _within_resources(path: Path, hub) -> bool:
+    """Guards against a configured image name escaping the resources directory."""
+
+    return hub.settings.resources_path.resolve() in path.resolve().parents
 
 
 def _require_configured_camera(entity_id: str, hub) -> None:

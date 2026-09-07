@@ -68,9 +68,3 @@ class HassRest:
 
             async for chunk in response.aiter_bytes(STREAM_CHUNK_BYTES):
                 yield chunk, content_type
-
-    async def asset(self, path: str) -> tuple[bytes, str]:
-        response = await self._client.get(path)
-        response.raise_for_status()
-
-        return response.content, response.headers.get(CONTENT_TYPE_HEADER, "")

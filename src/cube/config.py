@@ -13,6 +13,7 @@ DEFAULT_LOG_LEVEL = "info"
 DEFAULT_PROFILE = "default"
 DEFAULT_DASHBOARD_PATH = Path("config.yaml")
 DEFAULT_FRONTEND_PATH = Path(__file__).resolve().parents[2] / "web" / "dist"
+DEFAULT_RESOURCES_PATH = Path("resources")
 
 DEFAULT_RECONNECT_MIN_SECONDS = 1.0
 DEFAULT_RECONNECT_MAX_SECONDS = 60.0
@@ -43,6 +44,7 @@ class Settings(BaseSettings):
     profile: str = Field(default=DEFAULT_PROFILE, description="Panel profile served when a request names none")
     dashboard_path: Path = Field(default=DEFAULT_DASHBOARD_PATH, description="Path to the dashboard definition")
     frontend_path: Path = Field(default=DEFAULT_FRONTEND_PATH, description="Path to the built frontend bundle")
+    resources_path: Path = Field(default=DEFAULT_RESOURCES_PATH, description="Directory holding floorplan SVGs and overrides")
 
     reconnect_min_seconds: float = DEFAULT_RECONNECT_MIN_SECONDS
     reconnect_max_seconds: float = DEFAULT_RECONNECT_MAX_SECONDS

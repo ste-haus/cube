@@ -1,4 +1,4 @@
-.PHONY: install lock web dev stub run test lint format clean image
+.PHONY: install lock web dev stub resources run test lint format clean image
 
 CONFIG ?= config.yaml
 STUB_PORT ?= 8123
@@ -21,6 +21,10 @@ dev:
 
 stub:
 	uv run python tools/stub_hass.py --config $(CONFIG) --port $(STUB_PORT)
+
+# Schematic drawings for a panel whose floorplans have not been drawn yet.
+resources:
+	uv run python tools/stub_hass.py --config $(CONFIG) --write-floorplans resources/floorplans
 
 run: web
 	uv run python -m cube

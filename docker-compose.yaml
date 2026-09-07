@@ -7,5 +7,7 @@ services:
     env_file:
       - .env
     volumes:
-      # The dashboard definition describes your home, so it is mounted rather than baked in.
+      # The dashboard definition and the floorplan drawings both describe your home, so they
+      # are mounted rather than baked into the image.
       - ./config.yaml:/app/config.yaml:ro
+      - ./resources:/app/resources:ro

@@ -1,0 +1,30 @@
+/*
+ * Rooms and fixtures.
+ *
+ * The generic class contract is in floorplan.css; this is the tail of selectors that name
+ * particular parts of a particular drawing, keyed off the element ids the SVG uses. Replace it
+ * wholesale for a different home — nothing else depends on it, and selectors that match
+ * nothing simply do nothing.
+ *
+ * Anything that needs changing without rebuilding the image can go in resources/floorplan.css
+ * instead, which is served over the top of this.
+ */
+
+/* Kitchen worktops and the garage plant, drawn as solid furniture rather than lit surfaces. */
+.floorplan__canvas #ki-counter *,
+.floorplan__canvas #ki-island *,
+.floorplan__canvas #gg-furnace,
+.floorplan__canvas #gg-waterheater {
+  stroke: #555555;
+  fill: #555555;
+}
+
+.floorplan__canvas #ki-sink *,
+.floorplan__canvas #ki-stove * {
+  stroke: #000000;
+}
+
+/* Drawn for alignment, never rendered. */
+.floorplan__canvas #sr-door {
+  display: none;
+}

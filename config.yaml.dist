@@ -209,9 +209,3 @@ transcript:
 visualizer:
   url: https://visualizer.example.com/index.html
   content_marker: tts.example.com
-
-# Where the floorplan assets live inside Home Assistant. `www/` is served from `/local/`, and
-# the SVG and its stylesheet are proxied from there rather than copied into this repo.
-assets:
-  floorplan_path: "/local/floorplans/{image}.svg"
-  stylesheet_path: "/local/floorplans/styles.css"

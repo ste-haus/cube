@@ -8,6 +8,13 @@ OK = 200
 
 UNCONTROLLABLE_ENTITY = "sensor.example_bin"
 UNKNOWN_CAMERA = "camera.not_configured"
+OVERRIDE_CSS = ".floorplan__canvas #counter { fill: #555555; }"
+
+TRAVERSAL_CONFIG = """
+floorplans:
+  downstairs:
+    image: ../../secret
+"""
 
 
 def test_config_exposes_the_dashboard_without_leaking_the_token(settings):
@@ -54,6 +61,59 @@ def test_unknown_floorplan_is_not_reachable(settings):
         response = client.get("/api/floorplan/basement")
 
     assert response.status_code == NOT_FOUND
+
+
+def test_floorplan_is_served_from_the_resources_directory(settings):
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/api/floorplan/downstairs")
+
+    assert response.status_code == OK
+    assert response.headers["content-type"].startswith("image/svg+xml")
+    assert b"light.example_kitchen" in response.content
+
+
+def test_configured_floorplan_without_a_drawing_is_not_found(settings):
+    """`upstairs` is in the sample config but has no SVG in the fixture."""
+
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/api/floorplan/upstairs")
+
+    assert response.status_code == NOT_FOUND
+
+
+def test_floorplan_image_cannot_escape_the_resources_directory(settings, tmp_path):
+    """A drawing name is config, not user input, but it still must not address the filesystem."""
+
+    secret = tmp_path.parent / "secret.svg"
+    secret.write_text("classified")
+
+    config = tmp_path / "traversal.yaml"
+    config.write_text(TRAVERSAL_CONFIG)
+
+    escaping = settings.model_copy(update={"dashboard_path": config})
+
+    with TestClient(create_app(escaping)) as client:
+        response = client.get("/api/floorplan/downstairs")
+
+    assert response.status_code == NOT_FOUND
+
+
+def test_floorplan_overrides_are_empty_when_absent(settings):
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/api/floorplan-styles.css")
+
+    assert response.status_code == OK
+    assert response.text == ""
+
+
+def test_floorplan_overrides_are_served_when_present(settings, resources):
+    (resources / "floorplan.css").write_text(OVERRIDE_CSS)
+
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/api/floorplan-styles.css")
+
+    assert response.status_code == OK
+    assert OVERRIDE_CSS in response.text
 
 
 def test_stream_opens_with_a_snapshot(settings):

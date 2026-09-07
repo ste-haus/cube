@@ -196,16 +196,6 @@ class Labels(BaseModel):
     agenda: str = "Today"
 
 
-class Assets(BaseModel):
-    """Where the floorplan assets live inside Home Assistant.
-
-    Paths are relative to the Home Assistant base URL; `www/` is served from `/local/`.
-    """
-
-    floorplan_path: str = "/local/floorplans/{image}.svg"
-    stylesheet_path: str | None = None
-
-
 class Face(BaseModel):
     """One face of the cube. `content` names a renderer the frontend knows about."""
 
@@ -249,7 +239,6 @@ class Dashboard(BaseModel):
     fuel: GaugeRow = Field(default_factory=GaugeRow)
     transcript: Transcript | None = None
     visualizer: Visualizer | None = None
-    assets: Assets = Field(default_factory=Assets)
 
     toggleable_domains: list[str] = Field(default_factory=lambda: list(DEFAULT_TOGGLEABLE_DOMAINS))
     # Counts that drive the agenda's scroll animation, rather than anything rendered directly.

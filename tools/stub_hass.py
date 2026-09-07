@@ -65,27 +65,6 @@ PLACEHOLDER_CAMERA_SVG = (
     'text-anchor="middle">camera</text></svg>'
 )
 
-STYLESHEET = """
-/* Stand-in for the stylesheet that ships beside a real floorplan SVG. */
-.light.active rect { fill: #ffc573; }
-.light.inactive rect { fill: #222222; }
-.door.open rect { fill: #b30202; }
-.door.locked rect { fill: #41a041; }
-.door.unlocked rect { fill: #11fcf7; }
-.door.inactive rect { fill: #222222; }
-.window.active rect { fill: #11fcf7; }
-.window.inactive rect { fill: #222222; }
-.motion.active rect { fill: #b30202; }
-.motion.inactive rect { fill: #222222; }
-.fan.active rect { fill: #777777; }
-.fan.inactive rect { fill: #222222; }
-.sensor.active rect { fill: #bd00bd; }
-.sensor.inactive rect { fill: #222222; }
-.vehicle.active rect { fill: #00bfff; }
-.vehicle.inactive rect { fill: #222222; }
-rect { stroke: #444444; stroke-width: 1; }
-text { fill: #dddddd; font-family: monospace; }
-"""
 
 
 def build_states(dashboard: Dashboard) -> dict[str, dict[str, Any]]:
@@ -301,15 +280,19 @@ def create_stub(dashboard: Dashboard) -> FastAPI:
     async def camera(entity_id: str) -> Response:
         return Response(content=PLACEHOLDER_CAMERA_SVG, media_type="image/svg+xml")
 
-    @app.get("/local/floorplans/{image}.svg")
-    async def floorplan(image: str) -> Response:
-        return Response(content=render_floorplan(dashboard, image), media_type="image/svg+xml")
-
-    @app.get("/local/floorplans/styles.css")
-    async def stylesheet() -> Response:
-        return Response(content=STYLESHEET, media_type="text/css")
-
     return app
+
+
+def write_floorplans(dashboard: Dashboard, directory: Path) -> list[Path]:
+    directory.mkdir(parents=True, exist_ok=True)
+
+    written = []
+    for plan in dashboard.floorplans.values():
+        path = directory / f"{plan.image}.svg"
+        path.write_text(render_floorplan(dashboard, plan.image))
+        written.append(path)
+
+    return written
 
 
 def main() -> None:
@@ -317,9 +300,23 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--host", default=DEFAULT_HOST, help="Bind address; use 0.0.0.0 to reach it from a container")
+    parser.add_argument(
+        "--write-floorplans",
+        type=Path,
+        metavar="DIR",
+        help="Write a schematic SVG per floorplan into DIR and exit, for panels with no drawing yet",
+    )
     arguments = parser.parse_args()
 
-    uvicorn.run(create_stub(load_dashboard(arguments.config)), host=arguments.host, port=arguments.port)
+    dashboard = load_dashboard(arguments.config)
+
+    if arguments.write_floorplans:
+        for path in write_floorplans(dashboard, arguments.write_floorplans):
+            print(f"wrote {path}")
+
+        return
+
+    uvicorn.run(create_stub(dashboard), host=arguments.host, port=arguments.port)
 
 
 if __name__ == "__main__":

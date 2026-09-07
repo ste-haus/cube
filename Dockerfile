@@ -16,7 +16,8 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     CUBE_DASHBOARD_PATH=/app/config.yaml \
-    CUBE_FRONTEND_PATH=/app/web/dist
+    CUBE_FRONTEND_PATH=/app/web/dist \
+    CUBE_RESOURCES_PATH=/app/resources
 
 WORKDIR /app
 
