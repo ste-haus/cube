@@ -79,11 +79,14 @@
 </section>
 
 <style>
+  /* The glyph's box carries a wide transparent border for its animation to move within. The
+   * layout should not pay for that twice, so it is pulled back out here. */
   .weather__now {
+    margin-top: -2rem;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.35em;
+    gap: 0.9rem;
     font-size: var(--weather-icon-size);
     font-weight: var(--weight-thin);
     color: var(--color-muted);
@@ -125,7 +128,7 @@
   }
 
   .weather__summary {
-    margin: 2.4em 0 0 0;
+    margin: 0.8em 0 0 0;
     font-weight: var(--weight-light);
     line-height: 1.35;
   }

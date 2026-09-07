@@ -10,9 +10,16 @@
   import Transcript from "../cards/Transcript.svelte";
   import Visualizer from "../cards/Visualizer.svelte";
   import Weather from "../cards/Weather.svelte";
+  import { agenda } from "../lib/agenda.svelte";
   import type { DashboardConfig } from "../lib/types";
 
   let { config }: { config: DashboardConfig } = $props();
+
+  $effect(() => {
+    agenda.start();
+
+    return () => agenda.stop();
+  });
 </script>
 
 <div class="dashboard">
@@ -22,7 +29,7 @@
 
   <div class="dashboard__left">
     <Clock clock={config.clock} />
-    <Notices notices={config.notices} title={config.labels.notices} />
+    <Notices notices={config.notices} title={config.labels.notices} calendars={config.agenda.calendars} />
     <Agenda
       agenda={config.agenda}
       title={config.labels.agenda}

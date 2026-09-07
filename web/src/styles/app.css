@@ -19,8 +19,9 @@
   --rotation-duration: 600ms;
   --rotation-depth: -200px;
   --rotation-fade: 0.3;
+  --floorplan-slide-duration: 420ms;
 
-  --panel-gap: 2.2vh;
+  --panel-gap: 1.6vh;
   --panel-padding: 0.5vw;
   /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
   --section-indent: 0.6rem;
@@ -38,7 +39,7 @@
   /* The glyphs are drawn dark on the assumption of being inverted; this is that inversion. */
   --weather-icon-filter: invert(1);
   --weather-summary-size: 1.35rem;
-  --gauge-value-size: 2.85rem;
+  --gauge-value-size: 3.2rem;
   --gauge-name-size: 1.06rem;
 }
 
@@ -86,7 +87,7 @@ body {
   padding: var(--panel-padding);
   gap: var(--panel-gap);
   grid-template-columns: 35fr 35fr 30fr;
-  grid-template-rows: minmax(0, 52px) 1fr auto;
+  grid-template-rows: minmax(0, 34px) 1fr auto;
   grid-template-areas:
     "left header header"
     "left center right"

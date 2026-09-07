@@ -68,6 +68,8 @@
     display: block;
     width: 1em;
     height: 1em;
+    /* Absorbs the transparent margin the glyph carries on its trailing edge. */
+    margin-right: -0.5rem;
     filter: var(--weather-icon-filter);
   }
 </style>

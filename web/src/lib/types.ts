@@ -55,6 +55,7 @@ export interface Calendar {
   name: string;
   color: string;
   side: Side;
+  icon: string;
   blocklist: string | null;
 }
 

@@ -54,11 +54,12 @@
   const defaultLevel = $derived(initial && initial in floorplans ? initial : levels[0]);
 
   let level = $state<string | null>(null);
-  let markup = $state("");
-  let container = $state<HTMLDivElement | null>(null);
+  let markup = $state<Record<string, string>>({});
+  let panes = $state<Record<string, HTMLDivElement>>({});
   let resetTimer: number | null = null;
 
   const currentLevel = $derived(level ?? defaultLevel);
+  const index = $derived(Math.max(levels.indexOf(currentLevel), 0));
 
   // The stylesheet lives with the SVG in Home Assistant and applies to inlined markup, so it
   // is linked once into the document rather than scoped to this component.
@@ -74,43 +75,43 @@
     document.head.append(link);
   });
 
+  // Every level is loaded and laid out side by side, so changing level is a slide rather than
+  // a swap: a drawing that blinks from one storey to another tells you nothing about which way
+  // you just moved.
   $effect(() => {
-    const name = currentLevel;
-    if (!name) {
-      return;
-    }
-
     let stale = false;
-    fetch(floorplanUrl(name))
-      .then((response) => response.text())
-      .then((svg) => {
-        if (!stale) {
-          markup = svg;
-        }
-      });
+
+    for (const name of levels) {
+      fetch(floorplanUrl(name))
+        .then((response) => response.text())
+        .then((svg) => {
+          if (!stale) {
+            markup = { ...markup, [name]: svg };
+          }
+        });
+    }
 
     return () => {
       stale = true;
     };
   });
 
-  // Re-runs whenever an entity changes, because `ha.entities` is read while painting.
+  // Re-runs whenever an entity changes, because `ha.entities` is read while painting. Each
+  // level is painted inside its own pane, since an entity can appear on more than one storey.
   $effect(() => {
-    const root = container;
-    const plan = currentLevel ? floorplans[currentLevel] : null;
-    if (!root || !plan || !markup) {
-      return;
-    }
+    for (const [name, plan] of Object.entries(floorplans)) {
+      const root = panes[name];
+      if (!root || !markup[name]) {
+        continue;
+      }
 
-    for (const [group, entities] of Object.entries(plan.groups)) {
-      for (const entityId of entities) {
-        const element = root.querySelector(`#${CSS.escape(entityId)}`);
-        if (!element) {
-          continue;
+      for (const [group, entities] of Object.entries(plan.groups)) {
+        for (const entityId of entities) {
+          for (const element of root.querySelectorAll(`#${CSS.escape(entityId)}`)) {
+            element.setAttribute("class", classFor(group, entityId));
+            paintLight(element as SVGElement, group, entityId);
+          }
         }
-
-        element.setAttribute("class", classFor(group, entityId));
-        paintLight(element as SVGElement, group, entityId);
       }
     }
   });
@@ -150,7 +151,7 @@
   }
 
   function onTap(event: MouseEvent): void {
-    const plan = currentLevel ? floorplans[currentLevel] : null;
+    const plan = floorplans[currentLevel];
     if (!plan) {
       return;
     }
@@ -194,12 +195,17 @@
 <section class="floorplan">
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
   <div
-    class="floorplan__canvas"
-    bind:this={container}
+    class="floorplan__viewport"
     onclick={onTap}
     use:swipeable={{ onSwipe: step, axes: "horizontal", exclusive: true }}
   >
-    {@html markup}
+    <div class="floorplan__track" style:transform="translateX({-index * 100}%)">
+      {#each levels as name (name)}
+        <div class="floorplan__canvas" bind:this={panes[name]}>
+          {@html markup[name] ?? ""}
+        </div>
+      {/each}
+    </div>
   </div>
 
   {#if levels.length > 1}
@@ -226,13 +232,25 @@
     height: 100%;
   }
 
-  .floorplan__canvas {
+  .floorplan__viewport {
     flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .floorplan__track {
+    display: flex;
+    height: 100%;
+    transition: transform var(--floorplan-slide-duration) ease-in-out;
+  }
+
+  .floorplan__canvas {
+    flex: 0 0 100%;
     min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
   }
 
   .floorplan__canvas :global(svg) {

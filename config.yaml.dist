@@ -149,11 +149,12 @@ agenda:
       name: Shared
       color: "#00bfff"
       side: left
-    # `extra` belongs to neither column: it collects above the timeline, centred and untimed.
+    # `extra` belongs to neither column: its events read as notices instead, under this icon.
     - entity_id: calendar.example_chores
       name: Chores
       color: "#777777"
       side: extra
+      icon: mdi:broom
       blocklist: "vacuum|trash|recycling|compost"
 
 # Counts used to size the agenda's scroll animation.

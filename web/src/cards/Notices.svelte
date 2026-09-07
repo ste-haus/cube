@@ -1,9 +1,32 @@
 <script lang="ts">
   import Icon from "../lib/Icon.svelte";
   import { STATE_ON, ha } from "../lib/state.svelte";
-  import type { Notice } from "../lib/types";
+  import { agenda as store } from "../lib/agenda.svelte";
+  import type { Calendar, Notice } from "../lib/types";
 
-  let { notices, title }: { notices: Notice[]; title: string } = $props();
+  let {
+    notices,
+    title,
+    calendars = [],
+  }: { notices: Notice[]; title: string; calendars?: Calendar[] } = $props();
+
+  const EXTRA = "extra";
+
+  /* Household calendars are not on the timeline; their events read as notices, keeping the
+   * calendar's own colour and taking the icon it names. */
+  const byName = $derived(new Map(calendars.map((calendar) => [calendar.name, calendar])));
+
+  const calendarNotices = $derived(
+    store.events
+      .map((event) => ({ event, calendar: byName.get(event.calendar) }))
+      .filter(({ calendar }) => calendar?.side === EXTRA)
+      .map(({ event, calendar }) => ({
+        key: `${event.calendar}:${event.summary}`,
+        message: event.summary,
+        icon: calendar!.icon,
+        color: event.color,
+      })),
+  );
 
   // Twenty-odd separately configured notices, each carrying its own text and icon. They are
   // one list rather than one card apiece, which is what the config buys.
@@ -47,6 +70,13 @@
       <li class="notices__item" class:notices__item--pulsing={pulsing} style:color>
         <Icon name={icon} />
         <span>{message}</span>
+      </li>
+    {/each}
+
+    {#each calendarNotices as notice (notice.key)}
+      <li class="notices__item" style:color={notice.color}>
+        <Icon name={notice.icon} />
+        <span>{notice.message}</span>
       </li>
     {/each}
   </ul>

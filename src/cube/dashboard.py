@@ -126,6 +126,7 @@ class Calendar(BaseModel):
     name: str
     color: str
     side: Side = Side.RIGHT
+    icon: str = Field(default="", description="Shown when the calendar's events read as notices")
     blocklist: str | None = Field(default=None, description="Regex of event titles to hide")
 
 

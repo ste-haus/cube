@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fetchAgenda } from "../lib/api";
+  import { agenda as store } from "../lib/agenda.svelte";
   import { eventProgress, eventTime } from "../lib/format";
   import { ha } from "../lib/state.svelte";
   import type { Agenda, AgendaEvent, Side } from "../lib/types";
@@ -9,11 +9,10 @@
    * calendars run down the left, the other's down the right, and the time of day sits in a
    * gutter between them over a hairline spine.
    *
-   * Calendars belonging to neither person collect above the timeline instead, untimed and
-   * centred, since a chore has an owner only in the loosest sense.
+   * Calendars belonging to neither person are not on it at all — they read as notices, which is
+   * closer to what a chore actually is.
    */
 
-  const REFRESH_MS = 5 * 60 * 1000;
   const PROGRESS_TICK_MS = 30 * 1000;
   const PERCENT = 100;
   const LEFT: Side = "left";
@@ -26,26 +25,16 @@
     countEntities,
   }: { agenda: Agenda; title: string; countEntities: string[] } = $props();
 
-  let events = $state<AgendaEvent[]>([]);
   let now = $state(new Date());
 
-  $effect(() => {
-    const load = () => {
-      fetchAgenda().then((loaded) => {
-        events = loaded;
-      });
-    };
+  const events = $derived(store.events);
 
-    load();
-    const refresh = window.setInterval(load, REFRESH_MS);
+  $effect(() => {
     const tick = window.setInterval(() => {
       now = new Date();
     }, PROGRESS_TICK_MS);
 
-    return () => {
-      window.clearInterval(refresh);
-      window.clearInterval(tick);
-    };
+    return () => window.clearInterval(tick);
   });
 
   const sideOf = $derived(new Map(agenda.calendars.map((calendar) => [calendar.name, calendar.side])));
@@ -57,8 +46,6 @@
   function progressOf(event: AgendaEvent): number | null {
     return event.all_day ? null : eventProgress(event.start, event.end, now);
   }
-
-  const extras = $derived(events.filter((event) => side(event) === EXTRA));
 
   /** Events sharing a start time share a slot, so the gutter shows each time once. */
   const slots = $derived.by(() => {
@@ -92,14 +79,6 @@
 
 <section class="agenda">
   <h2 class="panel-title">{title}</h2>
-
-  {#if extras.length > 0}
-    <div class="agenda__extras">
-      {#each extras as event, index (event.calendar + event.summary + index)}
-        <div class="agenda__extra" style:color={event.color}>{event.summary}</div>
-      {/each}
-    </div>
-  {/if}
 
   {#if agenda.side_labels[LEFT] || agenda.side_labels[RIGHT]}
     <div class="agenda__headers">
@@ -161,17 +140,6 @@
     margin: 0;
     color: var(--color-muted);
     font-size: var(--agenda-size);
-  }
-
-  /* Household entries, centred over the timeline they do not belong to either side of. */
-  .agenda__extras {
-    text-align: center;
-    padding-bottom: 0.4em;
-  }
-
-  .agenda__extra {
-    font-size: var(--agenda-size);
-    line-height: 1.6;
   }
 
   .agenda__headers {
