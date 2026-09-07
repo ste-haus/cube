@@ -1,7 +1,7 @@
 :root {
   /* Palette. The theme in config.yaml overrides these at runtime. */
   --color-background: #000000;
-  --color-foreground: #ffffff;
+  --color-foreground: #e1e1e1;
   --color-muted: #999999;
   --color-dim: #666666;
   --color-faint: #333333;
@@ -30,14 +30,15 @@
   --clock-time-size: 5.53rem;
   --clock-date-size: 1.85rem;
   --indicator-size: 1.72rem;
-  --notice-size: 1.09rem;
+  --notice-size: 1.2rem;
   --agenda-size: 1.2rem;
   --agenda-time-size: 1rem;
-  --weather-temp-size: 5.2rem;
-  --weather-icon-size: 6rem;
+  --weather-temp-size: 4.3rem;
+  --weather-icon-size: 10.7rem;
+  --weather-icon-filter: grayscale(1) brightness(1.3);
   --weather-summary-size: 1.35rem;
   --gauge-value-size: 2.4rem;
-  --gauge-name-size: 1.12rem;
+  --gauge-name-size: 1.06rem;
 }
 
 * {

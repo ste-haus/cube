@@ -17,7 +17,7 @@ class Theme(BaseModel):
     """The panel's palette, applied as CSS custom properties."""
 
     background: str = "#000000"
-    foreground: str = "#ffffff"
+    foreground: str = "#e1e1e1"
     muted: str = "#999999"
     dim: str = "#666666"
     faint: str = "#333333"
@@ -116,6 +116,9 @@ class Notice(BaseModel):
 class Side(StrEnum):
     LEFT = "left"
     RIGHT = "right"
+    # Calendars belonging to the household rather than to either person. They collect above the
+    # timeline as untimed entries rather than taking a column.
+    EXTRA = "extra"
 
 
 class Calendar(BaseModel):

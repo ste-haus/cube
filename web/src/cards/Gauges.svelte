@@ -72,15 +72,15 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 14%;
+    bottom: 17%;
     font-size: var(--gauge-value-size);
     font-weight: var(--weight-thin);
     line-height: 1;
   }
 
   .gauge__name {
-    margin-top: 1.1em;
-    color: var(--color-dim);
+    margin-top: 0.4em;
+    color: var(--color-muted);
     font-size: var(--gauge-name-size);
   }
 </style>

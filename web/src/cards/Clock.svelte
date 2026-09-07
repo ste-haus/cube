@@ -29,7 +29,7 @@
 <style>
   .clock__date {
     font-size: var(--clock-date-size);
-    font-weight: var(--weight-light);
+    font-weight: var(--weight-thin);
     filter: brightness(60%);
   }
 

@@ -48,7 +48,7 @@ export interface Notice {
   pulsing_states: string[];
 }
 
-export type Side = "left" | "right";
+export type Side = "left" | "right" | "extra";
 
 export interface Calendar {
   entity_id: string;

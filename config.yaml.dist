@@ -149,10 +149,11 @@ agenda:
       name: Shared
       color: "#00bfff"
       side: left
+    # `extra` belongs to neither column: it collects above the timeline, centred and untimed.
     - entity_id: calendar.example_chores
       name: Chores
       color: "#777777"
-      side: left
+      side: extra
       blocklist: "vacuum|trash|recycling|compost"
 
 # Counts used to size the agenda's scroll animation.
@@ -218,7 +219,7 @@ camera:
 fuel:
   unit: "%"
   scale:
-    default_color: "#ffffff"
+    default_color: "#e1e1e1"
     bands:
       - { at: 33, color: "#bd00bd" }
       - { at: 15, color: "#11fcf7" }

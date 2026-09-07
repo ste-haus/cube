@@ -98,8 +98,8 @@
   .weather__extremes {
     display: flex;
     flex-direction: column;
-    gap: 0.15em;
-    font-size: 1.35rem;
+    gap: 0.45em;
+    font-size: 1.75rem;
     /* The extremes stand off the right edge rather than sitting flush against it. */
     margin-right: 2rem;
   }

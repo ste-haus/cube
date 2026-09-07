@@ -1,78 +1,78 @@
 <script lang="ts">
-  import Skycons from "../vendor/skycons";
+  /*
+   * Animated weather glyphs — the amCharts set the dashboard this replaces used, which carry
+   * their own CSS keyframes and so animate from an <img> without any script.
+   *
+   * Home Assistant's conditions are mapped onto that set the way the card did it.
+   */
 
-  /* Animated weather glyphs, drawn on a canvas the way the panel that predates Lovelace drew
-   * them. Home Assistant's conditions are mapped onto the set Skycons knows. */
-
-  const CLEAR_DAY = "clear-day";
-  const CLEAR_NIGHT = "clear-night";
-  const PARTLY_CLOUDY_DAY = "partly-cloudy-day";
-  const PARTLY_CLOUDY_NIGHT = "partly-cloudy-night";
+  const DAY = "day";
+  const NIGHT = "night";
   const CLOUDY = "cloudy";
-  const RAIN = "rain";
-  const SLEET = "sleet";
-  const SNOW = "snow";
-  const WIND = "wind";
-  const FOG = "fog";
+  const CLOUDY_DAY = "cloudy-day-3";
+  const CLOUDY_NIGHT = "cloudy-night-3";
+  const RAIN = "rainy-5";
+  const POURING = "rainy-6";
+  const SLEET = "rainy-7";
+  const SNOW = "snowy-6";
+  const THUNDER = "thunder";
 
+  /** Conditions whose glyph does not depend on whether the sun is up. */
   const CONDITIONS: Record<string, string> = {
-    "clear-night": CLEAR_NIGHT,
     cloudy: CLOUDY,
-    exceptional: CLOUDY,
-    fog: FOG,
+    fog: CLOUDY,
     hail: SLEET,
-    lightning: RAIN,
-    "lightning-rainy": RAIN,
-    pouring: RAIN,
+    lightning: THUNDER,
+    "lightning-rainy": THUNDER,
+    pouring: POURING,
     rainy: RAIN,
     snowy: SNOW,
     "snowy-rainy": SLEET,
-    sunny: CLEAR_DAY,
-    windy: WIND,
-    "windy-variant": WIND,
+    windy: CLOUDY,
   };
 
-  /** The one condition that needs to know whether the sun is up. */
-  const PARTLY_CLOUDY = "partlycloudy";
+  /** Conditions that do, as [day, night]. */
+  const DAY_NIGHT_CONDITIONS: Record<string, [string, string]> = {
+    sunny: [DAY, NIGHT],
+    "clear-night": [NIGHT, NIGHT],
+    partlycloudy: [CLOUDY_DAY, CLOUDY_NIGHT],
+    "windy-variant": [CLOUDY_DAY, CLOUDY_NIGHT],
+    exceptional: [DAY, NIGHT],
+  };
 
-  const CANVAS_SIZE = 128;
+  const SOURCES: Record<string, string> = Object.fromEntries(
+    Object.entries(
+      import.meta.glob("../icons/weather/*.svg", { eager: true, query: "?url", import: "default" }),
+    ).map(([path, url]) => [path.split("/").pop()!.replace(".svg", ""), url as string]),
+  );
 
   let {
     condition,
     daytime = true,
-    color = "#dddddd",
-  }: { condition: string | null; daytime?: boolean; color?: string } = $props();
+  }: { condition: string | null; daytime?: boolean } = $props();
 
-  let canvas = $state<HTMLCanvasElement | null>(null);
-
-  const icon = $derived.by(() => {
-    if (condition === PARTLY_CLOUDY) {
-      return daytime ? PARTLY_CLOUDY_DAY : PARTLY_CLOUDY_NIGHT;
+  const name = $derived.by(() => {
+    if (!condition) {
+      return daytime ? DAY : NIGHT;
     }
 
-    return (condition && CONDITIONS[condition]) ?? (daytime ? CLEAR_DAY : CLEAR_NIGHT);
-  });
-
-  $effect(() => {
-    const element = canvas;
-    if (!element) {
-      return;
+    const pair = DAY_NIGHT_CONDITIONS[condition];
+    if (pair) {
+      return daytime ? pair[0] : pair[1];
     }
 
-    const skycons = new Skycons({ color });
-    skycons.add(element, icon);
-    skycons.play();
-
-    return () => skycons.remove(element);
+    return CONDITIONS[condition] ?? (daytime ? DAY : NIGHT);
   });
 </script>
 
-<canvas class="weather-icon" bind:this={canvas} width={CANVAS_SIZE} height={CANVAS_SIZE}></canvas>
+<img class="weather-icon" src={SOURCES[name]} alt={condition ?? "weather"} />
 
 <style>
   .weather-icon {
     display: block;
     width: 1em;
     height: 1em;
+    /* The set ships in colour; the panel wants it in the same grey as everything else. */
+    filter: var(--weather-icon-filter);
   }
 </style>

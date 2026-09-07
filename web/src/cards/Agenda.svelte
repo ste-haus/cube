@@ -2,19 +2,23 @@
   import { fetchAgenda } from "../lib/api";
   import { eventProgress, eventTime } from "../lib/format";
   import { ha } from "../lib/state.svelte";
-  import type { Agenda, AgendaEvent } from "../lib/types";
+  import type { Agenda, AgendaEvent, Side } from "../lib/types";
 
   /*
    * A two-sided timeline, carried over from the panel that predates Lovelace: one household's
    * calendars run down the left, the other's down the right, and the time of day sits in a
    * gutter between them over a hairline spine.
+   *
+   * Calendars belonging to neither person collect above the timeline instead, untimed and
+   * centred, since a chore has an owner only in the loosest sense.
    */
 
   const REFRESH_MS = 5 * 60 * 1000;
   const PROGRESS_TICK_MS = 30 * 1000;
   const PERCENT = 100;
-  const LEFT = "left";
-  const RIGHT = "right";
+  const LEFT: Side = "left";
+  const RIGHT: Side = "right";
+  const EXTRA: Side = "extra";
 
   let {
     agenda,
@@ -44,21 +48,38 @@
     };
   });
 
-  const sideOf = $derived(
-    new Map(agenda.calendars.map((calendar) => [calendar.name, calendar.side])),
-  );
+  const sideOf = $derived(new Map(agenda.calendars.map((calendar) => [calendar.name, calendar.side])));
+
+  function side(event: AgendaEvent): Side {
+    return sideOf.get(event.calendar) ?? RIGHT;
+  }
+
+  function progressOf(event: AgendaEvent): number | null {
+    return event.all_day ? null : eventProgress(event.start, event.end, now);
+  }
+
+  const extras = $derived(events.filter((event) => side(event) === EXTRA));
 
   /** Events sharing a start time share a slot, so the gutter shows each time once. */
   const slots = $derived.by(() => {
     const buckets = new Map<string, AgendaEvent[]>();
 
     for (const event of events) {
+      if (side(event) === EXTRA) {
+        continue;
+      }
+
       const key = event.all_day ? "" : eventTime(event.start, event.all_day);
       const bucket = buckets.get(key);
       bucket ? bucket.push(event) : buckets.set(key, [event]);
     }
 
-    return [...buckets.entries()].map(([time, entries]) => ({ time, entries }));
+    return [...buckets.entries()].map(([time, entries]) => ({
+      time,
+      entries,
+      // A slot showing a meter has given up its clock: the meter says when far better.
+      progress: entries.map(progressOf).find((value) => value !== null) ?? null,
+    }));
   });
 
   const itemCount = $derived(countEntities.reduce((total, entity) => total + ha.number(entity), 0));
@@ -71,6 +92,14 @@
 
 <section class="agenda">
   <h2 class="panel-title">{title}</h2>
+
+  {#if extras.length > 0}
+    <div class="agenda__extras">
+      {#each extras as event, index (event.calendar + event.summary + index)}
+        <div class="agenda__extra" style:color={event.color}>{event.summary}</div>
+      {/each}
+    </div>
+  {/if}
 
   {#if agenda.side_labels[LEFT] || agenda.side_labels[RIGHT]}
     <div class="agenda__headers">
@@ -92,21 +121,26 @@
       >
         {#each slots as slot, index (slot.time + index)}
           <div class="agenda__slot">
-            {#each [LEFT, RIGHT] as side (side)}
-              <div class="agenda__side agenda__side--{side}">
-                {#each slot.entries.filter((event) => (sideOf.get(event.calendar) ?? RIGHT) === side) as event, position (event.calendar + event.summary + position)}
-                  {@const progress = event.all_day ? null : eventProgress(event.start, event.end, now)}
+            {#each [LEFT, RIGHT] as column (column)}
+              <div class="agenda__side agenda__side--{column}">
+                {#each slot.entries.filter((event) => side(event) === column) as event, position (event.calendar + event.summary + position)}
+                  {@const running = progressOf(event) !== null}
                   <div class="agenda__event" style:color={event.color}>
-                    {event.summary}
-                    {#if progress !== null}
-                      <progress class="agenda__progress" value={progress} max={PERCENT}></progress>
-                    {/if}
+                    <span class="agenda__summary" class:agenda__summary--running={running}>
+                      {event.summary}
+                    </span>
                   </div>
                 {/each}
               </div>
 
-              {#if side === LEFT}
-                <span class="agenda__time">{slot.time}</span>
+              {#if column === LEFT}
+                <span class="agenda__time">
+                  {#if slot.progress !== null}
+                    <progress class="agenda__progress" value={slot.progress} max={PERCENT}></progress>
+                  {:else}
+                    {slot.time}
+                  {/if}
+                </span>
               {/if}
             {/each}
           </div>
@@ -127,6 +161,17 @@
     margin: 0;
     color: var(--color-muted);
     font-size: var(--agenda-size);
+  }
+
+  /* Household entries, centred over the timeline they do not belong to either side of. */
+  .agenda__extras {
+    text-align: center;
+    padding-bottom: 0.4em;
+  }
+
+  .agenda__extra {
+    font-size: var(--agenda-size);
+    line-height: 1.6;
   }
 
   .agenda__headers {
@@ -175,17 +220,17 @@
     animation: agenda-scroll var(--scroll-duration) linear infinite;
   }
 
-  /* Each side stacks its own events, so a slot holding several stays a single row of the
-   * timeline rather than spilling across the spine. */
   .agenda__slot {
     display: flex;
     align-items: center;
-    padding: 0.28em 0;
+    padding: 0.5em 0;
   }
 
   .agenda__side {
     flex: 1 1 0;
     min-width: 0;
+    /* Gives the running title a width to measure its overflow against. */
+    container-type: inline-size;
   }
 
   .agenda__side--left {
@@ -200,11 +245,23 @@
     font-size: var(--agenda-size);
     line-height: 1.5;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* Sits over the spine, with the panel's own background masking the line behind it. */
+  .agenda__summary {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Something under way is worth reading in full, so it travels rather than being cut off.
+   * The offset is zero unless the title is genuinely wider than its column. */
+  .agenda__summary--running {
+    display: inline-block;
+    text-overflow: clip;
+    animation: agenda-marquee 9s ease-in-out infinite alternate;
+  }
+
   .agenda__time {
     flex: 0 0 12%;
     text-align: center;
@@ -221,10 +278,9 @@
 
   .agenda__progress {
     display: inline-block;
-    width: 3.5em;
-    height: 0.3em;
+    width: 90%;
+    height: 0.35em;
     vertical-align: middle;
-    margin-left: 0.5em;
     border: 0;
     appearance: none;
     background-color: var(--color-faint);
@@ -235,11 +291,20 @@
   }
 
   .agenda__progress::-webkit-progress-value {
-    background-color: currentColor;
+    background-color: var(--color-muted);
   }
 
   .agenda__progress::-moz-progress-bar {
-    background-color: currentColor;
+    background-color: var(--color-muted);
+  }
+
+  @keyframes agenda-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(min(0px, calc(100cqw - 100%)));
+    }
   }
 
   @keyframes agenda-scroll {
