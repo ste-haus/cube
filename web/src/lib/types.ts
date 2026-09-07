@@ -78,6 +78,7 @@ export interface Clock {
 
 export interface Weather {
   entity_id: string;
+  sun_entity_id: string | null;
   high: Extreme | null;
   low: Extreme | null;
   summary_entity_id: string | null;

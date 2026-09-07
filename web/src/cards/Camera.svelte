@@ -17,15 +17,14 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
   }
 
   .camera__frame {
     display: block;
     width: 100%;
-    min-height: 0;
+    height: auto;
     margin: 0 auto;
-    object-fit: contain;
-    object-position: top;
     filter: brightness(80%);
   }
 </style>

@@ -1,36 +1,21 @@
 <script lang="ts">
   import Icon from "../lib/Icon.svelte";
+  import WeatherIcon from "./WeatherIcon.svelte";
   import { ha } from "../lib/state.svelte";
   import type { Extreme, Weather } from "../lib/types";
 
-  /** Home Assistant's weather conditions, mapped onto icons. */
-  const CONDITION_ICONS: Record<string, string> = {
-    "clear-night": "mdi:weather-night",
-    cloudy: "mdi:weather-cloudy",
-    exceptional: "mdi:alert-circle-outline",
-    fog: "mdi:weather-fog",
-    hail: "mdi:weather-hail",
-    lightning: "mdi:weather-lightning",
-    "lightning-rainy": "mdi:weather-lightning-rainy",
-    partlycloudy: "mdi:weather-partly-cloudy",
-    pouring: "mdi:weather-pouring",
-    rainy: "mdi:weather-rainy",
-    snowy: "mdi:weather-snowy",
-    "snowy-rainy": "mdi:weather-snowy-rainy",
-    sunny: "mdi:weather-sunny",
-    windy: "mdi:weather-windy",
-    "windy-variant": "mdi:weather-windy-variant",
-  };
-
-  const FALLBACK_ICON = "mdi:weather-cloudy";
   const DEGREE = "°";
   const SCALE_STEP = 10;
   const SCALE_PER_STEP = 0.05;
 
   let { weather }: { weather: Weather } = $props();
 
+  const SUN_UP = "above_horizon";
+
   const condition = $derived(ha.state(weather.entity_id));
-  const icon = $derived(condition ? (CONDITION_ICONS[condition] ?? FALLBACK_ICON) : FALLBACK_ICON);
+  const sunState = $derived(ha.state(weather.sun_entity_id));
+  // With no sun entity configured there is nothing to distinguish, so draw the daytime icon.
+  const daytime = $derived(sunState === null || sunState === SUN_UP);
   const temperature = $derived(ha.attribute<number>(weather.entity_id, "temperature"));
   const summary = $derived(ha.state(weather.summary_entity_id));
 
@@ -66,7 +51,7 @@
 
 <section class="weather">
   <div class="weather__now">
-    <Icon name={icon} />
+    <WeatherIcon {condition} {daytime} />
     {#if temperature !== null}
       <span class="weather__temperature">{Math.round(temperature)}{DEGREE}</span>
     {/if}
@@ -77,8 +62,8 @@
         {#if value !== null}
           {@const hours = hoursLabel(row.extreme)}
           <div class="weather__extreme">
-            <span>{value}{DEGREE}</span>
-            <Icon name={row.arrow} />
+            <span class="weather__extreme-value">{value}{DEGREE}</span>
+            <span class="weather__arrow"><Icon name={row.arrow} /></span>
             {#if hours}<span class="weather__hours">{hours}</span>{/if}
           </div>
         {/if}
@@ -113,7 +98,14 @@
     flex-direction: column;
     gap: 0.15em;
     font-size: 1.1rem;
+  }
+
+  .weather__extreme-value {
     color: var(--color-foreground);
+  }
+
+  .weather__arrow {
+    color: var(--color-dim);
   }
 
   .weather__extreme {
@@ -130,7 +122,6 @@
 
   .weather__summary {
     margin: 0.9em 0 0 0;
-    text-align: center;
     font-size: var(--weather-summary-size);
     font-weight: var(--weight-light);
     line-height: 1.35;

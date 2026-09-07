@@ -7,7 +7,7 @@
   const RADIUS = 40;
   const CENTER_X = 50;
   const CENTER_Y = 50;
-  const STROKE_WIDTH = 5;
+  const STROKE_WIDTH = 4;
   const VIEWBOX = "0 0 100 58";
   const ARC = `M ${CENTER_X - RADIUS} ${CENTER_Y} A ${RADIUS} ${RADIUS} 0 0 1 ${CENTER_X + RADIUS} ${CENTER_Y}`;
   const ARC_LENGTH = Math.PI * RADIUS;
@@ -72,14 +72,14 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: 14%;
     font-size: var(--gauge-value-size);
     font-weight: var(--weight-thin);
     line-height: 1;
   }
 
   .gauge__name {
-    margin-top: 0.5em;
+    margin-top: 1.1em;
     color: var(--color-dim);
     font-size: var(--gauge-name-size);
   }

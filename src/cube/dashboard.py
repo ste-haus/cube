@@ -186,6 +186,7 @@ class Clock(BaseModel):
 
 class Weather(BaseModel):
     entity_id: str
+    sun_entity_id: str | None = Field(default=None, description="Distinguishes day from night icons")
     high: Extreme | None = None
     low: Extreme | None = None
     summary_entity_id: str | None = None
@@ -320,6 +321,8 @@ class Dashboard(BaseModel):
                     entities.add(reading.entity_id)
             if self.weather.summary_entity_id:
                 entities.add(self.weather.summary_entity_id)
+            if self.weather.sun_entity_id:
+                entities.add(self.weather.sun_entity_id)
 
         if self.camera:
             entities.add(self.camera.entity_id)

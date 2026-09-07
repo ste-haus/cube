@@ -152,7 +152,7 @@
   }
 
   .agenda__gutter {
-    flex: 0 0 16%;
+    flex: 0 0 12%;
   }
 
   .agenda__viewport {
@@ -165,8 +165,8 @@
     background: linear-gradient(
       to right,
       transparent calc(50% - 1px),
-      var(--color-faint) calc(50% - 1px),
-      var(--color-faint) calc(50% + 1px),
+      var(--agenda-spine-color) calc(50% - 1px),
+      var(--agenda-spine-color) calc(50% + 1px),
       transparent calc(50% + 1px)
     );
   }
@@ -206,7 +206,7 @@
 
   /* Sits over the spine, with the panel's own background masking the line behind it. */
   .agenda__time {
-    flex: 0 0 16%;
+    flex: 0 0 12%;
     text-align: center;
     color: var(--color-dim);
     font-size: var(--agenda-time-size);

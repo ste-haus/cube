@@ -7,6 +7,9 @@
   --color-faint: #333333;
   --color-accent: #11fcf7;
 
+  /* The agenda's spine sits behind the times and should barely register. */
+  --agenda-spine-color: #242424;
+
   --font-stack: Roboto, system-ui, sans-serif;
   --weight-thin: 100;
   --weight-light: 300;
@@ -18,20 +21,20 @@
   --rotation-fade: 0.3;
 
   --panel-gap: 2.2vh;
-  --panel-padding: 1.6vw;
+  --panel-padding: 0.5vw;
 
   /* Type scale, matched to the dashboard this replaces. */
-  --title-size: 1.5rem;
-  --clock-time-size: 5.4rem;
-  --clock-date-size: 1.75rem;
-  --indicator-size: 1.65rem;
-  --notice-size: 1.25rem;
-  --agenda-size: 1.2rem;
+  --title-size: 1.75rem;
+  --clock-time-size: 5.55rem;
+  --clock-date-size: 1.8rem;
+  --indicator-size: 2rem;
+  --notice-size: 1.3rem;
+  --agenda-size: 1.25rem;
   --agenda-time-size: 1rem;
-  --weather-temp-size: 4rem;
-  --weather-icon-size: 4.4rem;
-  --weather-summary-size: 1.35rem;
-  --gauge-value-size: 2.6rem;
+  --weather-temp-size: 4.1rem;
+  --weather-icon-size: 4.5rem;
+  --weather-summary-size: 1.3rem;
+  --gauge-value-size: 2.4rem;
   --gauge-name-size: 1rem;
 }
 
@@ -109,9 +112,9 @@ body {
   gap: 2.8vh;
 }
 
-/* The camera absorbs the slack so the gauges below it always have room. */
+/* The camera gives up height before the gauges do, so both always fit. */
 .dashboard__right > .camera {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
 }
 

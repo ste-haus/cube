@@ -202,6 +202,7 @@ floorplans:
 
 weather:
   entity_id: weather.example
+  sun_entity_id: sun.sun
   high:
     entity_id: sensor.example_temperature_high
     hours_attribute: hours_until
