@@ -91,8 +91,9 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 0 1.6em;
+    /* One line, always. Wrapping a reading onto a second row reads as a fault, not a layout. */
+    flex-wrap: nowrap;
+    gap: 0.85em;
     height: 100%;
     color: var(--color-muted);
     font-size: var(--indicator-size);

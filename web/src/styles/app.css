@@ -22,14 +22,16 @@
 
   --panel-gap: 2.2vh;
   --panel-padding: 0.5vw;
+  /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
+  --section-indent: 0.6rem;
 
   /* Type scale, matched to the dashboard this replaces. */
-  --title-size: 1.75rem;
-  --clock-time-size: 5.55rem;
-  --clock-date-size: 1.8rem;
-  --indicator-size: 2rem;
-  --notice-size: 1.3rem;
-  --agenda-size: 1.25rem;
+  --title-size: 1.68rem;
+  --clock-time-size: 5.53rem;
+  --clock-date-size: 1.85rem;
+  --indicator-size: 1.72rem;
+  --notice-size: 1.09rem;
+  --agenda-size: 1.2rem;
   --agenda-time-size: 1rem;
   --weather-temp-size: 4.1rem;
   --weather-icon-size: 4.5rem;
@@ -40,6 +42,18 @@
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  /* 1rem is 16px at a 2000px-wide panel, and scales from there. */
+  font-size: 0.8vw;
+}
+
+/* Stacked on a phone there is no fixed layout to hold, so fall back to real pixels. */
+@media (max-width: 600px) {
+  html {
+    font-size: 16px;
+  }
 }
 
 html,
@@ -106,6 +120,10 @@ body {
   flex-direction: column;
   gap: var(--panel-gap);
   overflow: hidden;
+}
+
+.dashboard__left > :not(:first-child) {
+  padding-left: var(--section-indent);
 }
 
 .dashboard__right {
