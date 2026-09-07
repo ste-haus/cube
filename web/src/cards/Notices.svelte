@@ -7,20 +7,9 @@
 
   // Twenty-odd separately configured notices, each carrying its own text and icon. They are
   // one list rather than one card apiece, which is what the config buys.
-  const MDI_PREFIX = "mdi:";
-
-  /**
-   * An icon named in config wins, since naming one is a deliberate choice. Otherwise take the
-   * entity's own, unless it comes from an icon set the panel does not ship.
-   */
+  /** An icon named in config wins, since naming one is a deliberate choice. */
   function iconFor(notice: Notice): string {
-    if (notice.icon) {
-      return notice.icon;
-    }
-
-    const named = ha.attribute<string>(notice.entity_id, notice.icon_attribute);
-
-    return named?.startsWith(MDI_PREFIX) ? named : "";
+    return notice.icon || (ha.attribute<string>(notice.entity_id, notice.icon_attribute) ?? "");
   }
 
   /** A state-driven notice shows whenever its entity is off its nominal state. */

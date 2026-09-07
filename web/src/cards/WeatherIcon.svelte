@@ -1,43 +1,39 @@
 <script lang="ts">
   /*
-   * Animated weather glyphs — the amCharts set the dashboard this replaces used, which carry
-   * their own CSS keyframes and so animate from an <img> without any script.
+   * Animated weather glyphs, taken from the card the dashboard this replaces used. They carry
+   * their own SMIL animation and so move from an <img> with no script at all.
    *
-   * Home Assistant's conditions are mapped onto that set the way the card did it.
+   * They are drawn dark, to be inverted by whatever shows them — which is where the grey
+   * outline and the white cloud behind it come from.
    */
 
-  const DAY = "day";
-  const NIGHT = "night";
-  const CLOUDY = "cloudy";
-  const CLOUDY_DAY = "cloudy-day-3";
-  const CLOUDY_NIGHT = "cloudy-night-3";
-  const RAIN = "rainy-5";
-  const POURING = "rainy-6";
-  const SLEET = "rainy-7";
-  const SNOW = "snowy-6";
-  const THUNDER = "thunder";
+  const CLEAR_DAY = "clear";
+  const CLEAR_NIGHT = "clear-night";
+  const PARTLY_CLOUDY_DAY = "partly-cloudy";
+  const PARTLY_CLOUDY_NIGHT = "partly-cloudy-night";
 
   /** Conditions whose glyph does not depend on whether the sun is up. */
   const CONDITIONS: Record<string, string> = {
-    cloudy: CLOUDY,
-    fog: CLOUDY,
-    hail: SLEET,
-    lightning: THUNDER,
-    "lightning-rainy": THUNDER,
-    pouring: POURING,
-    rainy: RAIN,
-    snowy: SNOW,
-    "snowy-rainy": SLEET,
-    windy: CLOUDY,
+    cloudy: "cloudy",
+    exceptional: "exceptional",
+    fog: "fog",
+    hail: "hail",
+    lightning: "lightning",
+    "lightning-rainy": "lightning-rainy",
+    pouring: "pouring",
+    rainy: "rainy",
+    snowy: "snowy",
+    "snowy-rainy": "snowy-rainy",
+    windy: "windy",
+    // The set draws one wind glyph; the variant is the same weather with more cloud.
+    "windy-variant": "windy",
   };
 
   /** Conditions that do, as [day, night]. */
   const DAY_NIGHT_CONDITIONS: Record<string, [string, string]> = {
-    sunny: [DAY, NIGHT],
-    "clear-night": [NIGHT, NIGHT],
-    partlycloudy: [CLOUDY_DAY, CLOUDY_NIGHT],
-    "windy-variant": [CLOUDY_DAY, CLOUDY_NIGHT],
-    exceptional: [DAY, NIGHT],
+    sunny: [CLEAR_DAY, CLEAR_NIGHT],
+    "clear-night": [CLEAR_NIGHT, CLEAR_NIGHT],
+    partlycloudy: [PARTLY_CLOUDY_DAY, PARTLY_CLOUDY_NIGHT],
   };
 
   const SOURCES: Record<string, string> = Object.fromEntries(
@@ -53,7 +49,7 @@
 
   const name = $derived.by(() => {
     if (!condition) {
-      return daytime ? DAY : NIGHT;
+      return daytime ? CLEAR_DAY : CLEAR_NIGHT;
     }
 
     const pair = DAY_NIGHT_CONDITIONS[condition];
@@ -61,7 +57,7 @@
       return daytime ? pair[0] : pair[1];
     }
 
-    return CONDITIONS[condition] ?? (daytime ? DAY : NIGHT);
+    return CONDITIONS[condition] ?? (daytime ? CLEAR_DAY : CLEAR_NIGHT);
   });
 </script>
 
@@ -72,7 +68,6 @@
     display: block;
     width: 1em;
     height: 1em;
-    /* The set ships in colour; the panel wants it in the same grey as everything else. */
     filter: var(--weather-icon-filter);
   }
 </style>

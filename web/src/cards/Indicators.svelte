@@ -4,8 +4,6 @@
   import { ha } from "../lib/state.svelte";
   import type { Indicator, StatusIndicator } from "../lib/types";
 
-  const MDI_PREFIX = "mdi:";
-
   let {
     indicators,
     statusIndicators,
@@ -19,16 +17,13 @@
     return thresholdColor(indicator.scale, Number(value));
   }
 
-  // An entity may name an icon from a set the panel does not ship, so anything that is not a
-  // Material Design icon falls back to the one configured alongside it.
+  /** An entity naming its own icon wins; the configured one is the fallback. */
   function iconFor(indicator: Indicator): string | null {
     if (!indicator.icon_attribute) {
       return indicator.icon;
     }
 
-    const named = ha.attribute<string>(indicator.entity_id, indicator.icon_attribute);
-
-    return named?.startsWith(MDI_PREFIX) ? named : indicator.icon;
+    return ha.attribute<string>(indicator.entity_id, indicator.icon_attribute) ?? indicator.icon;
   }
 
   function format(indicator: Indicator, value: string): string {

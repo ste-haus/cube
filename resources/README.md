@@ -7,7 +7,8 @@ resources/
 ├── floorplans/
 │   ├── <image>.svg     # one per floorplan level, named by `floorplans.<level>.image` in config.yaml
 │   └── ...
-└── floorplan.css       # optional, served over the bundled stylesheets
+├── floorplan.css       # optional, served over the bundled stylesheets
+└── icons.json          # optional, this installation's own icon set
 ```
 
 Mount the directory into the container read-only, or point `CUBE_RESOURCES_PATH` at it:
@@ -21,6 +22,18 @@ docker run -v ./resources:/app/resources:ro ...
 Each SVG must give every element it draws the entity id of whatever that element represents, as the element's DOM id. The panel finds elements that way and keeps a class on each one in step with its entity; nothing else connects the drawing to Home Assistant. Elements the panel does not know about are left alone, so structure, furniture, and labels can be drawn freely.
 
 Two attributes carry extra meaning where the stylesheet asks for it: `type` (`exterior`, `appliance`, `server`, `bin`, `printer`) and `orientation` (`horizontal`, `vertical`, `diagonal`, used to animate an unlocked door).
+
+## The icon set
+
+Anywhere config or an entity names an icon, `mdi:` names come from the bundled webfont. Any other name is looked up in `icons.json`, which maps the full name to a bare SVG path drawn on a 24-unit grid:
+
+```json
+{
+  "custom:wind": "m1.29 13.48c0 .22.08.4.25.56…"
+}
+```
+
+Home Assistant setups often carry a custom iconset for what no standard set covers. It belongs here rather than in the image because it is the installation's own, and may hold marks that have no business in something published.
 
 ## The overrides
 

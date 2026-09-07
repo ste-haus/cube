@@ -35,9 +35,10 @@
   --agenda-time-size: 1rem;
   --weather-temp-size: 4.3rem;
   --weather-icon-size: 10.7rem;
-  --weather-icon-filter: grayscale(1) brightness(1.3);
+  /* The glyphs are drawn dark on the assumption of being inverted; this is that inversion. */
+  --weather-icon-filter: invert(1);
   --weather-summary-size: 1.35rem;
-  --gauge-value-size: 2.4rem;
+  --gauge-value-size: 2.85rem;
   --gauge-name-size: 1.06rem;
 }
 

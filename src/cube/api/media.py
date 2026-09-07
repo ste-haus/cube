@@ -30,6 +30,10 @@ CSS_CONTENT_TYPE = "text/css"
 FLOORPLAN_DIRECTORY = "floorplans"
 SVG_SUFFIX = ".svg"
 STYLESHEET_NAME = "floorplan.css"
+ICONS_NAME = "icons.json"
+
+JSON_CONTENT_TYPE = "application/json"
+EMPTY_JSON_OBJECT = "{}"
 
 UNKNOWN_CAMERA_DETAIL = "Unknown camera"
 UNKNOWN_FLOORPLAN_DETAIL = "Unknown floorplan"
@@ -99,6 +103,22 @@ async def floorplan_styles(hub: CurrentHub) -> Response:
         return Response(content="", media_type=CSS_CONTENT_TYPE)
 
     return _serve(path, CSS_CONTENT_TYPE, hub)
+
+
+@router.get("/icons")
+async def icons(hub: CurrentHub) -> Response:
+    """An installation's own icon set, as a map of name to SVG path.
+
+    Home Assistant setups often carry a custom iconset for things no standard set covers. It
+    lives in the resources directory because it is theirs, not the panel's, and may hold marks
+    that have no business in a published image.
+    """
+
+    path = hub.settings.resources_path / ICONS_NAME
+    if not path.is_file():
+        return Response(content=EMPTY_JSON_OBJECT, media_type=JSON_CONTENT_TYPE)
+
+    return _serve(path, JSON_CONTENT_TYPE, hub)
 
 
 def _serve(path: Path, content_type: str, hub) -> Response:

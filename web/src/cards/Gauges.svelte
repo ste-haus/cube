@@ -7,7 +7,7 @@
   const RADIUS = 40;
   const CENTER_X = 50;
   const CENTER_Y = 50;
-  const STROKE_WIDTH = 4;
+  const STROKE_WIDTH = 3;
   const VIEWBOX = "0 0 100 58";
   const ARC = `M ${CENTER_X - RADIUS} ${CENTER_Y} A ${RADIUS} ${RADIUS} 0 0 1 ${CENTER_X + RADIUS} ${CENTER_Y}`;
   const ARC_LENGTH = Math.PI * RADIUS;

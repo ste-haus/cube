@@ -59,6 +59,16 @@ export function floorplanUrl(name: string): string {
   return `${API_ROOT}/floorplan/${encodeURIComponent(name)}`;
 }
 
+/** An installation's own icon set: name to SVG path, empty when it has none. */
+export async function fetchIcons(): Promise<Record<string, string>> {
+  const response = await fetch(`${API_ROOT}/icons`);
+  if (!response.ok) {
+    return {};
+  }
+
+  return response.json();
+}
+
 export function floorplanStylesUrl(): string {
   return `${API_ROOT}/floorplan-styles.css`;
 }
