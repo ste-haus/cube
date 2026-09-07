@@ -1,0 +1,13 @@
+# Installation-specific dashboard definition; start from config/cube.dist.yaml.
+config/cube.yaml
+.env
+
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+node_modules/
+web/dist/

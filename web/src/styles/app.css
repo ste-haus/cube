@@ -1,0 +1,184 @@
+:root {
+  --color-background: #000000;
+  --color-foreground: #ffffff;
+  --color-muted: #999999;
+  --color-dim: #666666;
+  --color-faint: #333333;
+  --color-accent: #11fcf7;
+
+  --font-stack: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --weight-thin: 100;
+  --weight-light: 300;
+
+  --cube-perspective: 1200px;
+  --rotation-duration: 600ms;
+  --rotation-depth: -200px;
+  --rotation-fade: 0.3;
+
+  --panel-gap: 1.5vh;
+  --panel-padding: 1.5vw;
+
+  --title-size: 1.1rem;
+  --clock-time-size: 4.7rem;
+  --clock-date-size: 1.5rem;
+  --indicator-size: 1.5rem;
+  --notice-size: 1rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-stack);
+  font-weight: var(--weight-light);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: none;
+}
+
+#app {
+  height: 100%;
+}
+
+/*
+ * The dashboard grid, carried over from the layout this replaces: a tall centre column
+ * flanked by a status rail and a weather rail, with a full-width header and footer.
+ */
+.dashboard {
+  display: grid;
+  height: 100%;
+  padding: var(--panel-padding);
+  gap: var(--panel-gap);
+  grid-template-columns: 35fr 35fr 30fr;
+  grid-template-rows: minmax(5%, 65px) 1fr auto;
+  grid-template-areas:
+    "left header header"
+    "left center right"
+    "footer footer footer";
+}
+
+.dashboard__header {
+  grid-area: header;
+  min-width: 0;
+  overflow: hidden;
+}
+.dashboard__left {
+  grid-area: left;
+  min-height: 0;
+}
+.dashboard__center {
+  grid-area: center;
+  min-height: 0;
+}
+.dashboard__right {
+  grid-area: right;
+  min-height: 0;
+}
+.dashboard__footer {
+  grid-area: footer;
+  min-height: 0;
+}
+
+.dashboard__left,
+.dashboard__center,
+.dashboard__right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap);
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "left"
+      "center"
+      "header"
+      "right"
+      "footer";
+  }
+}
+
+/* Section headings, uppercased over a rule, as on the dashboard this replaces. */
+.panel-title {
+  margin: 0 0 0.4em 0;
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid currentColor;
+  font-size: var(--title-size);
+  font-weight: var(--weight-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.panel-title--right {
+  text-align: right;
+}
+
+.blank-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-faint);
+  font-size: var(--title-size);
+  text-transform: uppercase;
+  letter-spacing: 0.5em;
+}
+
+/* Face map, bottom right, mirroring the unfolded cube. */
+.face-map {
+  position: fixed;
+  right: 0.5vw;
+  bottom: 0.5vh;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  font-size: 0.75rem;
+}
+
+.face-map__cell {
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--color-dim);
+  background: none;
+  color: var(--color-dim);
+  font: inherit;
+  line-height: 1;
+  text-align: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.face-map__cell--active {
+  border-color: var(--color-foreground);
+  color: var(--color-foreground);
+}
+
+/* Connection indicator; only ever visible while the proxy is unreachable. */
+.connection {
+  position: fixed;
+  left: 0.5vw;
+  bottom: 0.5vh;
+  z-index: 2;
+  color: var(--color-dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  animation: pulse 2s linear infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0;
+  }
+}

@@ -1,0 +1,11 @@
+services:
+  cube:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "4096:4096"
+    env_file:
+      - .env
+    volumes:
+      # The dashboard definition describes your home, so it is mounted rather than baked in.
+      - ./config/cube.yaml:/app/config/cube.yaml:ro
