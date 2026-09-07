@@ -1,5 +1,5 @@
-# Installation-specific dashboard definition; start from config/cube.dist.yaml.
-config/cube.yaml
+# Installation-specific dashboard definition; start from config.yaml.dist.
+config.yaml
 .env
 
 __pycache__/

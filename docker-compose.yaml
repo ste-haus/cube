@@ -8,4 +8,4 @@ services:
       - .env
     volumes:
       # The dashboard definition describes your home, so it is mounted rather than baked in.
-      - ./config/cube.yaml:/app/config/cube.yaml:ro
+      - ./config.yaml:/app/config.yaml:ro

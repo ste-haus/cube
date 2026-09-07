@@ -4,7 +4,7 @@ Serves the websocket and REST surfaces cube talks to, driven by whichever dashbo
 it is pointed at. The floorplan it returns is generated from that config's groups, so the
 wiring between entity, SVG element, and stylesheet class can be seen without a real drawing.
 
-    uv run python tools/stub_hass.py --config config/cube.dist.yaml --port 8123
+    uv run python tools/stub_hass.py --config config.yaml --port 8123
 """
 
 import argparse
@@ -20,8 +20,9 @@ from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 from cube.dashboard import Dashboard, load_dashboard
 from cube.hass import protocol
 
+DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8123
-DEFAULT_CONFIG = Path("config") / "cube.dist.yaml"
+DEFAULT_CONFIG = Path("config.yaml")
 
 CHURN_INTERVAL_SECONDS = 3.0
 CHURN_ENTITY_COUNT = 3
@@ -315,9 +316,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument("--host", default=DEFAULT_HOST, help="Bind address; use 0.0.0.0 to reach it from a container")
     arguments = parser.parse_args()
 
-    uvicorn.run(create_stub(load_dashboard(arguments.config)), port=arguments.port)
+    uvicorn.run(create_stub(load_dashboard(arguments.config)), host=arguments.host, port=arguments.port)
 
 
 if __name__ == "__main__":

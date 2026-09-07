@@ -1,7 +1,7 @@
 """Dashboard definition.
 
 Everything installation-specific — entity ids, labels, colors, URLs, floorplan layout — is
-loaded from a YAML file at runtime rather than baked in here. `config/cube.dist.yaml` is a
+loaded from a YAML file at runtime rather than baked in here. `config.yaml.dist` is a
 placeholder copy of the schema; see the README for how to point at your own.
 """
 
@@ -59,7 +59,8 @@ class Indicator(Reading):
     well as a magnitude.
     """
 
-    icon: str
+    icon: str = ""
+    icon_attribute: str | None = None
     suffix: str = ""
     scale: ThresholdScale | None = None
     bearing: Reading | None = None
@@ -337,7 +338,7 @@ CONTROLLABLE_FLOORPLAN_GROUPS = ("lights", "fans")
 
 def load_dashboard(path: Path) -> Dashboard:
     if not path.exists():
-        raise FileNotFoundError(f"Dashboard config not found at {path}. Copy config/cube.dist.yaml and edit it.")
+        raise FileNotFoundError(f"Dashboard config not found at {path}. Copy config.yaml.dist and edit it.")
 
     document: dict[str, Any] = yaml.safe_load(path.read_text()) or {}
 

@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 APP_TITLE = "cube"
 
-FRONTEND_DIRECTORY = Path(__file__).resolve().parents[2] / "web" / "dist"
 FRONTEND_ENTRYPOINT = "index.html"
 FRONTEND_ASSETS_DIRECTORY = "assets"
 FRONTEND_ASSETS_MOUNT = "/assets"
@@ -44,17 +43,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title=APP_TITLE, lifespan=lifespan)
     app.include_router(router)
 
-    _mount_frontend(app)
+    _mount_frontend(app, resolved.frontend_path)
 
     return app
 
 
-def _mount_frontend(app: FastAPI) -> None:
-    assets = FRONTEND_DIRECTORY / FRONTEND_ASSETS_DIRECTORY
-    entrypoint = FRONTEND_DIRECTORY / FRONTEND_ENTRYPOINT
+def _mount_frontend(app: FastAPI, directory: Path) -> None:
+    assets = directory / FRONTEND_ASSETS_DIRECTORY
+    entrypoint = directory / FRONTEND_ENTRYPOINT
 
     if not entrypoint.exists():
-        logger.warning(MISSING_FRONTEND_MESSAGE, FRONTEND_DIRECTORY)
+        logger.warning(MISSING_FRONTEND_MESSAGE, directory)
 
         return
 

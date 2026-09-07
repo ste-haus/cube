@@ -4,7 +4,7 @@ import pytest
 
 from cube.config import Settings
 
-SAMPLE_CONFIG = Path("config") / "cube.dist.yaml"
+SAMPLE_CONFIG = Path("config.yaml.dist")
 
 TEST_HA_URL = "http://home-assistant.invalid:8123"
 TEST_HA_TOKEN = "test-token"

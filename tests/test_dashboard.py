@@ -4,7 +4,7 @@ import pytest
 
 from cube.dashboard import ThresholdBand, ThresholdScale, load_dashboard
 
-SAMPLE_CONFIG = Path("config") / "cube.dist.yaml"
+SAMPLE_CONFIG = Path("config.yaml.dist")
 
 LOW_COLOR = "#999999"
 MID_COLOR = "#11fcf7"

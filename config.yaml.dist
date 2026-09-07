@@ -76,6 +76,12 @@ indicators:
         - { at: 7.2, color: "#fc8803" }
         - { at: 4.8, color: "#11fcf7" }
 
+  # An indicator whose glyph changes with its entity reads the icon from an attribute.
+  - icon_attribute: icon
+    icon: mdi:clock-outline
+    entity_id: sensor.example_time_of_day
+    attribute: remaining
+
   - icon: mdi:weather-sunset-up
     entity_id: sensor.example_sunrise
     attribute: local_time

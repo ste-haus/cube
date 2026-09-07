@@ -1,12 +1,17 @@
-.PHONY: install web dev stub run test lint format clean
+.PHONY: install lock web dev stub run test lint format clean image
 
-VENV := .venv
-CONFIG ?= config/cube.yaml
+CONFIG ?= config.yaml
 STUB_PORT ?= 8123
+IMAGE ?= cube:local
 
 install:
-	uv sync
+	uv venv
+	uv pip install -e ".[dev]"
 	npm --prefix web install
+
+# Dependencies are declared in setup.cfg and pinned here for reproducible image builds.
+lock:
+	uv pip compile setup.cfg -o requirements.txt
 
 web:
 	npm --prefix web run build
@@ -30,6 +35,9 @@ lint:
 
 format:
 	uv run ruff format .
+
+image:
+	docker build -t $(IMAGE) .
 
 clean:
 	rm -rf web/dist .pytest_cache .ruff_cache

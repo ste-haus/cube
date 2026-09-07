@@ -17,6 +17,14 @@
     return thresholdColor(indicator.scale, Number(value));
   }
 
+  function iconFor(indicator: Indicator): string | null {
+    if (!indicator.icon_attribute) {
+      return indicator.icon;
+    }
+
+    return ha.attribute<string>(indicator.entity_id, indicator.icon_attribute) ?? indicator.icon;
+  }
+
   function bearingFor(indicator: Indicator): string | null {
     const bearing = ha.reading(indicator.bearing);
 
@@ -51,8 +59,9 @@
     {@const value = ha.reading(indicator)}
     {#if value !== null}
       {@const bearing = bearingFor(indicator)}
+      {@const icon = iconFor(indicator)}
       <span class="indicators__item" style:color={colorFor(indicator, value)}>
-        <Icon name={indicator.icon} />
+        <Icon name={icon} />
         <span class="indicators__value">
           {value}{indicator.suffix}{#if bearing}&nbsp;{bearing}{/if}
         </span>

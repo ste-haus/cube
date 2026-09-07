@@ -22,6 +22,7 @@ export interface Extreme extends Reading {
 
 export interface Indicator extends Reading {
   icon: string;
+  icon_attribute: string | null;
   suffix: string;
   scale: ThresholdScale | null;
   bearing: Reading | null;

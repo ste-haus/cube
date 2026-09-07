@@ -1,0 +1,3 @@
+# Ruff reads neither setup.cfg nor a bare pyproject.toml build table, so its config sits here.
+line-length = 120
+src = ["src", "tests", "tools"]
