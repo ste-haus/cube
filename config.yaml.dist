@@ -43,6 +43,7 @@ clock:
 indicators:
   - icon: mdi:water-outline
     entity_id: sensor.example_precipitation_probability
+    precision: 0
     suffix: "%"
 
   - icon: mdi:weather-windy

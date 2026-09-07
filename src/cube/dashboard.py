@@ -62,6 +62,7 @@ class Indicator(Reading):
     icon: str = ""
     icon_attribute: str | None = None
     suffix: str = ""
+    precision: int | None = Field(default=None, description="Decimal places to round a numeric reading to")
     scale: ThresholdScale | None = None
     bearing: Reading | None = None
 

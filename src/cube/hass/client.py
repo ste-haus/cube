@@ -27,6 +27,12 @@ FIRST_MESSAGE_ID = 1
 # subscriber gets a bounded queue and loses its oldest pending update rather than blocking.
 SUBSCRIBER_QUEUE_SIZE = 32
 
+# Liveness is kept with Home Assistant's own ping command rather than websocket ping frames.
+# A reverse proxy in front of Home Assistant may not forward control frames, which reads to the
+# client as an unanswered ping and tears down an otherwise healthy connection; an application
+# ping is an ordinary data frame and survives the trip.
+PROTOCOL_PING_INTERVAL = None
+
 
 class HassError(Exception):
     pass
@@ -104,7 +110,7 @@ class HassClient:
     async def _connect_and_listen(self) -> None:
         logger.info("Connecting to Home Assistant at %s", self._settings.websocket_url)
 
-        async with websockets.connect(self._settings.websocket_url) as connection:
+        async with websockets.connect(self._settings.websocket_url, ping_interval=PROTOCOL_PING_INTERVAL) as connection:
             self._connection = connection
 
             await self._authenticate(connection)
@@ -112,19 +118,30 @@ class HassClient:
             # The reader has to be running before anything awaits a result, because it is what
             # resolves them.
             reader = asyncio.create_task(self._read(connection), name="hass-reader")
+            heartbeat = asyncio.create_task(self._heartbeat(), name="hass-heartbeat")
             try:
                 await self._subscribe_entities()
 
                 logger.info("Subscribed to %d entities", len(self._entity_ids))
                 self._ready.set()
 
-                await reader
+                # Either finishing means the connection is done; a heartbeat that goes
+                # unanswered has to bring the reader down with it.
+                done, _ = await asyncio.wait({reader, heartbeat}, return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    task.result()
             finally:
                 reader.cancel()
+                heartbeat.cancel()
 
     async def _read(self, connection: ClientConnection) -> None:
         async for raw in connection:
             self._handle(json.loads(raw))
+
+    async def _heartbeat(self) -> None:
+        while True:
+            await asyncio.sleep(self._settings.heartbeat_interval_seconds)
+            await self._send_awaiting_result(protocol.ping(self._next_message_id()))
 
     async def _authenticate(self, connection: ClientConnection) -> None:
         greeting = json.loads(await connection.recv())

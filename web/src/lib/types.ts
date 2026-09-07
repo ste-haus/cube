@@ -24,6 +24,7 @@ export interface Indicator extends Reading {
   icon: string;
   icon_attribute: string | null;
   suffix: string;
+  precision: number | null;
   scale: ThresholdScale | null;
   bearing: Reading | null;
 }

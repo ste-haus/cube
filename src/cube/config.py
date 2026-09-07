@@ -20,6 +20,10 @@ DEFAULT_RECONNECT_MAX_SECONDS = 60.0
 DEFAULT_RECONNECT_BACKOFF_FACTOR = 2.0
 
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 15.0
+# Short on purpose. A reverse proxy in front of Home Assistant commonly closes a websocket it
+# considers idle, sometimes after only a few seconds, and the heartbeat is what keeps the
+# connection looking busy. The frames are tiny, so erring low costs little.
+DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 5.0
 DEFAULT_ASSET_CACHE_SECONDS = 300
 DEFAULT_CAMERA_CACHE_SECONDS = 5
 
@@ -51,6 +55,7 @@ class Settings(BaseSettings):
     reconnect_backoff_factor: float = DEFAULT_RECONNECT_BACKOFF_FACTOR
 
     request_timeout_seconds: float = DEFAULT_REQUEST_TIMEOUT_SECONDS
+    heartbeat_interval_seconds: float = DEFAULT_HEARTBEAT_INTERVAL_SECONDS
     asset_cache_seconds: int = DEFAULT_ASSET_CACHE_SECONDS
     camera_cache_seconds: int = DEFAULT_CAMERA_CACHE_SECONDS
 

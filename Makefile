@@ -1,8 +1,14 @@
-.PHONY: install lock web dev stub resources run test lint format clean image
+.PHONY: init install lock web dev stub resources run test lint format clean image
 
 CONFIG ?= config.yaml
 STUB_PORT ?= 8123
 IMAGE ?= cube:local
+
+# Creates the two files that are not tracked. Never overwrites: one holds a credential, the
+# other describes your home, and neither can be recovered once clobbered.
+init:
+	@if [ -f .env ]; then echo ".env exists, leaving it alone"; else cp .env.dist .env; echo "created .env"; fi
+	@if [ -f config.yaml ]; then echo "config.yaml exists, leaving it alone"; else cp config.yaml.dist config.yaml; echo "created config.yaml"; fi
 
 install:
 	uv venv

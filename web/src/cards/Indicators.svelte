@@ -4,6 +4,8 @@
   import { ha } from "../lib/state.svelte";
   import type { Indicator, StatusIndicator } from "../lib/types";
 
+  const MDI_PREFIX = "mdi:";
+
   let {
     indicators,
     statusIndicators,
@@ -17,12 +19,26 @@
     return thresholdColor(indicator.scale, Number(value));
   }
 
+  // An entity may name an icon from a set the panel does not ship, so anything that is not a
+  // Material Design icon falls back to the one configured alongside it.
   function iconFor(indicator: Indicator): string | null {
     if (!indicator.icon_attribute) {
       return indicator.icon;
     }
 
-    return ha.attribute<string>(indicator.entity_id, indicator.icon_attribute) ?? indicator.icon;
+    const named = ha.attribute<string>(indicator.entity_id, indicator.icon_attribute);
+
+    return named?.startsWith(MDI_PREFIX) ? named : indicator.icon;
+  }
+
+  function format(indicator: Indicator, value: string): string {
+    if (indicator.precision === null) {
+      return value;
+    }
+
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) ? parsed.toFixed(indicator.precision) : value;
   }
 
   function bearingFor(indicator: Indicator): string | null {
@@ -63,7 +79,7 @@
       <span class="indicators__item" style:color={colorFor(indicator, value)}>
         <Icon name={icon} />
         <span class="indicators__value">
-          {value}{indicator.suffix}{#if bearing}&nbsp;{bearing}{/if}
+          {format(indicator, value)}{indicator.suffix}{#if bearing}&nbsp;{bearing}{/if}
         </span>
       </span>
     {/if}

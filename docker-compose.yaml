@@ -1,6 +1,7 @@
 services:
   cube:
     build: .
+    image: cube:local
     restart: unless-stopped
     ports:
       - "4096:4096"

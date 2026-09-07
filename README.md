@@ -50,9 +50,10 @@ Nothing about any particular home is compiled in. Two files describe an installa
 | `resources/` | floorplan drawings, and optional stylesheet overrides |
 
 ```bash
-cp .env.dist .env
-cp config.yaml.dist config.yaml
+make init
 ```
+
+That creates both from their samples and refuses to touch either if it already exists — a clobbered `.env` costs you a token, and a clobbered `config.yaml` costs you the whole inventory.
 
 `config.yaml.dist` is the complete schema with placeholder entities, and is the reference for what can be configured.
 
