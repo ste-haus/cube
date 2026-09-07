@@ -47,6 +47,26 @@ async def get_agenda(hub: CurrentHub) -> dict[str, Any]:
     return {"events": events}
 
 
+def _at_or_before(moment: str | None, window_start: datetime) -> bool:
+    """Whether a calendar moment falls at or before the window opening.
+
+    A bare date is read as midnight local, which is how an all-day event's bounds are meant.
+    """
+
+    if not moment:
+        return False
+
+    try:
+        parsed = datetime.fromisoformat(moment)
+    except ValueError:
+        return False
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=window_start.tzinfo)
+
+    return parsed <= window_start
+
+
 async def _events_for(hub, calendar: Calendar, start: datetime, end: datetime) -> list[dict[str, Any]]:
     try:
         raw = await hub.rest.calendar_events(calendar.entity_id, start, end)
@@ -66,14 +86,23 @@ async def _events_for(hub, calendar: Calendar, start: datetime, end: datetime) -
 
         starts_at = event.get(START_KEY, {})
         ends_at = event.get(END_KEY, {})
-        all_day = DATE_KEY in starts_at
+
+        started = starts_at.get(DATE_TIME_KEY) or starts_at.get(DATE_KEY)
+        ended = ends_at.get(DATE_TIME_KEY) or ends_at.get(DATE_KEY)
+
+        # Home Assistant returns anything overlapping the window, which includes yesterday's
+        # all-day events; they finish exactly as today begins and have no place on today's list.
+        if _at_or_before(ended, start):
+            continue
+
+        all_day = DATE_KEY in starts_at or _at_or_before(started, start)
 
         events.append(
             {
                 SUMMARY_KEY: summary,
                 LOCATION_KEY: event.get(LOCATION_KEY),
-                START_KEY: starts_at.get(DATE_TIME_KEY) or starts_at.get(DATE_KEY),
-                END_KEY: ends_at.get(DATE_TIME_KEY) or ends_at.get(DATE_KEY),
+                START_KEY: started,
+                END_KEY: ended,
                 ALL_DAY_KEY: all_day,
                 CALENDAR_KEY: calendar.name,
                 COLOR_KEY: calendar.color,

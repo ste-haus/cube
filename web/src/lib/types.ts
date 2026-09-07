@@ -42,17 +42,25 @@ export interface Notice {
   conditional: boolean;
   message_attribute: string;
   icon_attribute: string;
+  icon: string;
+  nominal_state: string | null;
+  state_colors: Record<string, string>;
+  pulsing_states: string[];
 }
+
+export type Side = "left" | "right";
 
 export interface Calendar {
   entity_id: string;
   name: string;
   color: string;
+  side: Side;
   blocklist: string | null;
 }
 
 export interface Agenda {
   calendars: Calendar[];
+  side_labels: Partial<Record<Side, string>>;
   empty_text: string;
   days: number;
   scroll_threshold_items: number;
@@ -137,8 +145,18 @@ export interface Labels {
   agenda: string;
 }
 
+export interface Theme {
+  background: string;
+  foreground: string;
+  muted: string;
+  dim: string;
+  faint: string;
+  accent: string;
+}
+
 export interface DashboardConfig {
   profile: Profile;
+  theme: Theme;
   labels: Labels;
   clock: Clock;
   indicators: Indicator[];

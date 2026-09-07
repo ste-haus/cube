@@ -27,7 +27,7 @@
   }
 </script>
 
-<div class="cube" use:swipeable={onSwipe}>
+<div class="cube" use:swipeable={{ onSwipe, keyboard: true }}>
   {#each FACES as name (name)}
     {#if cube.isVisible(name)}
       {@const face = faceFor(name)}

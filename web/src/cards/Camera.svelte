@@ -13,10 +13,19 @@
 </section>
 
 <style>
+  .camera {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   .camera__frame {
     display: block;
-    width: 90%;
+    width: 100%;
+    min-height: 0;
     margin: 0 auto;
+    object-fit: contain;
+    object-position: top;
     filter: brightness(80%);
   }
 </style>

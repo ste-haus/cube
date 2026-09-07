@@ -131,10 +131,27 @@ export class Cube {
  * Used as a Svelte action, so the element it decorates owns the gesture and releases the
  * listeners with itself.
  */
-export function swipeable(node: HTMLElement, onSwipe: (direction: Direction) => void) {
+export interface SwipeOptions {
+  onSwipe: (direction: Direction) => void;
+  /** Which axes this element claims. Anything else is left to bubble. */
+  axes?: "both" | "horizontal" | "vertical";
+  /** Stop a claimed gesture from reaching an ancestor that also listens. */
+  exclusive?: boolean;
+  /** Bind arrow keys. Only the outermost handler should. */
+  keyboard?: boolean;
+}
+
+export function swipeable(node: HTMLElement, options: SwipeOptions) {
+  let current = options;
   let startX = 0;
   let startY = 0;
   let tracking = false;
+
+  function claims(horizontal: boolean): boolean {
+    const axes = current.axes ?? "both";
+
+    return axes === "both" || (horizontal ? axes === "horizontal" : axes === "vertical");
+  }
 
   function down(event: PointerEvent) {
     startX = event.clientX;
@@ -154,21 +171,25 @@ export function swipeable(node: HTMLElement, onSwipe: (direction: Direction) => 
     const horizontal = Math.abs(deltaX) > Math.abs(deltaY);
     const distance = horizontal ? deltaX : deltaY;
 
-    if (Math.abs(distance) < SWIPE_THRESHOLD_PX) {
+    if (Math.abs(distance) < SWIPE_THRESHOLD_PX || !claims(horizontal)) {
       return;
     }
 
+    if (current.exclusive) {
+      event.stopPropagation();
+    }
+
     if (horizontal) {
-      onSwipe(distance < 0 ? "left" : "right");
+      current.onSwipe(distance < 0 ? "left" : "right");
     } else {
-      onSwipe(distance < 0 ? "up" : "down");
+      current.onSwipe(distance < 0 ? "up" : "down");
     }
   }
 
   function key(event: KeyboardEvent) {
     const direction = KEY_DIRECTIONS[event.key];
     if (direction) {
-      onSwipe(direction);
+      current.onSwipe(direction);
     }
   }
 
@@ -177,9 +198,15 @@ export function swipeable(node: HTMLElement, onSwipe: (direction: Direction) => 
   node.addEventListener("pointercancel", () => {
     tracking = false;
   });
-  window.addEventListener("keydown", key);
+
+  if (current.keyboard) {
+    window.addEventListener("keydown", key);
+  }
 
   return {
+    update(next: SwipeOptions) {
+      current = next;
+    },
     destroy() {
       node.removeEventListener("pointerdown", down);
       node.removeEventListener("pointerup", up);

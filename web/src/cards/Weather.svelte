@@ -96,36 +96,43 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.5em;
-    font-size: 2rem;
+    gap: 0.35em;
+    font-size: var(--weather-icon-size);
     font-weight: var(--weight-thin);
+    color: var(--color-muted);
   }
 
   .weather__temperature {
-    font-size: 2.5rem;
+    color: var(--color-foreground);
+    font-size: var(--weather-temp-size);
+    font-weight: var(--weight-thin);
   }
 
   .weather__extremes {
     display: flex;
     flex-direction: column;
-    font-size: 1rem;
+    gap: 0.15em;
+    font-size: 1.1rem;
+    color: var(--color-foreground);
   }
 
   .weather__extreme {
     display: flex;
     align-items: center;
-    gap: 0.2em;
+    gap: 0.3em;
     white-space: nowrap;
   }
 
   .weather__hours {
     color: var(--color-dim);
-    font-size: 0.75em;
+    font-size: 0.8em;
   }
 
   .weather__summary {
-    margin: 0.4em 0 0 0;
+    margin: 0.9em 0 0 0;
     text-align: center;
+    font-size: var(--weather-summary-size);
     font-weight: var(--weight-light);
+    line-height: 1.35;
   }
 </style>

@@ -5,11 +5,23 @@ loaded from a YAML file at runtime rather than baked in here. `config.yaml.dist`
 placeholder copy of the schema; see the README for how to point at your own.
 """
 
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Self
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
+
+
+class Theme(BaseModel):
+    """The panel's palette, applied as CSS custom properties."""
+
+    background: str = "#000000"
+    foreground: str = "#ffffff"
+    muted: str = "#999999"
+    dim: str = "#666666"
+    faint: str = "#333333"
+    accent: str = "#11fcf7"
 
 
 class ThresholdBand(BaseModel):
@@ -84,7 +96,9 @@ class Notice(BaseModel):
     """A notice row.
 
     `conditional` notices render only while their entity is `on`; unconditional ones always
-    render. Both read their text and icon from the entity's attributes.
+    render. Setting `nominal_state` instead switches the row to a state-driven notice, shown
+    whenever the entity is off that state and coloured by whichever state it is in. Either way
+    the text and icon come from the entity's attributes.
     """
 
     entity_id: str
@@ -92,12 +106,23 @@ class Notice(BaseModel):
     conditional: bool = True
     message_attribute: str = "message"
     icon_attribute: str = "icon"
+    icon: str = Field(default="", description="Used when the entity names no icon the panel ships")
+
+    nominal_state: str | None = None
+    state_colors: dict[str, str] = Field(default_factory=dict)
+    pulsing_states: list[str] = Field(default_factory=list)
+
+
+class Side(StrEnum):
+    LEFT = "left"
+    RIGHT = "right"
 
 
 class Calendar(BaseModel):
     entity_id: str
     name: str
     color: str
+    side: Side = Side.RIGHT
     blocklist: str | None = Field(default=None, description="Regex of event titles to hide")
 
 
@@ -136,7 +161,11 @@ class Camera(BaseModel):
 
 
 class Agenda(BaseModel):
+    """A two-sided timeline: one side's calendars down the left, the other's down the right,
+    with the time of day in a gutter between them."""
+
     calendars: list[Calendar] = Field(default_factory=list)
+    side_labels: dict[Side, str] = Field(default_factory=dict)
     empty_text: str = "Nothing today."
     days: int = 1
     # The list scrolls only once it outgrows the panel; these tune when and how fast.
@@ -227,6 +256,7 @@ CUBE_FACES = ("front", "back", "left", "right", "up", "down")
 class Dashboard(BaseModel):
     profiles: dict[str, Profile] = Field(default_factory=dict)
 
+    theme: Theme = Field(default_factory=Theme)
     labels: Labels = Field(default_factory=Labels)
     clock: Clock = Field(default_factory=Clock)
     indicators: list[Indicator] = Field(default_factory=list)

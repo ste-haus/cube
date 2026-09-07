@@ -7,7 +7,7 @@
   const RADIUS = 40;
   const CENTER_X = 50;
   const CENTER_Y = 50;
-  const STROKE_WIDTH = 6;
+  const STROKE_WIDTH = 5;
   const VIEWBOX = "0 0 100 58";
   const ARC = `M ${CENTER_X - RADIUS} ${CENTER_Y} A ${RADIUS} ${RADIUS} 0 0 1 ${CENTER_X + RADIUS} ${CENTER_Y}`;
   const ARC_LENGTH = Math.PI * RADIUS;
@@ -25,28 +25,21 @@
     {@const value = ha.number(gauge.entity_id)}
     {@const color = thresholdColor(row.scale, value)}
     <figure class="gauge">
-      <svg viewBox={VIEWBOX} role="img" aria-label={gauge.name ?? gauge.entity_id}>
-        <path
-          d={ARC}
-          fill="none"
-          stroke="var(--color-faint)"
-          stroke-width={STROKE_WIDTH}
-          stroke-linecap="round"
-        />
-        <path
-          d={ARC}
-          fill="none"
-          stroke={color}
-          stroke-width={STROKE_WIDTH}
-          stroke-linecap="round"
-          stroke-dasharray={ARC_LENGTH}
-          stroke-dashoffset={ARC_LENGTH * (1 - fraction(value))}
-        />
-      </svg>
-      <figcaption>
+      <div class="gauge__dial">
+        <svg viewBox={VIEWBOX} role="img" aria-label={gauge.name ?? gauge.entity_id}>
+          <path
+            d={ARC}
+            fill="none"
+            stroke={color}
+            stroke-width={STROKE_WIDTH}
+            stroke-linecap="butt"
+            stroke-dasharray={ARC_LENGTH}
+            stroke-dashoffset={ARC_LENGTH * (1 - fraction(value))}
+          />
+        </svg>
         <span class="gauge__value">{Math.round(value)}{row.unit}</span>
-        {#if gauge.name}<span class="gauge__name">{gauge.name}</span>{/if}
-      </figcaption>
+      </div>
+      {#if gauge.name}<figcaption class="gauge__name">{gauge.name}</figcaption>{/if}
     </figure>
   {/each}
 </div>
@@ -55,7 +48,7 @@
   .gauges {
     display: flex;
     justify-content: space-around;
-    gap: 1em;
+    gap: 1.5em;
   }
 
   .gauge {
@@ -64,20 +57,30 @@
     text-align: center;
   }
 
-  .gauge svg {
+  .gauge__dial {
+    position: relative;
+  }
+
+  .gauge__dial svg {
+    display: block;
     width: 100%;
     height: auto;
   }
 
+  /* Sits in the bowl of the arc rather than under it. */
   .gauge__value {
-    display: block;
-    font-size: 1.1rem;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    font-size: var(--gauge-value-size);
     font-weight: var(--weight-thin);
+    line-height: 1;
   }
 
   .gauge__name {
-    display: block;
+    margin-top: 0.5em;
     color: var(--color-dim);
-    font-size: 0.75rem;
+    font-size: var(--gauge-name-size);
   }
 </style>

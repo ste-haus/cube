@@ -29,6 +29,10 @@ profiles:
         content: blank
         label: down
 
+# The panel's palette.
+theme:
+  background: "#111111"
+
 labels:
   notices: Notices
   agenda: Today
@@ -95,7 +99,6 @@ indicators:
 status_indicators:
   - icon: mdi:alert-outline
     entity_id: sensor.example_condition
-    attribute: note
     nominal_state: Safe
     state_colors:
       Caution: "#11fcf7"
@@ -108,6 +111,19 @@ status_indicators:
 # Each notice reads its text and icon from its own attributes. Conditional notices render
 # only while the entity is `on`; pulsing ones blink to mark something time-sensitive.
 notices:
+  # A state-driven notice: shown while the entity is off its nominal state, and coloured by
+  # whichever state it is in.
+  - entity_id: sensor.example_condition
+    message_attribute: note
+    icon: mdi:alert-outline
+    nominal_state: Safe
+    state_colors:
+      Caution: "#11fcf7"
+      Unsafe: "#fc8803"
+      Dangerous: "#ff0000"
+    pulsing_states:
+      - Unsafe
+      - Dangerous
   - entity_id: sensor.example_notice_always
     conditional: false
   - entity_id: sensor.example_notice_holiday
@@ -116,19 +132,27 @@ notices:
     pulsing: true
   - entity_id: sensor.example_notice_collection_tomorrow
 
+# A two-sided timeline: one side's calendars down the left, the other's down the right, with
+# the time of day in a gutter between them.
 agenda:
   empty_text: Nothing today.
   days: 1
+  side_labels:
+    left: One
+    right: Two
   calendars:
     - entity_id: calendar.example_personal
       name: Personal
       color: "#bd00bd"
+      side: right
     - entity_id: calendar.example_shared
       name: Shared
       color: "#00bfff"
+      side: left
     - entity_id: calendar.example_chores
       name: Chores
       color: "#777777"
+      side: left
       blocklist: "vacuum|trash|recycling|compost"
 
 # Counts used to size the agenda's scroll animation.

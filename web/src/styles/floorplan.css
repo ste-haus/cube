@@ -136,6 +136,15 @@
   fill: none;
 }
 
+/* Controls stay hit-testable while unpainted. Without this an unlit light, which has no fill,
+ * cannot be clicked at all — it could be switched off but never back on. */
+.floorplan__canvas .light,
+.floorplan__canvas .light *,
+.floorplan__canvas .fan,
+.floorplan__canvas .fan * {
+  pointer-events: all;
+}
+
 /* Doors report more than open or shut, and each state reads differently. */
 
 .floorplan__canvas .door {

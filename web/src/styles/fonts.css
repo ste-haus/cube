@@ -1,0 +1,36 @@
+/*
+ * Roboto, the face Home Assistant's own dashboards use. Bundled rather than fetched, because a
+ * wall panel should render correctly with no route off the local network.
+ */
+
+@font-face {
+  font-family: "Roboto";
+  font-weight: 100;
+  font-style: normal;
+  font-display: block;
+  src: url("../fonts/Roboto-Thin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-weight: 300;
+  font-style: normal;
+  font-display: block;
+  src: url("../fonts/Roboto-Light.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url("../fonts/Roboto-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+  src: url("../fonts/Roboto-Medium.woff2") format("woff2");
+}

@@ -7,28 +7,55 @@
 
   // Twenty-odd separately configured notices, each carrying its own text and icon. They are
   // one list rather than one card apiece, which is what the config buys.
+  const MDI_PREFIX = "mdi:";
+
+  /**
+   * An icon named in config wins, since naming one is a deliberate choice. Otherwise take the
+   * entity's own, unless it comes from an icon set the panel does not ship.
+   */
+  function iconFor(notice: Notice): string {
+    if (notice.icon) {
+      return notice.icon;
+    }
+
+    const named = ha.attribute<string>(notice.entity_id, notice.icon_attribute);
+
+    return named?.startsWith(MDI_PREFIX) ? named : "";
+  }
+
+  /** A state-driven notice shows whenever its entity is off its nominal state. */
+  function shown(notice: Notice): boolean {
+    const state = ha.state(notice.entity_id);
+
+    if (notice.nominal_state !== null) {
+      return state !== null && state !== notice.nominal_state;
+    }
+
+    return notice.conditional ? state === STATE_ON : true;
+  }
+
   const visible = $derived(
     notices
-      .map((notice) => ({
-        notice,
-        message: ha.attribute<string>(notice.entity_id, notice.message_attribute),
-        icon: ha.attribute<string>(notice.entity_id, notice.icon_attribute),
-      }))
-      .filter(({ notice, message }) => {
-        if (!message) {
-          return false;
-        }
+      .map((notice) => {
+        const state = ha.state(notice.entity_id);
 
-        return notice.conditional ? ha.state(notice.entity_id) === STATE_ON : true;
-      }),
+        return {
+          notice,
+          message: ha.attribute<string>(notice.entity_id, notice.message_attribute),
+          icon: iconFor(notice),
+          color: state ? (notice.state_colors[state] ?? null) : null,
+          pulsing: notice.pulsing || (!!state && notice.pulsing_states.includes(state)),
+        };
+      })
+      .filter(({ notice, message }) => !!message && shown(notice)),
   );
 </script>
 
 <section class="notices">
   <h2 class="panel-title">{title}</h2>
   <ul class="notices__list">
-    {#each visible as { notice, message, icon } (notice.entity_id)}
-      <li class="notices__item" class:notices__item--pulsing={notice.pulsing}>
+    {#each visible as { notice, message, icon, color, pulsing } (notice.entity_id)}
+      <li class="notices__item" class:notices__item--pulsing={pulsing} style:color>
         <Icon name={icon} />
         <span>{message}</span>
       </li>
@@ -46,9 +73,10 @@
   .notices__item {
     display: flex;
     align-items: center;
-    gap: 0.4em;
-    padding: 0.1em 0;
+    gap: 0.6em;
+    padding: 0.32em 0;
     font-size: var(--notice-size);
+    line-height: 1.35;
   }
 
   .notices__item--pulsing {

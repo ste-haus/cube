@@ -4,8 +4,27 @@
   import { ha } from "./lib/state.svelte";
   import type { DashboardConfig } from "./lib/types";
 
+  const THEME_PROPERTIES: Record<string, keyof DashboardConfig["theme"]> = {
+    "--color-background": "background",
+    "--color-foreground": "foreground",
+    "--color-muted": "muted",
+    "--color-dim": "dim",
+    "--color-faint": "faint",
+    "--color-accent": "accent",
+  };
+
   let config = $state<DashboardConfig | null>(null);
   let error = $state<string | null>(null);
+
+  $effect(() => {
+    if (!config) {
+      return;
+    }
+
+    for (const [property, key] of Object.entries(THEME_PROPERTIES)) {
+      document.documentElement.style.setProperty(property, config.theme[key]);
+    }
+  });
 
   $effect(() => {
     fetchConfig()

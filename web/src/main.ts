@@ -2,6 +2,7 @@ import { mount } from "svelte";
 
 import App from "./App.svelte";
 import "@mdi/font/css/materialdesignicons.css";
+import "./styles/fonts.css";
 import "./styles/app.css";
 import "./styles/rotation.css";
 import "./styles/floorplan.css";

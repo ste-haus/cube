@@ -92,7 +92,7 @@
     align-items: center;
     justify-content: flex-end;
     flex-wrap: wrap;
-    gap: 0 1.2em;
+    gap: 0 1.6em;
     height: 100%;
     color: var(--color-muted);
     font-size: var(--indicator-size);

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { floorplanStylesUrl, floorplanUrl, toggle } from "../lib/api";
+  import { swipeable, type Direction } from "../lib/cube.svelte";
   import { ha } from "../lib/state.svelte";
   import type { Floorplan } from "../lib/types";
 
@@ -169,6 +170,13 @@
     }
   }
 
+  function step(direction: Direction): void {
+    const index = levels.indexOf(currentLevel);
+    const next = direction === "left" ? index + 1 : index - 1;
+
+    showLevel(levels[(next + levels.length) % levels.length]);
+  }
+
   function showLevel(name: string): void {
     level = name;
 
@@ -185,7 +193,12 @@
 
 <section class="floorplan">
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div class="floorplan__canvas" bind:this={container} onclick={onTap}>
+  <div
+    class="floorplan__canvas"
+    bind:this={container}
+    onclick={onTap}
+    use:swipeable={{ onSwipe: step, axes: "horizontal", exclusive: true }}
+  >
     {@html markup}
   </div>
 
@@ -230,13 +243,14 @@
 
   .floorplan__levels {
     display: flex;
-    gap: 0.5em;
-    padding: 0.6em 0;
+    gap: 0.7em;
+    /* Roomy enough to be a target on a wall panel, not just a marker. */
+    padding: 1em 1.4em;
   }
 
   .floorplan__level {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     padding: 0;
     border: 0;
     border-radius: 50%;
