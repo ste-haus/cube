@@ -158,6 +158,7 @@ class GaugeRow(BaseModel):
 class Camera(BaseModel):
     entity_id: str
     title: str | None = None
+    refresh_seconds: float = 10.0
 
 
 class Agenda(BaseModel):
@@ -190,10 +191,11 @@ class Weather(BaseModel):
     high: Extreme | None = None
     low: Extreme | None = None
     summary_entity_id: str | None = None
-    # The summary shrinks as it lengthens so a wordy forecast still fits its panel.
+    # The summary shrinks as it lengthens so a wordy forecast still fits its panel. The scales
+    # multiply the panel's summary size rather than replacing it.
     summary_max_length: int = 150
-    summary_min_scale: float = 1.0
-    summary_max_scale: float = 1.25
+    summary_min_scale: float = 0.8
+    summary_max_scale: float = 1.0
 
 
 class Transcript(BaseModel):

@@ -33,11 +33,11 @@
   --notice-size: 1.09rem;
   --agenda-size: 1.2rem;
   --agenda-time-size: 1rem;
-  --weather-temp-size: 4.1rem;
-  --weather-icon-size: 4.5rem;
-  --weather-summary-size: 1.3rem;
+  --weather-temp-size: 5.2rem;
+  --weather-icon-size: 6rem;
+  --weather-summary-size: 1.35rem;
   --gauge-value-size: 2.4rem;
-  --gauge-name-size: 1rem;
+  --gauge-name-size: 1.12rem;
 }
 
 * {
@@ -84,7 +84,7 @@ body {
   padding: var(--panel-padding);
   gap: var(--panel-gap);
   grid-template-columns: 35fr 35fr 30fr;
-  grid-template-rows: minmax(5%, 72px) 1fr auto;
+  grid-template-rows: minmax(0, 52px) 1fr auto;
   grid-template-areas:
     "left header header"
     "left center right"
@@ -132,7 +132,7 @@ body {
 
 /* The camera gives up height before the gauges do, so both always fit. */
 .dashboard__right > .camera {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
 }
 

@@ -106,6 +106,7 @@ export interface GaugeRow {
 export interface Camera {
   entity_id: string;
   title: string | null;
+  refresh_seconds: number;
 }
 
 export interface Transcript {

@@ -72,7 +72,9 @@
   </div>
 
   {#if summary}
-    <p class="weather__summary" style:font-size="{summaryScale}rem">{summary}</p>
+    <p class="weather__summary" style:font-size="calc(var(--weather-summary-size) * {summaryScale})">
+      {summary}
+    </p>
   {/if}
 </section>
 
@@ -97,7 +99,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.15em;
-    font-size: 1.1rem;
+    font-size: 1.35rem;
+    /* The extremes stand off the right edge rather than sitting flush against it. */
+    margin-right: 2rem;
   }
 
   .weather__extreme-value {
@@ -121,8 +125,7 @@
   }
 
   .weather__summary {
-    margin: 0.9em 0 0 0;
-    font-size: var(--weather-summary-size);
+    margin: 2.4em 0 0 0;
     font-weight: var(--weight-light);
     line-height: 1.35;
   }

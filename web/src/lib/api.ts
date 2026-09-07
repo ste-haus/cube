@@ -63,6 +63,6 @@ export function floorplanStylesUrl(): string {
   return `${API_ROOT}/floorplan-styles.css`;
 }
 
-export function cameraStreamUrl(entityId: string): string {
-  return `${API_ROOT}/camera/${encodeURIComponent(entityId)}/stream`;
+export function cameraSnapshotUrl(entityId: string, tick: number): string {
+  return `${API_ROOT}/camera/${encodeURIComponent(entityId)}/snapshot?t=${tick}`;
 }
