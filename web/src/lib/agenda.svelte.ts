@@ -109,4 +109,41 @@ export function focusOf(events: AgendaEvent[], now: Date): Set<AgendaEvent> {
   return new Set(next ? [next] : []);
 }
 
+/** Long enough to be worth marking as a stretch of nothing rather than a pause. */
+export const MIN_BREAK_MS = 3 * 60 * 60 * 1000;
+
+/** Two is enough to say the day has holes in it; more and the spine is all teeth. */
+export const MAX_BREAKS = 2;
+
+/**
+ * Which rows the spine should break before.
+ *
+ * Rows sit an even distance apart whatever the clock says, so a long empty stretch looks like
+ * any other. Marking the biggest of them puts some of that back without pretending the column
+ * is a scale. Returns row indexes; a break always falls between two rows, so the ends of the
+ * timeline are never marked.
+ */
+export function spineBreaks(startsAt: (number | null)[]): Set<number> {
+  const gaps: { index: number; size: number }[] = [];
+
+  for (let index = 1; index < startsAt.length; index += 1) {
+    const before = startsAt[index - 1];
+    const after = startsAt[index];
+
+    // A row without a time of its own — an all-day entry — bounds no measurable gap.
+    if (before === null || after === null) {
+      continue;
+    }
+
+    const size = after - before;
+    if (size > MIN_BREAK_MS) {
+      gaps.push({ index, size });
+    }
+  }
+
+  gaps.sort((first, second) => second.size - first.size);
+
+  return new Set(gaps.slice(0, MAX_BREAKS).map((gap) => gap.index));
+}
+
 export const agenda = new Agenda();

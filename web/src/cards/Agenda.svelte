@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { agenda as store, focusOf } from "../lib/agenda.svelte";
+  import { agenda as store, focusOf, spineBreaks } from "../lib/agenda.svelte";
   import { eventProgress, eventTime } from "../lib/format";
   import { ha } from "../lib/state.svelte";
   import type { Agenda, AgendaEvent, Side } from "../lib/types";
@@ -56,8 +56,20 @@
       entries,
       // A slot showing a meter has given up its clock: the meter says when far better.
       progress: entries.map(progressOf).find((value) => value !== null) ?? null,
+      startsAt: startOf(entries),
     }));
   });
+
+  /** When a row begins, or null for an untimed one. */
+  function startOf(entries: AgendaEvent[]): number | null {
+    const times = entries
+      .filter((event) => !event.all_day && event.start !== null)
+      .map((event) => new Date(event.start as string).getTime());
+
+    return times.length > 0 ? Math.min(...times) : null;
+  }
+
+  const breaks = $derived(spineBreaks(slots.map((slot) => slot.startsAt)));
 
   /* Only these titles scroll; see focusOf. */
   const timelineEvents = $derived(events.filter((event) => side(event) !== EXTRA && !event.all_day));
@@ -95,6 +107,11 @@
       >
         {#each slots as slot, index (slot.time + index)}
           <div class="agenda__slot">
+            {#if breaks.has(index)}
+              <svg class="agenda__break" viewBox="0 0 8 22" aria-hidden="true">
+                <path d="M4 0 L1 5 L7 11 L1 17 L4 22" fill="none" stroke="currentColor" />
+              </svg>
+            {/if}
             {#each [LEFT, RIGHT] as column (column)}
               <div class="agenda__side agenda__side--{column}">
                 {#each slot.entries.filter((event) => side(event) === column) as event, position (event.calendar + event.summary + position)}
@@ -184,9 +201,23 @@
   }
 
   .agenda__slot {
+    position: relative;
     display: flex;
     align-items: center;
     padding: 0.5em 0;
+  }
+
+  /* Sits on the spine where a long empty stretch would otherwise pass unremarked, masking the
+   * straight line behind it the way the times do. */
+  .agenda__break {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 8px;
+    height: 22px;
+    transform: translate(-50%, -50%);
+    color: var(--agenda-spine-color);
+    background-color: var(--color-background);
   }
 
   .agenda__side {

@@ -42,8 +42,9 @@ SAMPLE_CONDITION = "partlycloudy"
 SAMPLE_SUMMARY = "Grey, with a decent chance of more grey later on."
 SAMPLE_TRANSCRIPT = "this is a sample announcement"
 
-SAMPLE_EVENT_COUNT = 3
-SAMPLE_EVENT_HOURS_APART = 2
+# A day with a shape to it: a busy morning, a long empty afternoon, something late on. The
+# gap is what makes the timeline's break worth looking at.
+SAMPLE_EVENT_HOURS = (9, 10, 15, 16)
 SAMPLE_STATUS_STATE = "Caution"
 SAMPLE_STATUS_NOTE = "Pavement is warm"
 
@@ -266,13 +267,15 @@ def create_stub(dashboard: Dashboard) -> FastAPI:
     async def calendar(entity_id: str) -> list[dict[str, Any]]:
         start = datetime.now().astimezone()
 
+        midnight = start.replace(hour=0, minute=0, second=0, microsecond=0)
+
         return [
             {
                 "summary": f"{entity_id.split('.')[-1]} event {index + 1}",
-                "start": {"dateTime": (start + timedelta(hours=index * SAMPLE_EVENT_HOURS_APART)).isoformat()},
-                "end": {"dateTime": (start + timedelta(hours=index * SAMPLE_EVENT_HOURS_APART + 1)).isoformat()},
+                "start": {"dateTime": (midnight + timedelta(hours=hour)).isoformat()},
+                "end": {"dateTime": (midnight + timedelta(hours=hour, minutes=45)).isoformat()},
             }
-            for index in range(SAMPLE_EVENT_COUNT)
+            for index, hour in enumerate(SAMPLE_EVENT_HOURS)
         ]
 
     @app.get("/api/camera_proxy_stream/{entity_id}")

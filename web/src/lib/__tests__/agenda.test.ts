@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { focusOf } from "../agenda.svelte";
+import { focusOf, spineBreaks } from "../agenda.svelte";
 import type { AgendaEvent } from "../types";
 
 function event(summary: string, start: string | null, end: string | null): AgendaEvent {
@@ -55,5 +55,41 @@ describe("focusOf", () => {
 
   it("ignores an event with no times of its own", () => {
     expect(focusOf([event("undated", null, null), midday], at("11:00:00"))).toEqual(new Set([midday]));
+  });
+});
+
+describe("spineBreaks", () => {
+  const hours = (n: number) => n * 60 * 60 * 1000;
+
+  it("marks a gap longer than the threshold", () => {
+    expect(spineBreaks([0, hours(4)])).toEqual(new Set([1]));
+  });
+
+  it("leaves a short gap alone", () => {
+    expect(spineBreaks([0, hours(2)])).toEqual(new Set());
+  });
+
+  it("leaves a gap exactly at the threshold alone", () => {
+    expect(spineBreaks([0, hours(3)])).toEqual(new Set());
+  });
+
+  it("keeps only the two largest", () => {
+    // Gaps of 4h, 6h, 5h and 4h; the 6h and 5h win.
+    const starts = [0, hours(4), hours(10), hours(15), hours(19)];
+
+    expect(spineBreaks(starts)).toEqual(new Set([2, 3]));
+  });
+
+  it("never marks the first row, so the timeline does not open with a break", () => {
+    expect(spineBreaks([hours(9), hours(10)]).has(0)).toBe(false);
+  });
+
+  it("ignores rows with no time of their own", () => {
+    // An all-day row leads, and bounds no measurable gap.
+    expect(spineBreaks([null, hours(9), hours(14)])).toEqual(new Set([2]));
+  });
+
+  it("marks nothing on a day with one row", () => {
+    expect(spineBreaks([hours(9)])).toEqual(new Set());
   });
 });
