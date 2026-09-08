@@ -1,25 +1,35 @@
-"""Camera frames from Home Assistant, and floorplan assets from disk.
+"""Camera frames and announcement audio from Home Assistant, and floorplan assets from disk.
 
 The panel never holds a Home Assistant token, so camera frames come through here. Floorplans
 are served from the resources directory instead: the drawings are only in Home Assistant to
 support the dashboard this replaces, and a floorplan is a picture of somebody's home, so it is
 mounted alongside the container rather than fetched or vendored.
 
-Only the camera and floorplans named in the dashboard config are reachable either way.
+Announcement audio is relayed for a different reason. The visualizer overlay reads the sound it
+draws through the Web Audio API, and a browser will not hand a cross-origin recording to an
+analyser without `Access-Control-Allow-Origin`, which Home Assistant does not send. Relaying it
+puts the audio on the same origin as the page drawing it, which removes the question rather
+than answering it, and keeps the signed media address Home Assistant published on this side.
+
+Only the camera, the floorplans, and the speakers named in the dashboard config are reachable.
 """
 
 import logging
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from httpx import HTTPError
 
 from cube.api.dependencies import CurrentHub
+from cube.hass import protocol
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
+
+ANNOUNCEMENT_AUDIO_PATH = "/announcement/{entity_id}/audio"
 
 CACHE_CONTROL_HEADER = "cache-control"
 CACHE_CONTROL_TEMPLATE = "public, max-age={seconds}"
@@ -35,10 +45,20 @@ ICONS_NAME = "icons.json"
 JSON_CONTENT_TYPE = "application/json"
 EMPTY_JSON_OBJECT = "{}"
 
+PLAYING_STATE = "playing"
+MEDIA_CONTENT_ID_ATTRIBUTE = "media_content_id"
+
+RANGE_HEADER = "range"
+
 UNKNOWN_CAMERA_DETAIL = "Unknown camera"
 UNKNOWN_FLOORPLAN_DETAIL = "Unknown floorplan"
 MISSING_FLOORPLAN_DETAIL = "No drawing for this floorplan in the resources directory"
 UPSTREAM_DETAIL = "Home Assistant did not return the camera frame"
+
+NO_VISUALIZER_DETAIL = "No visualizer configured"
+UNKNOWN_MEDIA_PLAYER_DETAIL = "Unknown media player"
+NO_ANNOUNCEMENT_DETAIL = "No announcement playing on this media player"
+ANNOUNCEMENT_UPSTREAM_DETAIL = "Home Assistant did not return the announcement audio"
 
 
 @router.get("/camera/{entity_id}/snapshot")
@@ -74,6 +94,35 @@ async def camera_stream(entity_id: str, hub: CurrentHub) -> StreamingResponse:
             yield chunk
 
     return StreamingResponse(body(), media_type=content_type)
+
+
+@router.get(ANNOUNCEMENT_AUDIO_PATH)
+async def announcement_audio(entity_id: str, content: str, request: Request, hub: CurrentHub) -> StreamingResponse:
+    """Relay the announcement a configured speaker is playing right now.
+
+    `content` is the path of that announcement, which the caller already knows because it came
+    down the state stream. Requiring it to match makes the address unique per announcement, so
+    neither the browser nor the iframe serves the previous clip out of cache, and it keeps a
+    panel from asking for whatever played a moment ago.
+    """
+
+    media_content_id = _require_current_announcement(entity_id, content, hub)
+
+    chunks = hub.rest.media_stream(media_content_id, request.headers.get(RANGE_HEADER))
+
+    try:
+        first_chunk, metadata = await anext(chunks)
+    except StopAsyncIteration as error:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=ANNOUNCEMENT_UPSTREAM_DETAIL) from error
+    except HTTPError as error:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=ANNOUNCEMENT_UPSTREAM_DETAIL) from error
+
+    async def body():
+        yield first_chunk
+        async for chunk, _ in chunks:
+            yield chunk
+
+    return StreamingResponse(body(), status_code=metadata.status_code, headers=metadata.headers)
 
 
 @router.get("/floorplan/{name}")
@@ -136,3 +185,30 @@ def _within_resources(path: Path, hub) -> bool:
 def _require_configured_camera(entity_id: str, hub) -> None:
     if hub.dashboard.camera is None or hub.dashboard.camera.entity_id != entity_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=UNKNOWN_CAMERA_DETAIL)
+
+
+def _require_current_announcement(entity_id: str, content: str, hub) -> str:
+    """Resolve what the relay is allowed to fetch, from state rather than from the request.
+
+    The address comes out of this process's own view of Home Assistant, so the endpoint relays
+    an announcement a watched speaker is playing or it relays nothing. Nothing a panel sends
+    can widen that: `content` is only ever compared against what is already playing.
+    """
+
+    visualizer = hub.dashboard.visualizer
+    if visualizer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NO_VISUALIZER_DETAIL)
+
+    if entity_id not in hub.dashboard.media_players:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=UNKNOWN_MEDIA_PLAYER_DETAIL)
+
+    state = hub.client.states.get(entity_id, {})
+    media_content_id = state.get(protocol.ATTRIBUTES, {}).get(MEDIA_CONTENT_ID_ATTRIBUTE)
+
+    playing = state.get(protocol.STATE) == PLAYING_STATE
+    announcement = bool(media_content_id) and visualizer.content_marker in media_content_id
+
+    if not playing or not announcement or urlsplit(media_content_id).path != content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NO_ANNOUNCEMENT_DETAIL)
+
+    return media_content_id

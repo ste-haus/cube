@@ -321,11 +321,14 @@ A full-screen overlay while a media player is playing something matching.
 
 ```yaml
 visualizer:
-  url: https://visualizer.example.com/index.html
-  content_marker: tts.example.com
+  content_marker: chime_tts
 ```
 
-The overlay follows the media player named by the panel's profile, so each room reacts to its own speaker.
+The overlay follows the media player named by the panel's profile, so each room reacts to its own speaker. Having the block at all is what turns it on; the page it draws with ships with the panel, so there is nothing to point it at.
+
+Match `content_marker` against a path segment rather than a hostname. A player holds onto the address it was handed, so anything still queued when an instance is renamed carries the old host, and a marker that names one is right until exactly the moment it matters.
+
+The audio is relayed through the panel rather than read from Home Assistant directly. The overlay analyses the sound it is drawing, and a browser will not hand a cross-origin recording to an analyser without a header Home Assistant does not send; serving both from here sidesteps that, and the signed media address stays on this side. The relay only ever fetches what a configured speaker is playing at that moment, so it cannot be pointed at anything else.
 
 ### labels
 

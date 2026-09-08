@@ -20,8 +20,17 @@ FRONTEND_ENTRYPOINT = "index.html"
 FRONTEND_ASSETS_DIRECTORY = "assets"
 FRONTEND_ASSETS_MOUNT = "/assets"
 
+# The announcement overlay is a standalone page rather than part of the bundle: it draws with
+# its own Web Audio graph and canvas, and it is served from here so the audio it analyses can
+# come from this origin too.
+VISUALIZER_DIRECTORY = "visualizer"
+VISUALIZER_MOUNT = "/visualizer"
+
 MISSING_FRONTEND_MESSAGE = (
     "Frontend bundle not found at %s. Run `make web` (or `npm --prefix web run build`) to build it."
+)
+MISSING_VISUALIZER_MESSAGE = (
+    "No visualizer page at %s; the announcement overlay will not render. Rebuild the frontend to pick it up."
 )
 
 
@@ -58,6 +67,14 @@ def _mount_frontend(app: FastAPI, directory: Path) -> None:
         return
 
     app.mount(FRONTEND_ASSETS_MOUNT, StaticFiles(directory=assets), name=FRONTEND_ASSETS_DIRECTORY)
+
+    # An older bundle predates the overlay, and a panel missing one page is worth a line in the
+    # log rather than a process that will not start.
+    visualizer = directory / VISUALIZER_DIRECTORY
+    if visualizer.is_dir():
+        app.mount(VISUALIZER_MOUNT, StaticFiles(directory=visualizer, html=True), name=VISUALIZER_DIRECTORY)
+    else:
+        logger.warning(MISSING_VISUALIZER_MESSAGE, visualizer)
 
     # Every panel route renders the same bundle; the profile is read from the path in the browser.
     @app.get("/")
