@@ -78,7 +78,10 @@ def apply_event(states: dict[str, dict[str, Any]], event: dict[str, Any]) -> set
         states[entity_id] = {
             STATE: state.get(STATE),
             ATTRIBUTES: dict(state.get(ATTRIBUTES, {})),
-            LAST_CHANGED: state.get(LAST_CHANGED),
+            # Home Assistant omits `lc` from a full state whenever it equals `lu`, to save
+            # bytes. Reading it as absent rather than as equal loses the changed time for every
+            # entity that has not changed since it was last written, which is most of them.
+            LAST_CHANGED: state.get(LAST_CHANGED, state.get(LAST_UPDATED)),
             LAST_UPDATED: state.get(LAST_UPDATED),
         }
         touched.add(entity_id)

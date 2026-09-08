@@ -67,6 +67,8 @@ docker run -d \
   ghcr.io/ste-haus/cube:latest
 ```
 
+Passing the token on the command line leaves it in your shell history and in `ps` output. `--env-file .env` keeps it out of both, which is what the compose file does.
+
 The two mounts are your dashboard definition and your floorplan drawings. Both describe your home, so they are mounted rather than baked into the image.
 
 ## Putting it on a wall
@@ -79,10 +81,21 @@ If the tablet should show a particular room's panel rather than the default, giv
 
 `tools/stub_hass.py` stands in for Home Assistant. It reads whichever config you point it at, invents plausible values for every entity in it, and can generate schematic floorplans so there is something to look at:
 
+Point `.env` at the stub first, or cube will go looking for the real thing:
+
+```bash
+CUBE_HA_URL=http://localhost:8123
+CUBE_HA_TOKEN=anything
+```
+
+Then:
+
 ```bash
 make resources CONFIG=config.yaml.dist   # schematic drawings, if you have none
 make stub CONFIG=config.yaml.dist        # a fake Home Assistant on :8123
 make run                                 # cube against it
 ```
+
+The stub does not check the token, so any value will do.
 
 Point the stub at your own `config.yaml` to check its wiring before you deploy it.

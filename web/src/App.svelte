@@ -1,6 +1,8 @@
 <script lang="ts">
+  import BoundaryFallback from "./BoundaryFallback.svelte";
   import CubeView from "./Cube.svelte";
   import { fetchConfig } from "./lib/api";
+  import { keepTrying } from "./lib/retry";
   import { ha } from "./lib/state.svelte";
   import type { DashboardConfig } from "./lib/types";
 
@@ -15,7 +17,6 @@
   };
 
   let config = $state<DashboardConfig | null>(null);
-  let error = $state<string | null>(null);
 
   $effect(() => {
     if (!config) {
@@ -27,23 +28,25 @@
     }
   });
 
-  $effect(() => {
-    fetchConfig()
-      .then((loaded) => {
-        config = loaded;
-        ha.connect();
-      })
-      .catch((reason: Error) => {
-        error = reason.message;
-      });
-  });
+  $effect(() =>
+    keepTrying(fetchConfig, (loaded) => {
+      config = loaded;
+      ha.connect();
+    }),
+  );
 </script>
 
-{#if config}
-  <CubeView {config} />
-  {#if !ha.connected}
-    <div class="connection">Reconnecting</div>
+<!-- Nobody is going to reload this. A thrown render keeps the last frame on the glass and
+     tries again, rather than leaving a black rectangle on the wall until someone notices. -->
+<svelte:boundary onerror={(error) => console.error(error)}>
+  {#if config}
+    <CubeView {config} />
+    {#if !ha.connected}
+      <div class="connection">Reconnecting</div>
+    {/if}
   {/if}
-{:else if error}
-  <div class="blank-face">{error}</div>
-{/if}
+
+  {#snippet failed(_error, reset)}
+    <BoundaryFallback {reset} />
+  {/snippet}
+</svelte:boundary>

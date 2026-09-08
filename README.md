@@ -2,6 +2,8 @@
 
 A Home Assistant wall panel that runs outside Home Assistant.
 
+**Setting one up? Start with [docs/setup.md](docs/setup.md).** The rest of this file is how the thing works; `docs/` is how to use it.
+
 Home Assistant's own dashboards are good, and a wall panel is an awkward fit for them: it renders one fixed layout forever, and every panel that opens one holds its own websocket subscribed to the whole event bus. cube serves the same panel from a small proxy instead — one upstream connection for the whole house, an entity allowlist, and a frontend that is plain HTML and CSS rather than a stack of custom cards.
 
 The panel presents itself as a cube. The dashboard is the front face; swiping, arrow keys, or the face map in the corner rotate to the other five.
@@ -102,14 +104,14 @@ One websocket connection, and four REST paths. Nothing else is ever requested.
 |---|---|---|---|
 | websocket | `/api/websocket` | continuously | `auth`, then one `subscribe_entities` over the allowlist, plus `call_service` per toggle |
 | REST | `/api/calendars/{entity_id}` | one call per configured calendar, every 5 minutes, per panel | merged, filtered, and sorted by the proxy |
-| REST | `/api/camera_proxy_stream/{entity_id}` | held open while a panel shows the camera | MJPEG, relayed straight through |
-| REST | `/api/camera_proxy/{entity_id}` | on demand | a single frame; available for panels that prefer polling to a held stream |
+| REST | `/api/camera_proxy/{entity_id}` | once per camera refresh, per panel | a still; this is what the panel actually uses |
+| REST | `/api/camera_proxy_stream/{entity_id}` | never, as shipped | MJPEG relay, available but unused by the current panel |
 
 Floorplan drawings and stylesheet overrides are not in that list: they come from `resources/` on disk. Nothing else is ever requested — no state polling, no history, no service or config discovery.
 
 Every REST call carries the long-lived token as a bearer header, and the camera routes refuse any entity the config does not name, so the proxy cannot be used to reach arbitrary Home Assistant paths.
 
-The calendar and camera paths are per panel rather than shared, so they scale the way a directly-connected panel would. Collapsing them — one cached agenda, one upstream camera stream fanned out — is the obvious next thing if the wall grows.
+The calendar and still-image paths are per panel rather than shared, so they scale the way a directly-connected panel would. Collapsing them — one cached agenda, one upstream camera stream fanned out — is the obvious next thing if the wall grows.
 
 ## Running
 

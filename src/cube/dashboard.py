@@ -134,9 +134,9 @@ class Calendar(BaseModel):
 class Floorplan(BaseModel):
     """One floorplan level.
 
-    `image` names an SVG served by Home Assistant under `www/`. Each element in that SVG
-    carries an entity id as its DOM id, and the browser drives it by setting a class per
-    group; `groups` is what says which entity belongs to which group.
+    `image` names an SVG in the resources directory. Each element in that SVG carries an
+    entity id as its DOM id, and the browser drives it by setting a class per group; `groups`
+    is what says which entity belongs to which group.
     """
 
     image: str

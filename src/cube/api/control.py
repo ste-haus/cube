@@ -34,5 +34,5 @@ async def toggle(request: ToggleRequest, hub: CurrentHub) -> None:
 
     try:
         await hub.client.call_service(TOGGLE_DOMAIN, TOGGLE_SERVICE, request.entity_id)
-    except HassError as error:
+    except (HassError, TimeoutError) as error:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error

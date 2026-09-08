@@ -61,6 +61,9 @@ class HassClient:
         return self._ready.is_set()
 
     async def start(self) -> None:
+        if self._task is not None and not self._task.done():
+            return
+
         self._task = asyncio.create_task(self._run(), name="hass-client")
 
     async def stop(self) -> None:
@@ -94,15 +97,18 @@ class HassClient:
         while True:
             try:
                 await self._connect_and_listen()
+                logger.info("Home Assistant closed the connection; reconnecting")
                 delay = self._settings.reconnect_min_seconds
             except asyncio.CancelledError:
                 raise
             except Exception as error:  # noqa: BLE001 - any failure here is a reconnect, not a crash
                 logger.warning("Home Assistant connection lost (%s); retrying in %.1fs", error, delay)
-
-            self._ready.clear()
-            self._connection = None
-            self._fail_pending_results()
+            finally:
+                # Runs on cancellation as well, so a stopped client does not keep claiming to be
+                # connected and anything waiting on a reply fails now rather than on a timeout.
+                self._ready.clear()
+                self._connection = None
+                self._fail_pending_results()
 
             await asyncio.sleep(delay)
             delay = min(delay * self._settings.reconnect_backoff_factor, self._settings.reconnect_max_seconds)
@@ -144,13 +150,15 @@ class HassClient:
             await self._send_awaiting_result(protocol.ping(self._next_message_id()))
 
     async def _authenticate(self, connection: ClientConnection) -> None:
-        greeting = json.loads(await connection.recv())
+        timeout = self._settings.request_timeout_seconds
+
+        greeting = json.loads(await asyncio.wait_for(connection.recv(), timeout=timeout))
         if greeting.get(protocol.TYPE) != protocol.AUTH_REQUIRED:
             raise HassError(f"Unexpected greeting: {greeting.get(protocol.TYPE)}")
 
         await connection.send(json.dumps(protocol.authenticate(self._settings.ha_token)))
 
-        response = json.loads(await connection.recv())
+        response = json.loads(await asyncio.wait_for(connection.recv(), timeout=timeout))
         if response.get(protocol.TYPE) != protocol.AUTH_OK:
             raise HassError(response.get(protocol.MESSAGE, "authentication rejected"))
 
@@ -200,7 +208,12 @@ class HassClient:
 
         await connection.send(json.dumps(message))
 
-        return await asyncio.wait_for(pending, timeout=self._settings.request_timeout_seconds)
+        try:
+            return await asyncio.wait_for(pending, timeout=self._settings.request_timeout_seconds)
+        except TimeoutError as error:
+            raise HassError("Home Assistant did not answer in time") from error
+        finally:
+            self._results.pop(message_id, None)
 
     def _fail_pending_results(self) -> None:
         for pending in self._results.values():

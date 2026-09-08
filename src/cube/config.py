@@ -27,6 +27,9 @@ DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 5.0
 DEFAULT_ASSET_CACHE_SECONDS = 300
 DEFAULT_CAMERA_CACHE_SECONDS = 5
 
+# Generous for a house, small enough that a script on the network cannot exhaust the process.
+DEFAULT_MAX_PANELS = 16
+
 HTTP_SCHEME = "http"
 HTTPS_SCHEME = "https"
 WS_SCHEME = "ws"
@@ -58,6 +61,7 @@ class Settings(BaseSettings):
     heartbeat_interval_seconds: float = DEFAULT_HEARTBEAT_INTERVAL_SECONDS
     asset_cache_seconds: int = DEFAULT_ASSET_CACHE_SECONDS
     camera_cache_seconds: int = DEFAULT_CAMERA_CACHE_SECONDS
+    max_panels: int = Field(default=DEFAULT_MAX_PANELS, description="Concurrent panel streams to accept")
 
     @property
     def rest_base_url(self) -> str:

@@ -43,3 +43,22 @@ def test_public_state_uses_long_keys():
     public = protocol.public_state({"s": "on", "a": {"brightness": 12}, "lc": 1, "lu": 2})
 
     assert public == {"state": "on", "attributes": {"brightness": 12}, "last_changed": 1, "last_updated": 2}
+
+
+def test_added_state_without_last_changed_falls_back_to_last_updated():
+    """Home Assistant omits `lc` from a full state when it equals `lu`, to save bytes."""
+
+    states = {}
+
+    protocol.apply_event(states, {"a": {ENTITY_ID: {"s": "on", "a": {}, "lu": 1710000000.0}}})
+
+    assert states[ENTITY_ID]["lc"] == 1710000000.0
+    assert states[ENTITY_ID]["lu"] == 1710000000.0
+
+
+def test_added_state_keeps_a_distinct_last_changed():
+    states = {}
+
+    protocol.apply_event(states, {"a": {ENTITY_ID: {"s": "on", "a": {}, "lc": 1, "lu": 2}}})
+
+    assert states[ENTITY_ID]["lc"] == 1

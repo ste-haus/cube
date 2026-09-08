@@ -1,6 +1,7 @@
 <script lang="ts">
   import { floorplanStylesUrl, floorplanUrl, toggle } from "../lib/api";
   import { swipeable, type Direction } from "../lib/cube.svelte";
+  import { keepTrying } from "../lib/retry";
   import { ha } from "../lib/state.svelte";
   import type { Floorplan } from "../lib/types";
 
@@ -79,21 +80,23 @@
   // a swap: a drawing that blinks from one storey to another tells you nothing about which way
   // you just moved.
   $effect(() => {
-    let stale = false;
-
-    for (const name of levels) {
-      fetch(floorplanUrl(name))
-        .then((response) => response.text())
-        .then((svg) => {
-          if (!stale) {
-            markup = { ...markup, [name]: svg };
+    const stops = levels.map((name) =>
+      keepTrying(
+        async () => {
+          const response = await fetch(floorplanUrl(name));
+          if (!response.ok) {
+            throw new Error(`floorplan ${name}: ${response.status}`);
           }
-        });
-    }
 
-    return () => {
-      stale = true;
-    };
+          return response.text();
+        },
+        (svg) => {
+          markup = { ...markup, [name]: svg };
+        },
+      ),
+    );
+
+    return () => stops.forEach((stop) => stop());
   });
 
   // Re-runs whenever an entity changes, because `ha.entities` is read while painting. Each

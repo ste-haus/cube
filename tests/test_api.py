@@ -1,3 +1,5 @@
+import pytest
+from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
 from cube.app import create_app
@@ -114,6 +116,32 @@ def test_floorplan_overrides_are_served_when_present(settings, resources):
 
     assert response.status_code == OK
     assert OVERRIDE_CSS in response.text
+
+
+def test_only_so_many_panels_are_accepted(settings):
+    """Each stream costs a queue and two tasks, so the count is capped."""
+
+    capped = settings.model_copy(update={"max_panels": 1})
+
+    with (
+        TestClient(create_app(capped)) as client,
+        client.websocket_connect("/api/stream"),
+        pytest.raises(WebSocketDisconnect),
+        client.websocket_connect("/api/stream") as second,
+    ):
+        second.receive_json()
+
+
+def test_a_panel_can_connect_again_once_one_leaves(settings):
+    capped = settings.model_copy(update={"max_panels": 1})
+    app = create_app(capped)
+
+    with TestClient(app) as client:
+        with client.websocket_connect("/api/stream") as first:
+            first.receive_json()
+
+        with client.websocket_connect("/api/stream") as second:
+            assert second.receive_json()["type"] == "init"
 
 
 def test_stream_opens_with_a_snapshot(settings):

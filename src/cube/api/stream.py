@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
+# Every accepted stream costs a queue and two tasks. Panels are trusted only as far as the
+# network they sit on, so the count is capped rather than left to whatever connects.
+CLOSE_TRY_AGAIN_LATER = 1013
+
 MESSAGE_TYPE = "type"
 MESSAGE_INIT = "init"
 MESSAGE_UPDATE = "update"
@@ -33,10 +37,29 @@ def get_hub_for_socket(websocket: WebSocket) -> Hub:
 SocketHub = Annotated[Hub, Depends(get_hub_for_socket)]
 
 
+_panels = 0
+
+
 @router.websocket("/stream")
 async def stream(websocket: WebSocket, hub: SocketHub) -> None:
+    global _panels
+
+    if _panels >= hub.settings.max_panels:
+        logger.warning("Refusing panel stream: %d already connected", _panels)
+        await websocket.close(code=CLOSE_TRY_AGAIN_LATER)
+
+        return
+
+    _panels += 1
     await websocket.accept()
 
+    try:
+        await _serve(websocket, hub)
+    finally:
+        _panels -= 1
+
+
+async def _serve(websocket: WebSocket, hub: Hub) -> None:
     async with hub.client.subscribe() as queue:
         await websocket.send_json(
             {
@@ -49,9 +72,13 @@ async def stream(websocket: WebSocket, hub: SocketHub) -> None:
         forwarding = asyncio.create_task(_forward(websocket, queue))
         listening = asyncio.create_task(_listen(websocket))
 
-        _, pending = await asyncio.wait({forwarding, listening}, return_when=asyncio.FIRST_COMPLETED)
+        done, pending = await asyncio.wait({forwarding, listening}, return_when=asyncio.FIRST_COMPLETED)
         for task in pending:
             task.cancel()
+
+        for task in done:
+            if task.exception() is not None:
+                logger.info("Panel stream ended: %s", task.exception())
 
 
 async def _forward(websocket: WebSocket, queue: asyncio.Queue[dict[str, Any]]) -> None:

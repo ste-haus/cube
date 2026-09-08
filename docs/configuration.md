@@ -17,14 +17,27 @@ Only the first two are required.
 |---|---|---|
 | `CUBE_HA_URL` | — | Base URL of Home Assistant, e.g. `https://ha.example.com` |
 | `CUBE_HA_TOKEN` | — | A long-lived access token |
-| `TZ` | UTC | The panel's timezone. The agenda's days start at local midnight |
+| `TZ` | `Etc/UTC` | The panel's timezone. The agenda's days start at local midnight |
 | `CUBE_PROFILE` | `default` | Which profile `/` serves |
 | `CUBE_PORT` | `4096` | Port to listen on |
 | `CUBE_HOST` | `0.0.0.0` | Address to bind |
 | `CUBE_LOG_LEVEL` | `info` | `debug` if you want to watch the connection |
 | `CUBE_DASHBOARD_PATH` | `config.yaml` | Where the dashboard definition is |
 | `CUBE_RESOURCES_PATH` | `resources` | Where floorplans and icons are |
+| `CUBE_FRONTEND_PATH` | the built bundle | Where the compiled panel is; the image sets its own |
+| `CUBE_MAX_PANELS` | `16` | How many panels may stream at once |
 | `CUBE_HEARTBEAT_INTERVAL_SECONDS` | `5` | How often to prove the connection is alive |
+
+Rarely touched, but here for completeness:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CUBE_RECONNECT_MIN_SECONDS` | `1` | First wait after losing Home Assistant |
+| `CUBE_RECONNECT_MAX_SECONDS` | `60` | Longest wait between attempts |
+| `CUBE_RECONNECT_BACKOFF_FACTOR` | `2` | How fast that wait grows |
+| `CUBE_REQUEST_TIMEOUT_SECONDS` | `15` | How long to wait for Home Assistant to answer |
+| `CUBE_ASSET_CACHE_SECONDS` | `300` | How long a panel may cache a floorplan |
+| `CUBE_CAMERA_CACHE_SECONDS` | `5` | How long a panel may cache a camera still |
 
 The heartbeat is worth knowing about. Many setups put a reverse proxy in front of Home Assistant, and some of those close a websocket they think has gone quiet — sometimes after only a few seconds. cube sends a small keep-alive to stop that happening. If your panel is reconnecting every few seconds, this is the number to lower.
 
@@ -59,7 +72,16 @@ clock:
 
 Format strings follow the usual `strftime` notation, with one addition: `%o` is the day of the month with its ordinal suffix, so `7th` rather than `07`.
 
-`easter_egg_times` and `easter_egg_text` swap the clock for a phrase at listed times, for anyone who has ever lost an afternoon to a status page. Leave them out to disable.
+`easter_egg_times` and `easter_egg_text` swap the clock for a phrase at listed times, for anyone who has ever lost an afternoon to a status page. Each entry is matched against the rendered time exactly, so it has to be written the way `time_format` produces it:
+
+```yaml
+clock:
+  time_format: "%H:%M"
+  easter_egg_times: ["13:37"]
+  easter_egg_text: leet o'clock
+```
+
+Leave them out to disable.
 
 ### indicators
 
@@ -186,6 +208,17 @@ An event that has finished drops its calendar's colour and turns the `spent` gre
 
 Both spellings of *cancelled* are worth listing in `hidden_prefixes`, since a calendar uses whichever its author does.
 
+When the day is long enough that the list outgrows its column, it scrolls. Four fields tune that, and none of them matter until it happens:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `scroll_threshold_items` | `19` | How many items before scrolling starts |
+| `scroll_percent_per_item` | `10` | How far it travels per item past the threshold |
+| `scroll_seconds_per_item` | `0.75` | How long a full cycle takes, per item |
+| `base_scroll_seconds` | `20` | Cycle length while the list still fits |
+
+The count comes from `item_count_entities`, so a column shared with the notices can account for both.
+
 ### floorplans
 
 ```yaml
@@ -259,7 +292,15 @@ toggles:
     visible_when: input_boolean.seasonal
 ```
 
-`visible_when` hides the chip unless that entity is `on`, so a seasonal control can disappear out of season.
+| Field | Default | Meaning |
+|---|---|---|
+| `label` | — | Text on the chip |
+| `icon` | — | Its glyph |
+| `active_color` | `amber` | Icon colour while the entity is `on` |
+| `inactive_color` | `white` | Icon colour while it is off |
+| `visible_when` | — | Hide the chip unless this entity is `on` |
+
+`visible_when` lets a seasonal control disappear out of season.
 
 ### transcript
 
@@ -268,7 +309,11 @@ A line along the bottom that types itself out, for whatever was last spoken alou
 ```yaml
 transcript:
   entity_id: input_text.last_announcement
+  characters: 22
+  seconds: 6
 ```
+
+`characters` and `seconds` set how many steps the typing animation takes and how long it runs. They only affect the animation, not what is shown.
 
 ### visualizer
 
@@ -307,5 +352,7 @@ A tap is refused unless the entity is one the panel actually draws as a control 
 ```bash
 docker compose restart
 ```
+
+Running from source, stop `make run` and start it again.
 
 Floorplan drawings and icons are read per request and need no restart.

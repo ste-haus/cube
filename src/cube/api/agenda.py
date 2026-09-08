@@ -6,7 +6,7 @@ sort happen here rather than in the browser.
 
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from typing import Any
 
 from fastapi import APIRouter
@@ -30,13 +30,13 @@ CALENDAR_KEY = "calendar"
 COLOR_KEY = "color"
 ALL_DAY_KEY = "all_day"
 
-MIDNIGHT = {"hour": 0, "minute": 0, "second": 0, "microsecond": 0}
-
 
 @router.get("/agenda")
 async def get_agenda(hub: CurrentHub) -> dict[str, Any]:
-    start = datetime.now().astimezone().replace(**MIDNIGHT)
-    end = start + timedelta(days=hub.dashboard.agenda.days)
+    # The panel's own day, not UTC's: the window has to start at local midnight.
+    today = datetime.now().astimezone().date()
+    start = datetime.combine(today, time.min).astimezone()
+    end = datetime.combine(today + timedelta(days=hub.dashboard.agenda.days), time.min).astimezone()
 
     hidden = tuple(prefix.casefold() for prefix in hub.dashboard.agenda.hidden_prefixes)
 
@@ -44,7 +44,7 @@ async def get_agenda(hub: CurrentHub) -> dict[str, Any]:
     for calendar in hub.dashboard.agenda.calendars:
         events.extend(event for event in await _events_for(hub, calendar, start, end) if not _hidden(event, hidden))
 
-    events.sort(key=lambda event: (not event[ALL_DAY_KEY], event[START_KEY]))
+    events.sort(key=lambda event: (not event[ALL_DAY_KEY], event[START_KEY] or ""))
 
     return {"events": events}
 

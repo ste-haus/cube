@@ -71,9 +71,13 @@ class Agenda {
   }
 
   #load(): void {
-    fetchAgenda().then((loaded) => {
-      this.events = loaded;
-    });
+    fetchAgenda()
+      .then((loaded) => {
+        this.events = loaded;
+      })
+      .catch(() => {
+        // The day's events are worth less than the panel staying up; the next tick tries again.
+      });
   }
 }
 

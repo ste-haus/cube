@@ -19,6 +19,7 @@ OTHER_ENTITY_ID = "sensor.example"
 
 TOKEN = "test-token"
 READY_TIMEOUT_SECONDS = 5.0
+RECONNECT_TIMEOUT_SECONDS = 15.0
 UPDATE_TIMEOUT_SECONDS = 5.0
 
 LOCALHOST = "127.0.0.1"
@@ -33,6 +34,7 @@ class StubHomeAssistant:
 
     def __init__(self) -> None:
         self.url = ""
+        self.connections = 0
         self.initial_states: dict[str, dict] = {}
         self.subscribed: list[str] = []
         self.calls: list[dict] = []
@@ -42,6 +44,7 @@ class StubHomeAssistant:
 
     async def handle(self, connection) -> None:
         self._connection = connection
+        self.connections += 1
 
         await connection.send(json.dumps({protocol.TYPE: protocol.AUTH_REQUIRED}))
 
@@ -84,6 +87,12 @@ class StubHomeAssistant:
         await connection.send(
             json.dumps({protocol.ID: message_id, protocol.TYPE: protocol.RESULT, protocol.SUCCESS: True})
         )
+
+    async def drop(self) -> None:
+        """Close the connection the way a network does: without warning."""
+
+        self._ready.clear()
+        await self._connection.close()
 
     async def send_event(self, event: dict) -> None:
         await self._ready.wait()
@@ -158,6 +167,29 @@ async def test_subscribers_receive_deltas(stub, client):
         update = await asyncio.wait_for(queue.get(), timeout=UPDATE_TIMEOUT_SECONDS)
 
         assert update[ENTITY_ID][protocol.STATE] == "on"
+
+
+async def test_stopping_clears_the_connected_flag(client):
+    """A stopped client must not go on claiming a connection it no longer has."""
+
+    await wait_for(lambda: client.connected, READY_TIMEOUT_SECONDS)
+
+    await client.stop()
+
+    assert client.connected is False
+
+
+async def test_the_client_comes_back_after_the_connection_drops(stub, client):
+    """The one thing this client must never stop doing."""
+
+    await wait_for(lambda: ENTITY_ID in client.states, READY_TIMEOUT_SECONDS)
+    first = stub.connections
+
+    await stub.drop()
+    await wait_for(lambda: client.connected, RECONNECT_TIMEOUT_SECONDS)
+    await wait_for(lambda: ENTITY_ID in client.states, RECONNECT_TIMEOUT_SECONDS)
+
+    assert stub.connections > first
 
 
 async def test_service_calls_reach_home_assistant(stub, client):

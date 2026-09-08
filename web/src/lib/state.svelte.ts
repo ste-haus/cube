@@ -25,7 +25,13 @@ class HomeAssistantState {
   connect(): void {
     this.#socket = new WebSocket(streamUrl());
 
-    this.#socket.addEventListener("message", (event) => this.#receive(JSON.parse(event.data)));
+    this.#socket.addEventListener("message", (event) => {
+      try {
+        this.#receive(JSON.parse(event.data));
+      } catch {
+        // A malformed frame costs that update, not the connection.
+      }
+    });
     this.#socket.addEventListener("open", () => {
       this.#reconnectDelay = RECONNECT_MIN_MS;
     });

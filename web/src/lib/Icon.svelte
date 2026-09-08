@@ -1,10 +1,11 @@
 <script lang="ts" module>
   import { fetchIcons } from "./api";
+  import { keepTrying } from "./retry";
 
   /** Fetched once for the page; every icon reads the same map. */
   const custom = $state<{ paths: Record<string, string> }>({ paths: {} });
 
-  fetchIcons().then((paths) => {
+  keepTrying(fetchIcons, (paths) => {
     custom.paths = paths;
   });
 </script>
