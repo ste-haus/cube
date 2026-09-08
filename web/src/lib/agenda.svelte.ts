@@ -4,6 +4,25 @@ import type { AgendaEvent } from "./types";
 const REFRESH_MS = 5 * 60 * 1000;
 const TICK_MS = 30 * 1000;
 
+const BARE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Reads a calendar moment as a local one.
+ *
+ * A bare date is midnight where the panel is, but `new Date("2026-09-08")` reads it as
+ * midnight UTC — which puts an all-day event's end in this afternoon anywhere west of
+ * Greenwich, and retires it while it is still running.
+ */
+function moment(value: string): number {
+  if (BARE_DATE.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+
+    return new Date(year, month - 1, day).getTime();
+  }
+
+  return new Date(value).getTime();
+}
+
 /**
  * Today's events, fetched once for the page.
  *
@@ -24,7 +43,7 @@ class Agenda {
       return false;
     }
 
-    return new Date(event.end).getTime() < this.now.getTime();
+    return moment(event.end) < this.now.getTime();
   }
 
   start(): void {

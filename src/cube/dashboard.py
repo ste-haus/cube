@@ -21,6 +21,7 @@ class Theme(BaseModel):
     muted: str = "#999999"
     dim: str = "#666666"
     faint: str = "#333333"
+    spent: str = Field(default="#4a4a4a", description="Something the day has already been past")
     accent: str = "#11fcf7"
 
 

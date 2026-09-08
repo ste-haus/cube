@@ -5,6 +5,7 @@
   --color-muted: #999999;
   --color-dim: #666666;
   --color-faint: #333333;
+  --color-spent: #4a4a4a;
   --color-accent: #11fcf7;
 
   /* The agenda's spine sits behind the times and should barely register. */

@@ -10,6 +10,7 @@
     "--color-muted": "muted",
     "--color-dim": "dim",
     "--color-faint": "faint",
+    "--color-spent": "spent",
     "--color-accent": "accent",
   };
 

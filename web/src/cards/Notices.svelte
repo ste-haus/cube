@@ -24,7 +24,8 @@
         key: `${event.calendar}:${event.summary}`,
         message: event.summary,
         icon: calendar!.icon,
-        color: store.isPast(event) ? null : event.color,
+        past: store.isPast(event),
+        color: event.color,
       })),
   );
 
@@ -74,7 +75,7 @@
     {/each}
 
     {#each calendarNotices as notice (notice.key)}
-      <li class="notices__item" style:color={notice.color}>
+      <li class="notices__item" class:notices__item--past={notice.past} style:color={notice.past ? null : notice.color}>
         <Icon name={notice.icon} />
         <span>{notice.message}</span>
       </li>
@@ -100,5 +101,10 @@
 
   .notices__item--pulsing {
     animation: pulse 3s linear infinite;
+  }
+
+  /* Already done, and sitting among things that are not. */
+  .notices__item--past {
+    color: var(--color-spent);
   }
 </style>

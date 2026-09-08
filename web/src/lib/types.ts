@@ -154,6 +154,7 @@ export interface Theme {
   muted: string;
   dim: string;
   faint: string;
+  spent: string;
   accent: string;
 }
 
