@@ -8,7 +8,10 @@
   --color-spent: #4a4a4a;
   --color-accent: #11fcf7;
 
-  /* The agenda's spine sits behind the times and should barely register. */
+  /* The agenda's scaffolding: the column names and the clock beside each row. A step up
+   * from the dim grey, so they read as labels rather than as more rule. */
+  --agenda-label-color: #808080;
+  /* The spine behind the times, which should barely register. */
   --agenda-spine-color: #242424;
 
   --font-stack: Roboto, system-ui, sans-serif;

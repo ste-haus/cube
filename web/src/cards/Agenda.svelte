@@ -136,7 +136,7 @@
   .agenda__headers {
     display: flex;
     align-items: baseline;
-    color: var(--color-dim);
+    color: var(--agenda-label-color);
     font-size: var(--agenda-time-size);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -229,7 +229,7 @@
   .agenda__time {
     flex: 0 0 12%;
     text-align: center;
-    color: var(--color-dim);
+    color: var(--agenda-label-color);
     font-size: var(--agenda-time-size);
     font-variant-numeric: tabular-nums;
     background: linear-gradient(
