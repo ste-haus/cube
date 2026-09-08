@@ -1,0 +1,374 @@
+/*
+ * Floorplan class contract.
+ *
+ * The SVG names each element after an entity; this paints them from the classes the panel
+ * keeps in step with those entities. It is the generic half of the stylesheet — anything that
+ * names a specific room, appliance, or host belongs in an installation's own override, served
+ * from the resources directory as `floorplan.css`.
+ */
+
+:root {
+  /* Aliases for the Home Assistant theme variables an existing floorplan stylesheet expects. */
+  --primary-background-color: var(--color-background);
+  --primary-text-color: var(--color-foreground);
+  --primary-color: var(--color-accent);
+  --error-color: #b30202;
+
+  --floorplan-light: #ffc573;
+  --floorplan-alert: #b30202;
+  --floorplan-locked: #41a041;
+  --floorplan-active: #11fcf7;
+  --floorplan-busy: #bd00bd;
+  --floorplan-idle: #999999;
+  --floorplan-structure: #666666;
+  --floorplan-fill: #333333;
+}
+
+/* Anything bound to an entity fades in and out with it; the rest of the drawing is static. */
+
+.floorplan__canvas svg * {
+  opacity: 1;
+  transition: all 0.5s ease-in-out;
+}
+
+.floorplan__canvas [id*="."]:not(.active) {
+  opacity: 0;
+}
+
+/* Domain-keyed colours, which is what actually paints lights and sensors. */
+.floorplan__canvas [id^="light."].active {
+  color: #000000;
+  background-color: var(--floorplan-light);
+  fill: var(--floorplan-light);
+}
+
+.floorplan__canvas [id^="sensor."].active,
+.floorplan__canvas [id^="binary_sensor."].active {
+  fill: var(--floorplan-alert);
+}
+
+.floorplan__canvas .inactive {
+  fill: none;
+}
+
+.floorplan__canvas svg .room {
+  stroke: var(--primary-text-color);
+}
+
+.floorplan__canvas svg .object {
+  fill: var(--floorplan-fill);
+  stroke: var(--floorplan-fill);
+}
+
+.floorplan__canvas #walls {
+  stroke: var(--floorplan-structure);
+  fill: var(--floorplan-fill);
+}
+
+.floorplan__canvas .fp-profile, .floorplan__canvas .fp-line {
+  fill: none;
+  stroke: var(--primary-text-color);
+  stroke-miterlimit: 10;
+}
+
+.floorplan__canvas .fp-profile {
+  stroke-width: 4px;
+}
+
+.floorplan__canvas .fp-line {
+  stroke-width: 2px;
+}
+
+.floorplan__canvas .fp-bg {
+  fill: var(--primary-background-color);
+}
+
+.floorplan__canvas .icon, .floorplan__canvas .tile-text, .floorplan__canvas .group-name-text {
+  fill: var(--primary-text-color);
+}
+
+.floorplan__canvas .bg-off {
+  fill: var(--primary-text-color);
+  opacity: 0.125;
+}
+
+.floorplan__canvas .bg-on {
+  fill: var(--primary-color);
+}
+
+.floorplan__canvas .bg-urgent {
+  fill: var(--error-color);
+}
+
+.floorplan__canvas .tile-text, .floorplan__canvas .group-name-text {
+  font-family: var(--font-stack);
+  font-weight: 600;
+}
+
+.floorplan__canvas .group-name-text {
+  font-size: 96px;
+}
+
+.floorplan__canvas .tile-text {
+  font-size: 56px;
+  text-transform: uppercase;
+}
+
+/* Structural conventions, keyed off the suffix an element's id carries. */
+
+.floorplan__canvas [id*="-deck"], .floorplan__canvas [id*="-deck"] * {
+  stroke: #000000;
+  fill: #151515;
+}
+
+.floorplan__canvas [id*="-window"] {
+  stroke: var(--floorplan-structure);
+  fill: var(--floorplan-fill);
+}
+
+.floorplan__canvas [id*="-railing"], .floorplan__canvas [id*="-shower"] *, .floorplan__canvas [id*="-sink"] *, .floorplan__canvas [id*="-stair"] *, .floorplan__canvas [id*="-toilet"] *, .floorplan__canvas [id*="-tub"] * {
+  stroke: var(--floorplan-structure);
+}
+
+/* Lights take their brightness as opacity and their color as fill, set by the panel. */
+
+.floorplan__canvas .light:not(.active) {
+  fill: none;
+}
+
+/* Controls stay hit-testable while unpainted. Without this an unlit light, which has no fill,
+ * cannot be clicked at all — it could be switched off but never back on. */
+.floorplan__canvas .light,
+.floorplan__canvas .light *,
+.floorplan__canvas .fan,
+.floorplan__canvas .fan * {
+  pointer-events: all;
+}
+
+/* Doors report more than open or shut, and each state reads differently. */
+
+.floorplan__canvas .door {
+  opacity: 1 !important;
+}
+
+.floorplan__canvas .door:not(.active) [id^="open"] {
+  opacity: 0;
+}
+
+.floorplan__canvas .door.open[type="exterior"] [id^="open"] {
+  fill: var(--floorplan-alert) !important;
+  opacity: 1;
+  animation: floorplan-pulse 1s linear infinite;
+}
+
+.floorplan__canvas .door.open:not([type="exterior"]) [id^="closed"] {
+  fill: var(--primary-background-color);
+  stroke: var(--primary-background-color);
+}
+
+.floorplan__canvas .door.unlocked[orientation="horizontal"] {
+  animation: floorplan-bounce-horizontal 3s linear infinite;
+}
+
+.floorplan__canvas .door.unlocked[orientation="vertical"] {
+  animation: floorplan-bounce-vertical 3s linear infinite;
+}
+
+.floorplan__canvas .door.unlocked[orientation="diagonal"] {
+  animation: floorplan-bounce-diagonal 3s linear infinite;
+}
+
+.floorplan__canvas .door.unlocked [id^="closed"] {
+  fill: var(--floorplan-active) !important;
+  animation: floorplan-pulse 1.5s linear infinite;
+}
+
+.floorplan__canvas .door.locked [id^="closed"] {
+  fill: var(--floorplan-locked) !important;
+}
+
+.floorplan__canvas .window.active {
+  fill: var(--floorplan-active) !important;
+}
+
+.floorplan__canvas .fan {
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+}
+
+.floorplan__canvas .fan * {
+  stroke: #777777 !important;
+  fill: #777777 !important;
+}
+
+.floorplan__canvas .fan rect {
+  opacity: 0;
+}
+
+.floorplan__canvas .fan.inactive {
+  opacity: 0.25;
+}
+
+.floorplan__canvas .fan.active {
+  opacity: 1;
+  animation: floorplan-spin 10s linear infinite;
+}
+
+.floorplan__canvas .fan:not(.active) {
+  animation-name: none;
+}
+
+.floorplan__canvas .fan:not(.active) * {
+  stroke: #555555;
+  fill: #555555;
+}
+
+.floorplan__canvas .vehicle {
+  stroke: var(--floorplan-structure) !important;
+  fill: var(--floorplan-fill) !important;
+}
+
+/* Semantic types, declared as attributes on the SVG element itself. */
+
+.floorplan__canvas [type="appliance"] {
+  opacity: 1 !important;
+  fill: var(--floorplan-idle);
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+}
+
+.floorplan__canvas [type="appliance"] *:not(rect) {
+  opacity: 0;
+}
+
+.floorplan__canvas [type="appliance"].active *:not(rect) {
+  opacity: 1;
+}
+
+.floorplan__canvas [type="appliance"].active rect {
+  fill: var(--floorplan-busy);
+}
+
+.floorplan__canvas [type="appliance"].active {
+  fill: var(--floorplan-busy);
+  animation: floorplan-wiggle 0.1s linear infinite alternate;
+}
+
+.floorplan__canvas [type="server"]:not(.active) {
+  fill: #00bfff;
+  opacity: 1;
+  animation: floorplan-pulse 4s linear infinite;
+}
+
+.floorplan__canvas [type="server"].active {
+  fill: var(--floorplan-idle);
+  opacity: 1;
+}
+
+.floorplan__canvas [type="bin"][id$="_bin"].home {
+  fill: var(--floorplan-fill);
+  opacity: 1;
+}
+
+.floorplan__canvas [type="bin"][id$="_away"].away {
+  fill: var(--floorplan-busy);
+  opacity: 1;
+}
+
+.floorplan__canvas [type="bin"][id$="_bin"].out, .floorplan__canvas [type="bin"][id$="_away"].in {
+  fill: var(--floorplan-active);
+  opacity: 1;
+  animation: floorplan-pulse 3s linear infinite;
+}
+
+.floorplan__canvas [type="printer"]:not(.active) {
+  opacity: 1;
+}
+
+.floorplan__canvas [type="printer"]:not(.active) path {
+  fill: var(--floorplan-idle) !important;
+}
+
+.floorplan__canvas [type="printer"].active path {
+  fill: #00bfff !important;
+}
+
+.floorplan__canvas [type="printer"].active {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: floorplan-sweep 0.2s linear infinite;
+}
+
+.floorplan__canvas .icon-spinning {
+  fill: var(--primary-text-color);
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+  animation: floorplan-spin 10s linear infinite;
+}
+
+@keyframes floorplan-pulse {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes floorplan-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes floorplan-sweep {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(25deg);
+  }
+  75% {
+    transform: rotate(-25deg);
+  }
+}
+
+@keyframes floorplan-bounce-horizontal {
+  0%,
+  100% {
+    transform: translateY(1%);
+  }
+  50% {
+    transform: translateY(-1%);
+  }
+}
+
+@keyframes floorplan-bounce-vertical {
+  0%,
+  100% {
+    transform: translateX(1%);
+  }
+  50% {
+    transform: translateX(-1%);
+  }
+}
+
+@keyframes floorplan-bounce-diagonal {
+  0%,
+  100% {
+    transform: translate(1%, 1%);
+  }
+  50% {
+    transform: translate(-1%, -1%);
+  }
+}
+
+@keyframes floorplan-wiggle {
+  0% {
+    transform: rotate(3deg);
+  }
+  100% {
+    transform: rotate(-3deg);
+  }
+}

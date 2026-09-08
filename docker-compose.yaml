@@ -1,0 +1,14 @@
+services:
+  cube:
+    build: .
+    image: cube:local
+    restart: unless-stopped
+    ports:
+      - "4096:4096"
+    env_file:
+      - .env
+    volumes:
+      # The dashboard definition and the floorplan drawings both describe your home, so they
+      # are mounted rather than baked into the image.
+      - ./config.yaml:/app/config.yaml:ro
+      - ./resources:/app/resources:ro

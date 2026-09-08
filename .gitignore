@@ -1,0 +1,17 @@
+# Installation-specific dashboard definition; start from config.yaml.dist.
+config.yaml
+.env
+
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+node_modules/
+web/dist/
+
+# Floorplan drawings and installation-specific overrides; see resources/README.md.
+resources/*
+!resources/README.md

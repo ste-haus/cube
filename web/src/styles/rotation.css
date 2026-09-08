@@ -1,0 +1,156 @@
+/*
+ * Cube rotation keyframes.
+ *
+ * Ported from the original dashboard's page-transition set. Each rotation runs two faces at
+ * once: the outgoing face pivots away about its trailing edge while the incoming face pivots
+ * in about its leading one, which reads as a single solid cube turning.
+ */
+
+.cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: var(--cube-perspective);
+  transform-style: preserve-3d;
+  overflow: hidden;
+}
+
+.cube-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  backface-visibility: hidden;
+  background-color: var(--color-background);
+}
+
+.cube-face.on-top {
+  z-index: 1;
+}
+
+.rotate-out-left {
+  transform-origin: 100% 50%;
+  animation: rotate-cube-left-out var(--rotation-duration) both ease-in;
+}
+
+.rotate-in-left {
+  transform-origin: 0% 50%;
+  animation: rotate-cube-left-in var(--rotation-duration) both ease-in;
+}
+
+.rotate-out-right {
+  transform-origin: 0% 50%;
+  animation: rotate-cube-right-out var(--rotation-duration) both ease-in;
+}
+
+.rotate-in-right {
+  transform-origin: 100% 50%;
+  animation: rotate-cube-right-in var(--rotation-duration) both ease-in;
+}
+
+.rotate-out-up {
+  transform-origin: 50% 100%;
+  animation: rotate-cube-top-out var(--rotation-duration) both ease-in;
+}
+
+.rotate-in-up {
+  transform-origin: 50% 0%;
+  animation: rotate-cube-top-in var(--rotation-duration) both ease-in;
+}
+
+.rotate-out-down {
+  transform-origin: 50% 0%;
+  animation: rotate-cube-bottom-out var(--rotation-duration) both ease-in;
+}
+
+.rotate-in-down {
+  transform-origin: 50% 100%;
+  animation: rotate-cube-bottom-in var(--rotation-duration) both ease-in;
+}
+
+@keyframes rotate-cube-left-out {
+  50% {
+    animation-timing-function: ease-out;
+    transform: translateX(-50%) translateZ(var(--rotation-depth)) rotateY(-45deg);
+  }
+  100% {
+    opacity: var(--rotation-fade);
+    transform: translateX(-100%) rotateY(-90deg);
+  }
+}
+
+@keyframes rotate-cube-left-in {
+  0% {
+    opacity: var(--rotation-fade);
+    transform: translateX(100%) rotateY(90deg);
+  }
+  50% {
+    animation-timing-function: ease-out;
+    transform: translateX(50%) translateZ(var(--rotation-depth)) rotateY(45deg);
+  }
+}
+
+@keyframes rotate-cube-right-out {
+  50% {
+    animation-timing-function: ease-out;
+    transform: translateX(50%) translateZ(var(--rotation-depth)) rotateY(45deg);
+  }
+  100% {
+    opacity: var(--rotation-fade);
+    transform: translateX(100%) rotateY(90deg);
+  }
+}
+
+@keyframes rotate-cube-right-in {
+  0% {
+    opacity: var(--rotation-fade);
+    transform: translateX(-100%) rotateY(-90deg);
+  }
+  50% {
+    animation-timing-function: ease-out;
+    transform: translateX(-50%) translateZ(var(--rotation-depth)) rotateY(-45deg);
+  }
+}
+
+@keyframes rotate-cube-top-out {
+  50% {
+    animation-timing-function: ease-out;
+    transform: translateY(-50%) translateZ(var(--rotation-depth)) rotateX(45deg);
+  }
+  100% {
+    opacity: var(--rotation-fade);
+    transform: translateY(-100%) rotateX(90deg);
+  }
+}
+
+@keyframes rotate-cube-top-in {
+  0% {
+    opacity: var(--rotation-fade);
+    transform: translateY(100%) rotateX(-90deg);
+  }
+  50% {
+    animation-timing-function: ease-out;
+    transform: translateY(50%) translateZ(var(--rotation-depth)) rotateX(-45deg);
+  }
+}
+
+@keyframes rotate-cube-bottom-out {
+  50% {
+    animation-timing-function: ease-out;
+    transform: translateY(50%) translateZ(var(--rotation-depth)) rotateX(-45deg);
+  }
+  100% {
+    opacity: var(--rotation-fade);
+    transform: translateY(100%) rotateX(-90deg);
+  }
+}
+
+@keyframes rotate-cube-bottom-in {
+  0% {
+    opacity: var(--rotation-fade);
+    transform: translateY(-100%) rotateX(90deg);
+  }
+  50% {
+    animation-timing-function: ease-out;
+    transform: translateY(-50%) translateZ(var(--rotation-depth)) rotateX(45deg);
+  }
+}

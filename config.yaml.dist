@@ -1,0 +1,243 @@
+# Cube dashboard definition.
+#
+# Copy to config.yaml and replace the placeholders with your own entities. Nothing in here is
+# secret, but it does describe your home, so config.yaml is gitignored.
+# The Home Assistant URL and token are supplied by environment instead; see .env.dist.
+
+profiles:
+  # Keyed by the path the panel is served at: /p/<key>. `default` is the fallback.
+  default:
+    name: Example Panel
+    floorplan: downstairs
+    media_player: media_player.example_speaker
+    faces:
+      front:
+        content: dashboard
+      back:
+        content: blank
+        label: back
+      left:
+        content: blank
+        label: left
+      right:
+        content: blank
+        label: right
+      up:
+        content: blank
+        label: up
+      down:
+        content: blank
+        label: down
+
+# The panel's palette.
+theme:
+  background: "#111111"
+
+labels:
+  notices: Notices
+  agenda: Today
+
+clock:
+  date_format: "%A, %B %o, %Y"
+  time_format: "%H:%M"
+  easter_egg_times: []
+  easter_egg_text: ""
+
+# Header read-outs, rendered left to right in the order given.
+indicators:
+  - icon: mdi:water-outline
+    entity_id: sensor.example_precipitation_probability
+    precision: 0
+    suffix: "%"
+
+  - icon: mdi:weather-windy
+    entity_id: weather.example
+    attribute: wind_speed
+    bearing:
+      entity_id: weather.example
+      attribute: wind_bearing
+    scale:
+      default_color: "#999999"
+      bands:
+        - { at: 36, color: "#ff0000" }
+        - { at: 24, color: "#fc8803" }
+        - { at: 12, color: "#11fcf7" }
+
+  - icon: mdi:blur
+    entity_id: sensor.example_air_quality_index
+    scale:
+      default_color: "#999999"
+      bands:
+        - { at: 300, color: "#ff0000" }
+        - { at: 200, color: "#fc8803" }
+        - { at: 100, color: "#11fcf7" }
+
+  - icon: mdi:flower-tulip-outline
+    entity_id: sensor.example_allergy_index
+    scale:
+      default_color: "#999999"
+      bands:
+        - { at: 9.6, color: "#ff0000" }
+        - { at: 7.2, color: "#fc8803" }
+        - { at: 4.8, color: "#11fcf7" }
+
+  # An indicator whose glyph changes with its entity reads the icon from an attribute.
+  - icon_attribute: icon
+    icon: mdi:clock-outline
+    entity_id: sensor.example_time_of_day
+    attribute: remaining
+
+  - icon: mdi:weather-sunset-up
+    entity_id: sensor.example_sunrise
+    attribute: local_time
+
+  - icon: mdi:weather-sunset-down
+    entity_id: sensor.example_sunset
+    attribute: local_time
+
+# Read-outs that appear only while something is off its nominal state.
+status_indicators:
+  - icon: mdi:alert-outline
+    entity_id: sensor.example_condition
+    nominal_state: Safe
+    state_colors:
+      Caution: "#11fcf7"
+      Unsafe: "#fc8803"
+      Dangerous: "#ff0000"
+    pulsing_states:
+      - Unsafe
+      - Dangerous
+
+# Each notice reads its text and icon from its own attributes. Conditional notices render
+# only while the entity is `on`; pulsing ones blink to mark something time-sensitive.
+notices:
+  # A state-driven notice: shown while the entity is off its nominal state, and coloured by
+  # whichever state it is in.
+  - entity_id: sensor.example_condition
+    message_attribute: note
+    icon: mdi:alert-outline
+    nominal_state: Safe
+    state_colors:
+      Caution: "#11fcf7"
+      Unsafe: "#fc8803"
+      Dangerous: "#ff0000"
+    pulsing_states:
+      - Unsafe
+      - Dangerous
+  - entity_id: sensor.example_notice_always
+    conditional: false
+  - entity_id: sensor.example_notice_holiday
+  - entity_id: sensor.example_notice_delivery
+  - entity_id: sensor.example_notice_collection_day
+    pulsing: true
+  - entity_id: sensor.example_notice_collection_tomorrow
+
+# A two-sided timeline: one side's calendars down the left, the other's down the right, with
+# the time of day in a gutter between them.
+agenda:
+  empty_text: Nothing today.
+  days: 1
+  # Titles opening with any of these never reach the panel.
+  hidden_prefixes:
+    - canceled
+    - cancelled
+  side_labels:
+    left: One
+    right: Two
+  calendars:
+    - entity_id: calendar.example_personal
+      name: Personal
+      color: "#bd00bd"
+      side: right
+    - entity_id: calendar.example_shared
+      name: Shared
+      color: "#00bfff"
+      side: left
+    # `extra` belongs to neither column: its events read as notices instead, under this icon.
+    - entity_id: calendar.example_chores
+      name: Chores
+      color: "#777777"
+      side: extra
+      icon: mdi:broom
+      blocklist: "vacuum|trash|recycling|compost"
+
+# Counts used to size the agenda's scroll animation.
+item_count_entities:
+  - sensor.example_agenda_count
+  - sensor.example_notice_count
+
+toggles:
+  - entity_id: group.example_seasonal_lights
+    label: Seasonal lights
+    icon: mdi:pine-tree
+    visible_when: input_boolean.example_seasonal
+
+# Floorplan levels. `image` names an SVG in `resources/floorplans/`; every element
+# in it must carry an entity id as its DOM id. Group names drive the CSS classes the browser
+# sets, so they must match the stylesheet that ships alongside the SVG.
+floorplans:
+  downstairs:
+    image: downstairs
+    groups:
+      lights:
+        - light.example_kitchen
+        - light.example_living_room
+      doors:
+        - binary_sensor.example_front_door
+      windows:
+        - binary_sensor.example_living_room_window
+      motion:
+        - binary_sensor.example_hallway_motion
+      sensors:
+        - binary_sensor.example_washer
+      bins:
+        - sensor.example_bin
+      fans:
+        - switch.example_living_room_fan
+      vehicles:
+        - binary_sensor.example_driveway_occupied
+  upstairs:
+    image: upstairs
+    groups:
+      lights:
+        - light.example_bedroom
+      doors:
+        - binary_sensor.example_bedroom_door
+      motion:
+        - binary_sensor.example_landing_motion
+
+weather:
+  entity_id: weather.example
+  sun_entity_id: sun.sun
+  high:
+    entity_id: sensor.example_temperature_high
+    hours_attribute: hours_until
+  low:
+    entity_id: sensor.example_temperature_low
+    hours_attribute: hours_until
+  summary_entity_id: sensor.example_forecast_summary
+
+camera:
+  entity_id: camera.example_street
+  title: Traffic
+
+fuel:
+  unit: "%"
+  scale:
+    default_color: "#e1e1e1"
+    bands:
+      - { at: 33, color: "#bd00bd" }
+      - { at: 15, color: "#11fcf7" }
+  gauges:
+    - entity_id: sensor.example_vehicle_one_fuel_level
+      name: Vehicle One
+    - entity_id: sensor.example_vehicle_two_fuel_level
+      name: Vehicle Two
+
+transcript:
+  entity_id: input_text.example_transcript
+
+# Full-screen overlay shown while the profile's media player is playing matching content.
+visualizer:
+  url: https://visualizer.example.com/index.html
+  content_marker: tts.example.com

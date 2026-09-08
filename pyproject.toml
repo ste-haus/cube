@@ -1,0 +1,4 @@
+# Project metadata lives in setup.cfg; this declares only how to build it.
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"

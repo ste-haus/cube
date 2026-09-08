@@ -1,0 +1,241 @@
+:root {
+  /* Palette. The theme in config.yaml overrides these at runtime. */
+  --color-background: #000000;
+  --color-foreground: #e1e1e1;
+  --color-muted: #999999;
+  --color-dim: #666666;
+  --color-faint: #333333;
+  --color-spent: #4a4a4a;
+  --color-accent: #11fcf7;
+
+  /* The agenda's scaffolding: the column names and the clock beside each row. A step up
+   * from the dim grey, so they read as labels rather than as more rule. */
+  --agenda-label-color: #808080;
+  /* The spine behind the times, which should barely register. */
+  --agenda-spine-color: #242424;
+
+  --font-stack: Roboto, system-ui, sans-serif;
+  --weight-thin: 100;
+  --weight-light: 300;
+  --weight-regular: 400;
+
+  --cube-perspective: 1200px;
+  --rotation-duration: 600ms;
+  --rotation-depth: -200px;
+  --rotation-fade: 0.3;
+  --floorplan-slide-duration: 420ms;
+
+  --panel-gap: 1.6vh;
+  --panel-padding: 0.5vw;
+  /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
+  --section-indent: 0.6rem;
+
+  /* Type scale, matched to the dashboard this replaces. */
+  --title-size: 1.68rem;
+  --clock-time-size: 5.53rem;
+  --clock-date-size: 1.85rem;
+  --indicator-size: 1.72rem;
+  --notice-size: 1.2rem;
+  --agenda-size: 1.2rem;
+  --agenda-time-size: 1rem;
+  --weather-temp-size: 4.3rem;
+  --weather-icon-size: 10.7rem;
+  /* The glyphs are drawn dark on the assumption of being inverted; this is that inversion. */
+  --weather-icon-filter: invert(1);
+  --weather-summary-size: 1.28rem;
+  --gauge-value-size: 3.2rem;
+  --gauge-name-size: 1.06rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  /* 1rem is 16px at a 2000px-wide panel, and scales from there. */
+  font-size: 0.8vw;
+}
+
+/* Stacked on a phone there is no fixed layout to hold, so fall back to real pixels. */
+@media (max-width: 600px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-stack);
+  font-weight: var(--weight-light);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/*
+ * A wall panel is driven by fingers and should show no pointer; the same page opened on a
+ * laptop to check something is far easier to use with one. `pointer: coarse` is the device
+ * saying which it is, rather than us guessing from the screen size.
+ */
+@media (pointer: coarse), (hover: none) {
+  body {
+    cursor: none;
+  }
+}
+
+#app {
+  height: 100%;
+}
+
+/*
+ * The dashboard grid, carried over from the layout this replaces: a tall centre column
+ * flanked by a status rail and a weather rail, with a full-width header and footer.
+ */
+.dashboard {
+  display: grid;
+  height: 100%;
+  padding: var(--panel-padding);
+  gap: var(--panel-gap);
+  grid-template-columns: 35fr 35fr 30fr;
+  grid-template-rows: minmax(0, 34px) 1fr auto;
+  grid-template-areas:
+    "left header header"
+    "left center right"
+    "footer footer footer";
+}
+
+.dashboard__header {
+  grid-area: header;
+  min-width: 0;
+  overflow: hidden;
+}
+.dashboard__left {
+  grid-area: left;
+  min-height: 0;
+}
+.dashboard__center {
+  grid-area: center;
+  min-height: 0;
+}
+.dashboard__right {
+  grid-area: right;
+  min-height: 0;
+}
+.dashboard__footer {
+  grid-area: footer;
+  min-height: 0;
+}
+
+.dashboard__left,
+.dashboard__center,
+.dashboard__right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap);
+  overflow: hidden;
+}
+
+.dashboard__left > :not(:first-child) {
+  padding-left: var(--section-indent);
+}
+
+.dashboard__right {
+  gap: 2.8vh;
+}
+
+/* The camera gives up height before the gauges do, so both always fit. */
+.dashboard__right > .camera {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@media (max-width: 600px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "left"
+      "center"
+      "header"
+      "right"
+      "footer";
+  }
+}
+
+/* Section headings, uppercased over a rule, as on the dashboard this replaces. */
+.panel-title {
+  margin: 0 0 0.85em 0;
+  padding-bottom: 0.45em;
+  border-bottom: 1px solid var(--color-faint);
+  color: var(--color-foreground);
+  font-size: var(--title-size);
+  font-weight: var(--weight-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.panel-title--right {
+  text-align: right;
+}
+
+.blank-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-faint);
+  font-size: var(--title-size);
+  text-transform: uppercase;
+  letter-spacing: 0.5em;
+}
+
+/* Face map, bottom right, mirroring the unfolded cube. */
+/* The unfolded cube, one dot per face. Small enough to ignore, laid out so the arrangement
+ * still says which way the faces sit. */
+.face-map {
+  position: fixed;
+  left: 1vw;
+  bottom: 1vh;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 7px);
+  gap: 5px;
+}
+
+.face-map__cell {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--color-faint);
+  cursor: pointer;
+  transition: background-color 300ms ease;
+}
+
+.face-map__cell--active {
+  background-color: var(--color-muted);
+}
+
+/* Connection indicator; only ever visible while the proxy is unreachable. */
+.connection {
+  position: fixed;
+  left: 0.5vw;
+  bottom: 0.5vh;
+  z-index: 2;
+  color: var(--color-dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  animation: pulse 2s linear infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0;
+  }
+}
