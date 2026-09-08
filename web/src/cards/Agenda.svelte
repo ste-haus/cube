@@ -209,7 +209,7 @@
 
   /* Something already done is still worth seeing, but not worth the calendar's colour. */
   .agenda__event--past {
-    color: var(--color-dim);
+    color: var(--color-spent);
   }
 
   .agenda__summary {
