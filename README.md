@@ -23,9 +23,14 @@ That arrangement is the point rather than an implementation detail. Home Assista
 
 Each connected panel reads from its own bounded queue. A panel that stops draining loses its own oldest updates and repaints on reconnect; it cannot slow the upstream connection or any other panel.
 
+## Documentation
+
+`docs/` covers using cube — [setup](docs/setup.md), [configuration](docs/configuration.md), [floorplans](docs/floorplans.md), [panels and profiles](docs/panels.md), [icons](docs/icons.md), and [troubleshooting](docs/troubleshooting.md). What follows here is the shape of the thing.
+
 ## Layout
 
 ```
+├── docs/                   # how to set it up and configure it
 ├── config.yaml.dist        # the whole schema, with placeholder entities
 ├── config.yaml             # your installation (gitignored)
 ├── resources/              # floorplan drawings (gitignored, mounted)
