@@ -168,10 +168,10 @@
   .agenda__timeline {
     background: linear-gradient(
       to right,
-      transparent calc(50% - 1px),
-      var(--agenda-spine-color) calc(50% - 1px),
-      var(--agenda-spine-color) calc(50% + 1px),
-      transparent calc(50% + 1px)
+      transparent calc(50% - 0.5px),
+      var(--agenda-spine-color) calc(50% - 0.5px),
+      var(--agenda-spine-color) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
     );
   }
 

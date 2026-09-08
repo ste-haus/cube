@@ -74,7 +74,17 @@ body {
   font-weight: var(--weight-light);
   -webkit-font-smoothing: antialiased;
   user-select: none;
-  cursor: none;
+}
+
+/*
+ * A wall panel is driven by fingers and should show no pointer; the same page opened on a
+ * laptop to check something is far easier to use with one. `pointer: coarse` is the device
+ * saying which it is, rather than us guessing from the screen size.
+ */
+@media (pointer: coarse), (hover: none) {
+  body {
+    cursor: none;
+  }
 }
 
 #app {
