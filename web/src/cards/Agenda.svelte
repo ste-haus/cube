@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { agenda as store } from "../lib/agenda.svelte";
+  import { agenda as store, focusOf } from "../lib/agenda.svelte";
   import { eventProgress, eventTime } from "../lib/format";
   import { ha } from "../lib/state.svelte";
   import type { Agenda, AgendaEvent, Side } from "../lib/types";
@@ -59,6 +59,11 @@
     }));
   });
 
+  /* Only these titles scroll; see focusOf. */
+  const timelineEvents = $derived(events.filter((event) => side(event) !== EXTRA && !event.all_day));
+
+  const focused = $derived(focusOf(timelineEvents, now));
+
   const itemCount = $derived(countEntities.reduce((total, entity) => total + ha.number(entity), 0));
   const overflow = $derived(Math.max(itemCount - agenda.scroll_threshold_items, 0));
   const scrollPercent = $derived(-overflow * agenda.scroll_percent_per_item);
@@ -93,10 +98,9 @@
             {#each [LEFT, RIGHT] as column (column)}
               <div class="agenda__side agenda__side--{column}">
                 {#each slot.entries.filter((event) => side(event) === column) as event, position (event.calendar + event.summary + position)}
-                  {@const running = progressOf(event) !== null}
                   {@const past = store.isPast(event)}
                   <div class="agenda__event" style:color={past ? null : event.color} class:agenda__event--past={past}>
-                    <span class="agenda__summary" class:agenda__summary--running={running}>
+                    <span class="agenda__summary" class:agenda__summary--focused={focused.has(event)}>
                       {event.summary}
                     </span>
                   </div>
@@ -218,9 +222,9 @@
     text-overflow: ellipsis;
   }
 
-  /* Something under way is worth reading in full, so it travels rather than being cut off.
-   * The offset is zero unless the title is genuinely wider than its column. */
-  .agenda__summary--running {
+  /* Worth reading in full, so it travels rather than being cut off. The offset is zero unless
+   * the title is genuinely wider than its column, so a short one simply does not move. */
+  .agenda__summary--focused {
     display: inline-block;
     text-overflow: clip;
     animation: agenda-marquee 9s ease-in-out infinite alternate;

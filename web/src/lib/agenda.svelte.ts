@@ -81,4 +81,32 @@ class Agenda {
   }
 }
 
+/**
+ * Whatever is worth reading in full right now.
+ *
+ * The events under way, or — when nothing is — the next one due, so at most one part of the
+ * column is ever moving and it is the part that matters. Callers pass the timed events of the
+ * timeline; all-day entries and household calendars have no place in the answer.
+ */
+export function focusOf(events: AgendaEvent[], now: Date): Set<AgendaEvent> {
+  const at = now.getTime();
+
+  const running = events.filter(
+    (event) =>
+      event.start !== null &&
+      event.end !== null &&
+      moment(event.start) <= at &&
+      at < moment(event.end),
+  );
+
+  if (running.length > 0) {
+    return new Set(running);
+  }
+
+  // The list arrives in start order, so the next one due is the first still ahead.
+  const next = events.find((event) => event.start !== null && moment(event.start) > at);
+
+  return new Set(next ? [next] : []);
+}
+
 export const agenda = new Agenda();
