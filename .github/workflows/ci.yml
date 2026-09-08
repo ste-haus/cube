@@ -3,7 +3,6 @@ name: ci
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
 
 concurrency:
@@ -58,14 +57,65 @@ jobs:
       - name: Build
         run: npm --prefix web run build
 
-  image:
+  # The version lives in the tags. Merging to main cuts the next one, and the image is built
+  # from it in the same run — a tag pushed with GITHUB_TOKEN does not start another.
+  release:
     needs: [python, web]
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
 
-    # Only what lands on the default branch, or is tagged, becomes an image. A pull request runs
-    # the tests and nothing else; building an artefact nobody can pull is time spent for no one.
-    if: github.event_name != 'pull_request'
+    permissions:
+      contents: write
 
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+      series: ${{ steps.next.outputs.series }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out the next version
+        id: next
+        run: |
+          set -euo pipefail
+
+          latest=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+
+          if [ -z "$latest" ]; then
+            major=0; minor=1; patch=0
+          else
+            IFS=. read -r major minor patch <<< "${latest#v}"
+
+            # A merge says how far it moves things; anything unmarked is a patch.
+            case "$(git log -1 --pretty=%B)" in
+              *'#major'*) major=$((major + 1)); minor=0; patch=0 ;;
+              *'#minor'*) minor=$((minor + 1)); patch=0 ;;
+              *)          patch=$((patch + 1)) ;;
+            esac
+          fi
+
+          version="${major}.${minor}.${patch}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "series=${major}.${minor}" >> "$GITHUB_OUTPUT"
+          echo "Releasing v${version} (previous: ${latest:-none})"
+
+      - name: Tag it
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ steps.next.outputs.version }}" -m "v${{ steps.next.outputs.version }}"
+          git push origin "v${{ steps.next.outputs.version }}"
+
+  image:
+    needs: [python, web, release]
+    runs-on: ubuntu-latest
+
+    # A pull request runs the tests and stops there; building an artefact nobody can pull is
+    # time spent for no one.
     permissions:
       contents: read
       packages: write
@@ -90,11 +140,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ needs.release.outputs.version }}
+            type=raw,value=${{ needs.release.outputs.series }}
+            type=raw,value=latest
             type=sha,format=long
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
         uses: docker/build-push-action@v6
