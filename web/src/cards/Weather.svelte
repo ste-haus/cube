@@ -41,7 +41,7 @@
     }
 
     const hours = ha.attribute<number>(extreme.entity_id, extreme.hours_attribute);
-    if (hours === null) {
+    if (hours === null || hours === 0) {
       return null;
     }
 
@@ -130,6 +130,6 @@
   .weather__summary {
     margin: 0.8em 0 0 0;
     font-weight: var(--weight-light);
-    line-height: 1.35;
+    line-height: 1.55;
   }
 </style>

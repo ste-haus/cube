@@ -13,7 +13,6 @@
    * closer to what a chore actually is.
    */
 
-  const PROGRESS_TICK_MS = 30 * 1000;
   const PERCENT = 100;
   const LEFT: Side = "left";
   const RIGHT: Side = "right";
@@ -25,17 +24,8 @@
     countEntities,
   }: { agenda: Agenda; title: string; countEntities: string[] } = $props();
 
-  let now = $state(new Date());
-
   const events = $derived(store.events);
-
-  $effect(() => {
-    const tick = window.setInterval(() => {
-      now = new Date();
-    }, PROGRESS_TICK_MS);
-
-    return () => window.clearInterval(tick);
-  });
+  const now = $derived(store.now);
 
   const sideOf = $derived(new Map(agenda.calendars.map((calendar) => [calendar.name, calendar.side])));
 
@@ -104,7 +94,8 @@
               <div class="agenda__side agenda__side--{column}">
                 {#each slot.entries.filter((event) => side(event) === column) as event, position (event.calendar + event.summary + position)}
                   {@const running = progressOf(event) !== null}
-                  <div class="agenda__event" style:color={event.color}>
+                  {@const past = store.isPast(event)}
+                  <div class="agenda__event" style:color={past ? null : event.color} class:agenda__event--past={past}>
                     <span class="agenda__summary" class:agenda__summary--running={running}>
                       {event.summary}
                     </span>
@@ -214,6 +205,11 @@
     line-height: 1.5;
     overflow: hidden;
     white-space: nowrap;
+  }
+
+  /* Something already done is still worth seeing, but not worth the calendar's colour. */
+  .agenda__event--past {
+    color: var(--color-dim);
   }
 
   .agenda__summary {

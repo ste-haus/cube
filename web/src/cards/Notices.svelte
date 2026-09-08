@@ -24,7 +24,7 @@
         key: `${event.calendar}:${event.summary}`,
         message: event.summary,
         icon: calendar!.icon,
-        color: event.color,
+        color: store.isPast(event) ? null : event.color,
       })),
   );
 

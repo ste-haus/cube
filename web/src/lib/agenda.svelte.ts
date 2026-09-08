@@ -2,6 +2,7 @@ import { fetchAgenda } from "./api";
 import type { AgendaEvent } from "./types";
 
 const REFRESH_MS = 5 * 60 * 1000;
+const TICK_MS = 30 * 1000;
 
 /**
  * Today's events, fetched once for the page.
@@ -11,9 +12,20 @@ const REFRESH_MS = 5 * 60 * 1000;
  */
 class Agenda {
   events = $state<AgendaEvent[]>([]);
+  now = $state(new Date());
 
   #timer: number | null = null;
+  #tick: number | null = null;
   #started = false;
+
+  /** Whether an event has finished, and so should read as spent rather than upcoming. */
+  isPast(event: AgendaEvent): boolean {
+    if (!event.end) {
+      return false;
+    }
+
+    return new Date(event.end).getTime() < this.now.getTime();
+  }
 
   start(): void {
     if (this.#started) {
@@ -23,13 +35,19 @@ class Agenda {
 
     this.#load();
     this.#timer = window.setInterval(() => this.#load(), REFRESH_MS);
+    this.#tick = window.setInterval(() => {
+      this.now = new Date();
+    }, TICK_MS);
   }
 
   stop(): void {
-    if (this.#timer !== null) {
-      window.clearInterval(this.#timer);
-      this.#timer = null;
+    for (const timer of [this.#timer, this.#tick]) {
+      if (timer !== null) {
+        window.clearInterval(timer);
+      }
     }
+    this.#timer = null;
+    this.#tick = null;
     this.#started = false;
   }
 

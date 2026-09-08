@@ -38,13 +38,21 @@ async def get_agenda(hub: CurrentHub) -> dict[str, Any]:
     start = datetime.now().astimezone().replace(**MIDNIGHT)
     end = start + timedelta(days=hub.dashboard.agenda.days)
 
+    hidden = tuple(prefix.casefold() for prefix in hub.dashboard.agenda.hidden_prefixes)
+
     events: list[dict[str, Any]] = []
     for calendar in hub.dashboard.agenda.calendars:
-        events.extend(await _events_for(hub, calendar, start, end))
+        events.extend(event for event in await _events_for(hub, calendar, start, end) if not _hidden(event, hidden))
 
     events.sort(key=lambda event: (not event[ALL_DAY_KEY], event[START_KEY]))
 
     return {"events": events}
+
+
+def _hidden(event: dict[str, Any], prefixes: tuple[str, ...]) -> bool:
+    """Whether a title opens with something the panel is asked not to show."""
+
+    return event[SUMMARY_KEY].casefold().startswith(prefixes) if prefixes else False
 
 
 def _at_or_before(moment: str | None, window_start: datetime) -> bool:

@@ -51,9 +51,7 @@
         class:face-map__cell--active={cube.current === name}
         aria-label={name}
         onclick={() => cube.show(name)}
-      >
-        {name.charAt(0)}
-      </button>
+      ></button>
     {:else}
       <span></span>
     {/if}

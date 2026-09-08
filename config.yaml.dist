@@ -137,6 +137,10 @@ notices:
 agenda:
   empty_text: Nothing today.
   days: 1
+  # Titles opening with any of these never reach the panel.
+  hidden_prefixes:
+    - canceled
+    - cancelled
   side_labels:
     left: One
     right: Two

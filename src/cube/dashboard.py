@@ -171,6 +171,10 @@ class Agenda(BaseModel):
 
     calendars: list[Calendar] = Field(default_factory=list)
     side_labels: dict[Side, str] = Field(default_factory=dict)
+    hidden_prefixes: list[str] = Field(
+        default_factory=list,
+        description="Titles starting with any of these are dropped, matched case-insensitively",
+    )
     empty_text: str = "Nothing today."
     days: int = 1
     # The list scrolls only once it outgrows the panel; these tune when and how fast.

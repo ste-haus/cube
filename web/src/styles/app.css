@@ -38,7 +38,7 @@
   --weather-icon-size: 10.7rem;
   /* The glyphs are drawn dark on the assumption of being inverted; this is that inversion. */
   --weather-icon-filter: invert(1);
-  --weather-summary-size: 1.35rem;
+  --weather-summary-size: 1.28rem;
   --gauge-value-size: 3.2rem;
   --gauge-name-size: 1.06rem;
 }
@@ -180,33 +180,31 @@ body {
 }
 
 /* Face map, bottom right, mirroring the unfolded cube. */
+/* The unfolded cube, one dot per face. Small enough to ignore, laid out so the arrangement
+ * still says which way the faces sit. */
 .face-map {
   position: fixed;
-  right: 0.5vw;
-  bottom: 0.5vh;
+  left: 1vw;
+  bottom: 1vh;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
-  font-size: 0.75rem;
+  grid-template-columns: repeat(4, 7px);
+  gap: 5px;
 }
 
 .face-map__cell {
-  width: 15px;
-  height: 15px;
-  border: 1px solid var(--color-dim);
-  background: none;
-  color: var(--color-dim);
-  font: inherit;
-  line-height: 1;
-  text-align: center;
+  width: 7px;
+  height: 7px;
   padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--color-faint);
   cursor: pointer;
+  transition: background-color 300ms ease;
 }
 
 .face-map__cell--active {
-  border-color: var(--color-foreground);
-  color: var(--color-foreground);
+  background-color: var(--color-muted);
 }
 
 /* Connection indicator; only ever visible while the proxy is unreachable. */
