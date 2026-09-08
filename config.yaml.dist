@@ -238,6 +238,7 @@ transcript:
   entity_id: input_text.example_transcript
 
 # Full-screen overlay shown while the profile's media player is playing matching content.
+# Match on a path segment rather than a hostname: players hold onto addresses across a rename,
+# so a host that is right today is wrong for whatever is still queued tomorrow.
 visualizer:
-  url: https://visualizer.example.com/index.html
-  content_marker: tts.example.com
+  content_marker: chime_tts

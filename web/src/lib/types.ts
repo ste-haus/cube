@@ -126,7 +126,6 @@ export interface Toggle {
 }
 
 export interface Visualizer {
-  url: string;
   content_marker: string;
 }
 

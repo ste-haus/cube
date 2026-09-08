@@ -3,6 +3,8 @@ from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
 from cube.app import create_app
+from cube.hass import protocol
+from cube.hass.rest import MediaMetadata
 
 FORBIDDEN = 403
 NOT_FOUND = 404
@@ -17,6 +19,42 @@ floorplans:
   downstairs:
     image: ../../secret
 """
+
+# Matches `profiles.default.media_player` and `visualizer.content_marker` in the sample config.
+ANNOUNCEMENT_SPEAKER = "media_player.example_speaker"
+UNWATCHED_SPEAKER = "media_player.not_configured"
+
+ANNOUNCEMENT_PATH = "/media/local/sounds/temp/chime_tts/deadbeef.mp3"
+ANNOUNCEMENT_URL = f"https://renamed-since.invalid{ANNOUNCEMENT_PATH}?authSig=signed"
+MUSIC_PATH = "/media/local/music/something-else.mp3"
+MUSIC_URL = f"https://renamed-since.invalid{MUSIC_PATH}"
+
+ANNOUNCEMENT_AUDIO = b"announcement-audio"
+AUDIO_CONTENT_TYPE = "audio/mpeg"
+CONTENT_TYPE_HEADER = "content-type"
+PLAYING = "playing"
+IDLE = "idle"
+
+ANNOUNCEMENT_ROUTE = "/api/announcement/{entity_id}/audio"
+CONTENT_PARAM = "content"
+
+
+def announcement_route(entity_id: str) -> str:
+    return ANNOUNCEMENT_ROUTE.format(entity_id=entity_id)
+
+
+def playing(media_content_id: str, state: str = PLAYING) -> dict:
+    return {protocol.STATE: state, protocol.ATTRIBUTES: {"media_content_id": media_content_id}}
+
+
+def relay(requested: list[tuple[str, str | None]]):
+    """Stands in for the upstream fetch, recording the address the relay resolved to."""
+
+    async def media_stream(url: str, range_header: str | None = None):
+        requested.append((url, range_header))
+        yield ANNOUNCEMENT_AUDIO, MediaMetadata(status_code=OK, headers={CONTENT_TYPE_HEADER: AUDIO_CONTENT_TYPE})
+
+    return media_stream
 
 
 def test_config_exposes_the_dashboard_without_leaking_the_token(settings):
@@ -54,6 +92,76 @@ def test_toggling_a_read_only_entity_is_refused(settings):
 def test_unconfigured_camera_is_not_reachable(settings):
     with TestClient(create_app(settings)) as client:
         response = client.get(f"/api/camera/{UNKNOWN_CAMERA}/snapshot")
+
+    assert response.status_code == NOT_FOUND
+
+
+def test_announcement_audio_is_relayed_for_a_watched_speaker(settings):
+    requested: list[tuple[str, str | None]] = []
+
+    with TestClient(create_app(settings)) as client:
+        hub = client.app.state.hub
+        hub.client.states[ANNOUNCEMENT_SPEAKER] = playing(ANNOUNCEMENT_URL)
+        hub.rest.media_stream = relay(requested)
+
+        response = client.get(
+            announcement_route(ANNOUNCEMENT_SPEAKER),
+            params={CONTENT_PARAM: ANNOUNCEMENT_PATH},
+        )
+
+    assert response.status_code == OK
+    assert response.content == ANNOUNCEMENT_AUDIO
+    assert response.headers[CONTENT_TYPE_HEADER] == AUDIO_CONTENT_TYPE
+
+    # The signed address is resolved from state, so the panel never has to send it.
+    assert requested == [(ANNOUNCEMENT_URL, None)]
+
+
+def test_announcement_audio_refuses_an_address_the_panel_names(settings):
+    """The `content` parameter identifies what is playing; it does not choose what is fetched."""
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.states[ANNOUNCEMENT_SPEAKER] = playing(ANNOUNCEMENT_URL)
+
+        response = client.get(
+            announcement_route(ANNOUNCEMENT_SPEAKER),
+            params={CONTENT_PARAM: MUSIC_PATH},
+        )
+
+    assert response.status_code == NOT_FOUND
+
+
+def test_announcement_audio_is_not_relayed_for_an_unwatched_speaker(settings):
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.states[UNWATCHED_SPEAKER] = playing(ANNOUNCEMENT_URL)
+
+        response = client.get(
+            announcement_route(UNWATCHED_SPEAKER),
+            params={CONTENT_PARAM: ANNOUNCEMENT_PATH},
+        )
+
+    assert response.status_code == NOT_FOUND
+
+
+def test_announcement_audio_is_not_relayed_for_ordinary_playback(settings):
+    """The relay is for announcements, not for whatever else the speaker is playing."""
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.states[ANNOUNCEMENT_SPEAKER] = playing(MUSIC_URL)
+
+        response = client.get(announcement_route(ANNOUNCEMENT_SPEAKER), params={CONTENT_PARAM: MUSIC_PATH})
+
+    assert response.status_code == NOT_FOUND
+
+
+def test_announcement_audio_stops_when_the_speaker_does(settings):
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.states[ANNOUNCEMENT_SPEAKER] = playing(ANNOUNCEMENT_URL, state=IDLE)
+
+        response = client.get(
+            announcement_route(ANNOUNCEMENT_SPEAKER),
+            params={CONTENT_PARAM: ANNOUNCEMENT_PATH},
+        )
 
     assert response.status_code == NOT_FOUND
 

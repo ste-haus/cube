@@ -225,9 +225,12 @@ class Toggle(BaseModel):
 
 
 class Visualizer(BaseModel):
-    """A full-screen overlay shown while a media player is playing matching content."""
+    """A full-screen overlay shown while a media player is playing matching content.
 
-    url: str
+    The page it draws with ships with the panel, so there is nothing to point at: presence of
+    this block is what turns the overlay on, and the marker is what decides when it appears.
+    """
+
     content_marker: str = Field(description="Substring of media_content_id that triggers the overlay")
 
 
@@ -286,6 +289,16 @@ class Dashboard(BaseModel):
     toggleable_domains: list[str] = Field(default_factory=lambda: list(DEFAULT_TOGGLEABLE_DOMAINS))
     # Counts that drive the agenda's scroll animation, rather than anything rendered directly.
     item_count_entities: list[str] = Field(default_factory=list)
+
+    @property
+    def media_players(self) -> frozenset[str]:
+        """The speakers panels follow.
+
+        This is the relay's allowlist: an announcement is only fetched on behalf of a speaker
+        some profile actually watches, so the endpoint cannot be pointed at anything else.
+        """
+
+        return frozenset(profile.media_player for profile in self.profiles.values() if profile.media_player)
 
     @property
     def allowed_entities(self) -> frozenset[str]:

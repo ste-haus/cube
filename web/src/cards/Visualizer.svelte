@@ -5,6 +5,11 @@
   const PLAYING = "playing";
   const SOURCE_PARAM = "src";
   const MUTE_PARAM = "mute";
+  const CONTENT_PARAM = "content";
+
+  const VISUALIZER_PAGE = "/visualizer/index.html";
+  const ANNOUNCEMENT_AUDIO_PATH = "/api/announcement/{entity_id}/audio";
+  const ENTITY_PLACEHOLDER = "{entity_id}";
 
   let {
     visualizer,
@@ -19,16 +24,35 @@
   );
 
   const source = $derived.by(() => {
-    if (!content) {
+    const path = mediaPlayer && content ? announcementPath(content) : null;
+    if (!mediaPlayer || !path) {
       return null;
     }
 
-    const url = new URL(visualizer.url);
-    url.searchParams.set(MUTE_PARAM, "true");
-    url.searchParams.set(SOURCE_PARAM, content);
+    // The overlay analyses what it draws, so the audio has to reach it from this origin rather
+    // than from Home Assistant. Naming the announcement by path is what makes each one a
+    // distinct address, so the frame reloads instead of redrawing the one before it.
+    const audio = new URL(
+      ANNOUNCEMENT_AUDIO_PATH.replace(ENTITY_PLACEHOLDER, encodeURIComponent(mediaPlayer)),
+      window.location.origin,
+    );
+    audio.searchParams.set(CONTENT_PARAM, path);
 
-    return url.toString();
+    const page = new URL(VISUALIZER_PAGE, window.location.origin);
+    page.searchParams.set(MUTE_PARAM, "true");
+    page.searchParams.set(SOURCE_PARAM, audio.pathname + audio.search);
+
+    return page.toString();
   });
+
+  /** The path Home Assistant published the announcement at, which is how the relay names it. */
+  function announcementPath(mediaContentId: string): string | null {
+    try {
+      return new URL(mediaContentId, window.location.origin).pathname;
+    } catch {
+      return null;
+    }
+  }
 </script>
 
 {#if shown && source}
