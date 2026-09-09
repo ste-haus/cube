@@ -3,8 +3,10 @@
    * Animated weather glyphs, taken from the card the dashboard this replaces used. They carry
    * their own SMIL animation and so move from an <img> with no script at all.
    *
-   * They are drawn dark, to be inverted by whatever shows them — which is where the grey
-   * outline and the white cloud behind it come from.
+   * The set is drawn light on the assumption of a dark panel behind it, and carries its own
+   * greyscale ramp: the bright stroke in front, the dimmer cloud behind. Inverting a dark set
+   * in CSS produced the same picture, but a filter is a thing a browser can decline to apply,
+   * and one wall panel declines — leaving black glyphs on a black panel.
    */
 
   const CLEAR_DAY = "clear";
@@ -70,6 +72,5 @@
     height: 1em;
     /* Absorbs the transparent margin the glyph carries on its trailing edge. */
     margin-right: -0.5rem;
-    filter: var(--weather-icon-filter);
   }
 </style>
