@@ -2,7 +2,8 @@ import pytest
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
-from cube.app import create_app
+from cube.app import NONCE_PARAMETER, create_app
+from cube.dashboard import CUBE_FACES, DEFAULT_PROFILE_KEY
 from cube.hass import protocol
 from cube.hass.rest import MediaMetadata
 
@@ -14,13 +15,34 @@ UNCONTROLLABLE_ENTITY = "sensor.example_bin"
 UNKNOWN_CAMERA = "camera.not_configured"
 OVERRIDE_CSS = ".floorplan__canvas #counter { fill: #555555; }"
 
+# A complete `default` is required of every config, including the ones a test writes to probe
+# something else.
 TRAVERSAL_CONFIG = """
 floorplans:
   downstairs:
     image: ../../secret
+
+profiles:
+  default:
+    faces:
+      front:
+        content: dashboard
+      back:
+        content: blank
+      left:
+        content: blank
+      right:
+        content: blank
+      up:
+        content: blank
+      down:
+        content: blank
 """
 
-# Matches `profiles.default.media_player` and `visualizer.content_marker` in the sample config.
+# Matches `profiles.example` and `visualizer.content_marker` in the sample config.
+SAMPLE_PANEL_PROFILE = "example"
+# Matches the custom face the `resources` fixture writes.
+SAMPLE_FACE_PAGE = "bedroom"
 ANNOUNCEMENT_SPEAKER = "media_player.example_speaker"
 UNWATCHED_SPEAKER = "media_player.not_configured"
 
@@ -67,11 +89,57 @@ def test_config_exposes_the_dashboard_without_leaking_the_token(settings):
     assert settings.ha_token not in str(body)
 
 
-def test_config_falls_back_to_the_default_profile(settings):
+def test_config_serves_the_profile_a_panel_asks_for(settings):
+    with TestClient(create_app(settings)) as client:
+        body = client.get("/api/config", params={"profile": SAMPLE_PANEL_PROFILE}).json()
+
+    profile = body["profile"]
+
+    assert profile["key"] == SAMPLE_PANEL_PROFILE
+    assert profile["media_player"] == ANNOUNCEMENT_SPEAKER
+    assert sorted(profile["faces"]) == sorted(CUBE_FACES)
+
+
+def test_an_unknown_profile_gets_the_template_and_no_speaker(settings):
+    """The fallback must not impersonate a room: a generic panel is a visible mistake."""
+
     with TestClient(create_app(settings)) as client:
         body = client.get("/api/config", params={"profile": "nonexistent"}).json()
 
-    assert body["profile"]["name"]
+    profile = body["profile"]
+
+    assert profile["key"] == DEFAULT_PROFILE_KEY
+    assert profile["media_player"] is None
+    assert profile["name"]
+
+
+def test_a_custom_face_is_served_from_the_resources_directory(settings):
+    with TestClient(create_app(settings)) as client:
+        response = client.get(f"/faces/{SAMPLE_FACE_PAGE}/")
+
+    assert response.status_code == OK
+    assert SAMPLE_FACE_PAGE in response.text
+    # Stamped like every other document, or a panel would hold the first one it was given.
+    assert f"face.css?{NONCE_PARAMETER}=" in response.text
+
+
+def test_an_unknown_face_is_not_served(settings):
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/faces/not-a-face/")
+
+    assert response.status_code == NOT_FOUND
+
+
+def test_a_face_name_cannot_escape_the_resources_directory(settings, resources):
+    secret = resources.parent / "secret" / "index.html"
+    secret.parent.mkdir(parents=True, exist_ok=True)
+    secret.write_text("classified")
+
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/faces/..%2Fsecret/")
+
+    assert response.status_code == NOT_FOUND
+    assert "classified" not in response.text
 
 
 def test_state_reports_a_disconnected_upstream(settings):

@@ -1,7 +1,8 @@
 import type { AgendaEvent, DashboardConfig } from "./types";
 
 const API_ROOT = "/api";
-const PROFILE_PATH_PREFIX = "/p/";
+const FACE_ROOT = "/faces";
+const PROFILE_PARAMETER = "profile";
 
 const WS_SCHEME = "ws:";
 const WSS_SCHEME = "wss:";
@@ -9,13 +10,7 @@ const HTTPS_PROTOCOL = "https:";
 
 /** Reads the profile from the panel's own URL, so one bundle serves every panel. */
 export function currentProfile(): string | null {
-  const { pathname } = window.location;
-
-  if (!pathname.startsWith(PROFILE_PATH_PREFIX)) {
-    return null;
-  }
-
-  return pathname.slice(PROFILE_PATH_PREFIX.length).replace(/\/$/, "") || null;
+  return new URLSearchParams(window.location.search).get(PROFILE_PARAMETER) || null;
 }
 
 export async function fetchConfig(): Promise<DashboardConfig> {
@@ -53,6 +48,11 @@ export function streamUrl(): string {
   const scheme = window.location.protocol === HTTPS_PROTOCOL ? WSS_SCHEME : WS_SCHEME;
 
   return `${scheme}//${window.location.host}${API_ROOT}/stream`;
+}
+
+/** A face an installation supplied itself, served out of the mounted resources directory. */
+export function faceUrl(page: string): string {
+  return `${FACE_ROOT}/${encodeURIComponent(page)}/`;
 }
 
 export function floorplanUrl(name: string): string {

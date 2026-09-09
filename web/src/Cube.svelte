@@ -1,10 +1,12 @@
 <script lang="ts">
   import { Cube, FACES, swipeable, type Direction, type FaceName } from "./lib/cube.svelte";
   import Blank from "./faces/Blank.svelte";
+  import CustomFace from "./faces/CustomFace.svelte";
   import Dashboard from "./faces/Dashboard.svelte";
   import type { DashboardConfig } from "./lib/types";
 
   const DASHBOARD_CONTENT = "dashboard";
+  const CUSTOM_CONTENT = "custom";
 
   // The unfolded cube, laid out the way the face map reads: the equator on the middle row
   // with the poles above and below it.
@@ -34,6 +36,8 @@
       <div class="cube-face {cube.animationClass(name)}">
         {#if face.content === DASHBOARD_CONTENT}
           <Dashboard {config} />
+        {:else if face.content === CUSTOM_CONTENT && face.page}
+          <CustomFace page={face.page} label={face.label || name} />
         {:else}
           <Blank label={face.label || name} />
         {/if}

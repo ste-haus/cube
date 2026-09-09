@@ -120,6 +120,41 @@ html {
 }
 ```
 
+## Every panel shows the same thing
+
+Each panel names itself in its own URL, as `?profile=<key>`. A panel given no key, or a key that is not defined, gets `default` — so if they all look alike, they are all falling back to it.
+
+The log names the key it could not resolve. Check that it matches a profile in `config.yaml`, remembering that the panel's URL is set once on the device and does not change when the config does.
+
+`default` is a template rather than a panel and names no speaker, so a panel that has fallen back to it is also silent during announcements. That is the quickest way to tell the two apart from across the room: a panel on its own profile lights up for its own speaker, and one that has fallen through never does.
+
+## A panel reacts to the wrong room's announcements
+
+A profile's `media_player` is never inherited, so this is not something a parent can have leaked into it. Check the `media_player` on that panel's own profile.
+
+If a panel raises no overlay at all, the opposite has happened: its profile names no speaker, either because it was left out or because the panel has fallen back to `default`.
+
+## cube will not start
+
+A config that cannot be resolved is refused at load rather than served, and the error names what is wrong. The causes are:
+
+| Message mentions | Meaning |
+|---|---|
+| no `default` profile | Every panel inherits from it, so it has to exist |
+| must define all six faces | `default` is the template; the faces it leaves out have nowhere to come from |
+| is the root and cannot inherit | `default` has no parent |
+| never inherited | `default` names a `media_player`, which could never reach a panel |
+| inherits `...`, which is not defined | An `inherits` naming a profile that is not there |
+| inherits itself | A cycle, whether direct or round a longer chain |
+| opens on floorplan `...` | A profile's `floorplan` names a level not declared in `floorplans:` |
+| names no `page` | A `custom` face without the page it is meant to draw |
+
+## A custom face is blank
+
+It fell back to a labelled blank because its page was not on disk when the process started. The log names the exact path it looked for, which is `faces/<page>/index.html` under the resources directory.
+
+Two things catch people out: the directory is checked at startup, so a face added to a running container needs a restart; and the resources directory has to actually be mounted, which is what `CUBE_RESOURCES_PATH` and the compose mount are for.
+
 ## Checking a config before deploying it
 
 The stub reads your real config and invents values for everything in it, so you can see the layout without touching Home Assistant:

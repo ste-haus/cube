@@ -9,6 +9,7 @@ from cube.app import NONCE_PARAMETER, create_app
 from cube.config import Settings
 
 OK = 200
+NOT_FOUND = 404
 CACHE_CONTROL_HEADER = "cache-control"
 
 INDEX_MARKUP = """<!doctype html>
@@ -73,12 +74,21 @@ def test_the_overlay_page_is_stamped_too(frontend: Settings):
     assert f"visualizer.js?{NONCE_PARAMETER}=" in markup
 
 
-def test_a_profile_route_carries_the_same_nonce(frontend: Settings):
+def test_a_panel_asking_for_a_profile_carries_the_same_nonce(frontend: Settings):
+    """Every panel is served the same document; only the query string tells them apart."""
+
     with TestClient(create_app(frontend)) as client:
         root = NONCE_PATTERN.findall(client.get("/").text)
-        profile = NONCE_PATTERN.findall(client.get("/p/kitchen").text)
+        profile = NONCE_PATTERN.findall(client.get("/", params={"profile": "kitchen"}).text)
 
     assert root == profile
+
+
+def test_the_old_profile_path_is_gone(frontend: Settings):
+    with TestClient(create_app(frontend)) as client:
+        response = client.get("/p/kitchen")
+
+    assert response.status_code == NOT_FOUND
 
 
 def test_the_document_is_never_held(frontend: Settings):

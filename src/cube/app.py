@@ -4,14 +4,14 @@ import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from cube.api import router
 from cube.api.dependencies import HUB_ATTRIBUTE
 from cube.config import Settings, get_settings
-from cube.dashboard import load_dashboard
+from cube.dashboard import FACE_DIRECTORY, drop_missing_custom_faces, is_safe_page_name, load_dashboard
 from cube.hub import Hub
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,12 @@ FRONTEND_ASSETS_MOUNT = "/assets"
 # come from this origin too.
 VISUALIZER_DIRECTORY = "visualizer"
 VISUALIZER_MOUNT = "/visualizer"
+
+# An installation's own faces, from the mounted resources directory. These are additive: the
+# built-in faces ship in the bundle, and anything here sits beside them without a rebuild, the
+# way an installation's `floorplan.css` is served over the bundled stylesheets.
+FACE_MOUNT = "/faces"
+UNKNOWN_FACE_DETAIL = "No such face"
 
 # Eight hex characters, drawn once per process and worn by every stylesheet and script the
 # panel loads. The build already content-hashes its assets, so this is not for them: it is for
@@ -67,10 +73,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             await hub.stop()
 
+    drop_missing_custom_faces(dashboard, resolved.resources_path)
+
     app = FastAPI(title=APP_TITLE, lifespan=lifespan)
     app.include_router(router)
 
     _mount_frontend(app, resolved.frontend_path)
+    _mount_faces(app, resolved.resources_path)
 
     return app
 
@@ -101,11 +110,31 @@ def _mount_frontend(app: FastAPI, directory: Path) -> None:
     else:
         logger.warning(MISSING_VISUALIZER_MESSAGE, visualizer)
 
-    # Every panel route renders the same bundle; the profile is read from the path in the browser.
+    # One bundle serves every panel; the browser reads `?profile=` off its own URL to find out
+    # which one it is.
     @app.get("/")
-    @app.get("/p/{profile}")
-    async def index(profile: str | None = None) -> HTMLResponse:
+    async def index() -> HTMLResponse:
         return _document(entrypoint)
+
+
+def _mount_faces(app: FastAPI, directory: Path) -> None:
+    faces = directory / FACE_DIRECTORY
+    if not faces.is_dir():
+        return
+
+    # Registered ahead of the mount, which would otherwise serve the page unrewritten, and so
+    # a face would keep whatever a panel first cached.
+    @app.get(f"{FACE_MOUNT}/{{name}}")
+    @app.get(f"{FACE_MOUNT}/{{name}}/")
+    @app.get(f"{FACE_MOUNT}/{{name}}/{FRONTEND_ENTRYPOINT}")
+    async def face(name: str) -> HTMLResponse:
+        page = faces / name / FRONTEND_ENTRYPOINT
+        if not is_safe_page_name(name) or not page.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=UNKNOWN_FACE_DETAIL)
+
+        return _document(page)
+
+    app.mount(FACE_MOUNT, StaticFiles(directory=faces), name=FACE_DIRECTORY)
 
 def _document(path: Path) -> HTMLResponse:
     """An HTML page with this process's nonce on everything local it pulls in.
