@@ -4,12 +4,20 @@
 # secret, but it does describe your home, so config.yaml is gitignored.
 # The Home Assistant URL and token are supplied by environment instead; see .env.dist.
 
+# Keyed by what the panel asks for: `?profile=<key>`.
+#
+# `default` is the template every panel starts from rather than a panel itself. It defines all
+# six faces and the storey they open on, and names no speaker. A panel is a profile that
+# inherits it and states only what makes it different, so a request naming no profile — or one
+# that is not defined — gets a generic dashboard rather than one impersonating a room.
+#
+# `faces` and `floorplan` are inherited. `media_player` never is: a panel following the wrong
+# room's speaker looks exactly like one that works, until an announcement lights up the wrong
+# wall. Every panel names its own or has none.
 profiles:
-  # Keyed by the path the panel is served at: /p/<key>. `default` is the fallback.
   default:
-    name: Example Panel
+    name: Default
     floorplan: downstairs
-    media_player: media_player.example_speaker
     faces:
       front:
         content: dashboard
@@ -28,6 +36,29 @@ profiles:
       down:
         content: blank
         label: down
+
+  # A panel: everything from `default`, plus the speaker whose announcements it reacts to.
+  example:
+    name: Example Panel
+    media_player: media_player.example_speaker
+
+  # A panel that opens on the other storey and puts a face of its own on the front. `page`
+  # names a directory under `faces/` in the resources directory holding an `index.html`.
+  example-bedroom:
+    name: Example Bedroom
+    floorplan: upstairs
+    media_player: media_player.example_bedroom_speaker
+    faces:
+      front:
+        content: custom
+        page: bedroom
+
+  # `inherits` names the profile to start from instead of `default`, and chains: this one is
+  # the bedroom's front face and storey, with a speaker of its own.
+  example-office:
+    name: Example Office
+    inherits: example-bedroom
+    media_player: media_player.example_office_speaker
 
 # The panel's palette.
 theme:

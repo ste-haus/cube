@@ -60,6 +60,12 @@ Listing an entity under a group in `config.yaml` decides how it is drawn:
 
 Group names are also the CSS class the panel sets, so a drawing and a stylesheet have to agree on them.
 
+## Levels, left to right
+
+Levels are laid out side by side in the order they are declared in `floorplans:`, and swiping moves between them. Declare them in the order they should sit — ground floor first reads the way a building does — because that order is the only thing that decides it.
+
+Which level a panel opens on, and returns to a minute after anyone touches it, is its profile's `floorplan`. So a downstairs panel opens downstairs with upstairs to its right, and an upstairs panel opens upstairs with downstairs to its left, from the same pair of drawings.
+
 ## What is tappable
 
 Only `lights` and `fans`. Tapping one toggles it, provided its domain is in `toggleable_domains`. Everything else is a read-out and ignores taps.

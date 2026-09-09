@@ -69,9 +69,13 @@ That creates both from their samples and refuses to touch either if it already e
 A profile is a panel's identity — which cube faces it gets, which floorplan level it opens on, which media player its announcement overlay follows. One instance serves all of them:
 
 ```
-/p/<profile>    a named panel
+/?profile=<key>  a named panel
 /                falls back to $CUBE_PROFILE, then to the `default` profile
 ```
+
+`default` is the template the others are built from rather than a panel itself: it defines all six faces and names no speaker. Every other profile is a delta against it, or against whichever profile its `inherits` names, so a panel states only what makes it different and a chain can be as long as it is useful. `media_player` is the one field that never inherits, because a panel quietly following another room's speaker is indistinguishable from one that works.
+
+A face is `dashboard`, `blank`, or `custom` — a page from `resources/faces/<page>/`, additive to the built-in ones and needing no rebuild. Config parameterises the cards a face already has; it does not compose them. [Panels and profiles](docs/panels.md) has the whole of it.
 
 ### Floorplans
 

@@ -5,12 +5,16 @@ loaded from a YAML file at runtime rather than baked in here. `config.yaml.dist`
 placeholder copy of the schema; see the README for how to point at your own.
 """
 
+import logging
+import re
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Self
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
+
+logger = logging.getLogger(__name__)
 
 
 class Theme(BaseModel):
@@ -241,11 +245,35 @@ class Labels(BaseModel):
     agenda: str = "Today"
 
 
-class Face(BaseModel):
-    """One face of the cube. `content` names a renderer the frontend knows about."""
+BLANK_FACE_CONTENT = "blank"
+DASHBOARD_FACE_CONTENT = "dashboard"
+CUSTOM_FACE_CONTENT = "custom"
 
-    content: str = "blank"
+FACE_DIRECTORY = "faces"
+FACE_ENTRYPOINT = "index.html"
+
+# A page name is one directory under `faces/`, never a path into one. Anything that could
+# climb out of the resources directory is rejected here rather than guarded at every reader.
+SAFE_PAGE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def is_safe_page_name(name: str) -> bool:
+    return SAFE_PAGE_NAME.match(name) is not None
+
+
+class Face(BaseModel):
+    """One face of the cube.
+
+    `content` names a renderer the frontend knows about. `page` names a directory under
+    `faces/` in the resources directory, for a face an installation supplies itself. `options`
+    is handed to the renderer untouched: a face's cards are fixed, but what they point at is
+    not.
+    """
+
+    content: str = BLANK_FACE_CONTENT
     label: str = ""
+    page: str | None = None
+    options: dict[str, Any] = Field(default_factory=dict)
 
 
 class Profile(BaseModel):
@@ -253,11 +281,17 @@ class Profile(BaseModel):
 
     One instance can serve several panels; the profile decides which cube faces they get,
     which floorplan level they open on, and which media player their visualizer follows.
+
+    Every profile but `default` is a delta. `inherits` names the profile it starts from, and
+    defaults to `default`, so a panel states only what makes it different. `media_player` is
+    the exception that never inherits: a panel following the wrong room's speaker looks
+    exactly like one that works, right up until an announcement lights up the wrong wall.
     """
 
-    name: str
+    name: str | None = None
     floorplan: str | None = None
     media_player: str | None = None
+    inherits: str | None = None
     faces: dict[str, Face] = Field(default_factory=dict)
 
 
@@ -266,6 +300,29 @@ class Profile(BaseModel):
 DEFAULT_TOGGLEABLE_DOMAINS = ["light", "switch", "group", "input_boolean"]
 
 CUBE_FACES = ("front", "back", "left", "right", "up", "down")
+
+DEFAULT_PROFILE_KEY = "default"
+
+MISSING_DEFAULT_PROFILE_MESSAGE = f"No `{DEFAULT_PROFILE_KEY}` profile. Every panel inherits from it, so it must exist."
+DEFAULT_PROFILE_INHERITS_MESSAGE = f"The `{DEFAULT_PROFILE_KEY}` profile is the root and cannot inherit."
+DEFAULT_PROFILE_MEDIA_PLAYER_MESSAGE = (
+    f"The `{DEFAULT_PROFILE_KEY}` profile is a template rather than a panel, and `media_player` is never inherited, "
+    "so a speaker named here could not reach one. Put it on the panel's own profile."
+)
+INCOMPLETE_DEFAULT_PROFILE_MESSAGE = (
+    f"The `{DEFAULT_PROFILE_KEY}` profile must define all six faces; missing: {{faces}}."
+)
+UNKNOWN_PARENT_MESSAGE = "Profile `{profile}` inherits `{parent}`, which is not defined."
+INHERITANCE_CYCLE_MESSAGE = "Profile `{profile}` inherits itself, by way of `{parent}`."
+UNKNOWN_PROFILE_FLOORPLAN_MESSAGE = "Profile `{profile}` opens on floorplan `{floorplan}`, which is not defined."
+FACE_WITHOUT_PAGE_MESSAGE = (
+    f"The {{face}} face of profile `{{profile}}` is `{CUSTOM_FACE_CONTENT}` but names no `page`."
+)
+UNSAFE_PAGE_NAME_MESSAGE = (
+    "The {face} face of profile `{profile}` names page `{page}`, which is not a plain directory name."
+)
+
+MISSING_FACE_PAGE_MESSAGE = "No page at %s for the %s face of profile %s; that face falls back to blank."
 
 
 class Dashboard(BaseModel):
@@ -289,6 +346,90 @@ class Dashboard(BaseModel):
     toggleable_domains: list[str] = Field(default_factory=lambda: list(DEFAULT_TOGGLEABLE_DOMAINS))
     # Counts that drive the agenda's scroll animation, rather than anything rendered directly.
     item_count_entities: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def resolve_profiles(self) -> Self:
+        """Flattens every profile against the chain it inherits, and refuses one that cannot be.
+
+        This runs at load rather than per request, so a cycle is a process that will not start
+        rather than a panel that gets a 500, and so everything downstream — the relay's speaker
+        allowlist, the entity subscription, the config endpoint — sees complete profiles.
+        """
+
+        default = self.profiles.get(DEFAULT_PROFILE_KEY)
+        if default is None:
+            raise ValueError(MISSING_DEFAULT_PROFILE_MESSAGE)
+
+        if default.inherits is not None:
+            raise ValueError(DEFAULT_PROFILE_INHERITS_MESSAGE)
+
+        if default.media_player is not None:
+            raise ValueError(DEFAULT_PROFILE_MEDIA_PLAYER_MESSAGE)
+
+        absent = [face for face in CUBE_FACES if face not in default.faces]
+        if absent:
+            raise ValueError(INCOMPLETE_DEFAULT_PROFILE_MESSAGE.format(faces=", ".join(absent)))
+
+        self.profiles = {key: self._resolved(key) for key in self.profiles}
+
+        for key, profile in self.profiles.items():
+            if profile.floorplan is not None and profile.floorplan not in self.floorplans:
+                raise ValueError(UNKNOWN_PROFILE_FLOORPLAN_MESSAGE.format(profile=key, floorplan=profile.floorplan))
+
+            for name, face in profile.faces.items():
+                if face.content != CUSTOM_FACE_CONTENT:
+                    continue
+
+                if not face.page:
+                    raise ValueError(FACE_WITHOUT_PAGE_MESSAGE.format(profile=key, face=name))
+
+                if not is_safe_page_name(face.page):
+                    raise ValueError(UNSAFE_PAGE_NAME_MESSAGE.format(profile=key, face=name, page=face.page))
+
+        return self
+
+    def _resolved(self, key: str) -> Profile:
+        """One profile with its whole inheritance chain folded in."""
+
+        resolved = Profile()
+
+        for ancestor in self._chain(key):
+            if ancestor.floorplan is not None:
+                resolved.floorplan = ancestor.floorplan
+
+            # By face name, so a child that names `front` owns that face outright and leaves
+            # its siblings alone.
+            resolved.faces.update(ancestor.faces)
+
+        own = self.profiles[key]
+        resolved.name = own.name or key
+        resolved.media_player = own.media_player
+
+        return resolved
+
+    def _chain(self, key: str) -> list[Profile]:
+        """The profiles `key` is built from, furthest ancestor first."""
+
+        chain: list[Profile] = []
+        seen: set[str] = set()
+        current: str | None = key
+
+        while current is not None:
+            if current in seen:
+                raise ValueError(INHERITANCE_CYCLE_MESSAGE.format(profile=key, parent=current))
+
+            profile = self.profiles.get(current)
+            if profile is None:
+                raise ValueError(UNKNOWN_PARENT_MESSAGE.format(profile=key, parent=current))
+
+            seen.add(current)
+            chain.append(profile)
+
+            current = None if current == DEFAULT_PROFILE_KEY else profile.inherits or DEFAULT_PROFILE_KEY
+
+        chain.reverse()
+
+        return chain
 
     @property
     def media_players(self) -> frozenset[str]:
@@ -381,6 +522,27 @@ class Dashboard(BaseModel):
 
 # Floorplan groups whose elements are controls rather than read-outs.
 CONTROLLABLE_FLOORPLAN_GROUPS = ("lights", "fans")
+
+
+def drop_missing_custom_faces(dashboard: Dashboard, resources_path: Path) -> None:
+    """Falls a custom face back to a labelled blank when its page is not on disk.
+
+    Faces come from the mounted resources directory, which the process does not own and cannot
+    check until it is running. A mistyped page name would otherwise put a white rectangle on a
+    wall; a labelled blank says which face went missing, and the log says where it looked.
+    """
+
+    for key, profile in dashboard.profiles.items():
+        for name, face in profile.faces.items():
+            if face.content != CUSTOM_FACE_CONTENT or face.page is None:
+                continue
+
+            page = resources_path / FACE_DIRECTORY / face.page / FACE_ENTRYPOINT
+            if page.is_file():
+                continue
+
+            logger.warning(MISSING_FACE_PAGE_MESSAGE, page, name, key)
+            profile.faces[name] = Face(content=BLANK_FACE_CONTENT, label=face.page)
 
 
 def load_dashboard(path: Path) -> Dashboard:

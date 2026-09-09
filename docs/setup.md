@@ -75,7 +75,7 @@ The two mounts are your dashboard definition and your floorplan drawings. Both d
 
 Point a tablet's browser at `http://<host>:4096` in kiosk or fullscreen mode. The panel hides the cursor, never scrolls, and reconnects on its own when the network or Home Assistant goes away, so it can be left alone.
 
-If the tablet should show a particular room's panel rather than the default, give it `http://<host>:4096/p/<profile>`. See [Panels and profiles](panels.md).
+If the tablet should show a particular room's panel rather than the generic one, give it `http://<host>:4096/?profile=<profile>`. See [Panels and profiles](panels.md).
 
 ## Trying it without Home Assistant
 

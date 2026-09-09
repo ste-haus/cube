@@ -132,6 +132,8 @@ export interface Visualizer {
 export interface Face {
   content: string;
   label: string;
+  page: string | null;
+  options: Record<string, unknown>;
 }
 
 export interface Profile {
