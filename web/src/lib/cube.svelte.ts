@@ -37,6 +37,7 @@ export const ADJACENCY: Record<FaceName, Record<Direction, FaceName>> = {
 const ROTATION_MS = 600;
 const IDLE_RESET_MS = 2 * 60 * 1000;
 const SWIPE_THRESHOLD_PX = 50;
+const TOUCH_ACTION_NONE = "none";
 
 interface Transition {
   from: FaceName;
@@ -130,6 +131,11 @@ export class Cube {
  *
  * Used as a Svelte action, so the element it decorates owns the gesture and releases the
  * listeners with itself.
+ *
+ * A touchscreen hands a drag to the browser's own panning before it hands it to us: the first
+ * `pointermove` arrives, the browser decides the gesture is a scroll, and the sequence ends in
+ * `pointercancel` with no `pointerup` at all. `touch-action: none` is what declines that
+ * offer, and without it none of this runs on a panel driven by fingers.
  */
 export interface SwipeOptions {
   onSwipe: (direction: Direction) => void;
@@ -154,6 +160,10 @@ export function swipeable(node: HTMLElement, options: SwipeOptions) {
   }
 
   function down(event: PointerEvent) {
+    if (!event.isPrimary) {
+      return;
+    }
+
     startX = event.clientX;
     startY = event.clientY;
     tracking = true;
@@ -193,13 +203,21 @@ export function swipeable(node: HTMLElement, options: SwipeOptions) {
     }
   }
 
+  function cancel() {
+    tracking = false;
+  }
+
+  const inheritedTouchAction = node.style.touchAction;
+  node.style.touchAction = TOUCH_ACTION_NONE;
+
+  // Settled once, so that a later `update` cannot leave the keydown listener behind.
+  const bindsKeyboard = current.keyboard ?? false;
+
   node.addEventListener("pointerdown", down);
   node.addEventListener("pointerup", up);
-  node.addEventListener("pointercancel", () => {
-    tracking = false;
-  });
+  node.addEventListener("pointercancel", cancel);
 
-  if (current.keyboard) {
+  if (bindsKeyboard) {
     window.addEventListener("keydown", key);
   }
 
@@ -208,9 +226,14 @@ export function swipeable(node: HTMLElement, options: SwipeOptions) {
       current = next;
     },
     destroy() {
+      node.style.touchAction = inheritedTouchAction;
       node.removeEventListener("pointerdown", down);
       node.removeEventListener("pointerup", up);
-      window.removeEventListener("keydown", key);
+      node.removeEventListener("pointercancel", cancel);
+
+      if (bindsKeyboard) {
+        window.removeEventListener("keydown", key);
+      }
     },
   };
 }
