@@ -278,8 +278,12 @@
 
   .agenda__time {
     flex: 0 0 12%;
+    /* A flex item's automatic minimum is the intrinsic size of what it holds, so without this
+     * the gutter widens to fit a meter and shoves both columns outward with it. The gutter is
+     * this wide whatever is in it. */
+    min-width: 0;
     /* Centred as a box rather than on a baseline: `vertical-align: middle` puts an inline
-     * box's midpoint at half an x-height above the baseline, which left the bar riding high
+     * box's midpoint at half an x-height above the baseline, which left the meter riding high
      * over event titles set a size larger than the gutter. */
     display: flex;
     align-items: center;
@@ -297,23 +301,35 @@
   }
 
   .agenda__progress {
+    --meter-height: 0.35em;
+
     display: block;
-    flex: 0 0 90%;
-    height: 0.35em;
+    /* Sized by `width`, never by a flex basis or an intrinsic minimum, so the meter stays
+     * inside the gutter it is centred in. Titles sit hard against the gutter on both sides,
+     * so the slack left over here is the only margin between the two. */
+    flex: none;
+    min-width: 0;
+    width: 66%;
+    height: var(--meter-height);
     border: 0;
+    border-radius: calc(var(--meter-height) / 2);
+    overflow: hidden;
     appearance: none;
     background-color: var(--color-faint);
   }
 
   .agenda__progress::-webkit-progress-bar {
+    border-radius: inherit;
     background-color: var(--color-faint);
   }
 
   .agenda__progress::-webkit-progress-value {
+    border-radius: inherit;
     background-color: var(--progress-color, var(--color-muted));
   }
 
   .agenda__progress::-moz-progress-bar {
+    border-radius: inherit;
     background-color: var(--progress-color, var(--color-muted));
   }
 
