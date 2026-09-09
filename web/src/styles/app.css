@@ -1,4 +1,12 @@
 :root {
+  /* An Android WebView re-maps the colours of a page that does not say which scheme it was
+   * drawn for: it takes dark, unsaturated ink for text on white paper and lightens it. The
+   * floorplan is drawn almost entirely in greys, so on a wall panel the walls came out white,
+   * the deck came out white, and a glyph inverted in CSS came back black. None of it shows in
+   * the computed styles, because the substitution happens when the frame is painted. This is
+   * the line that declines it. */
+  color-scheme: dark;
+
   /* Palette. The theme in config.yaml overrides these at runtime. */
   --color-background: #000000;
   --color-foreground: #e1e1e1;
