@@ -53,7 +53,7 @@ Either way the panel is at `http://localhost:4096`.
 
 ## Published images
 
-Images are built for `linux/amd64` and `linux/arm64`. Every merge to `main` cuts the next version and publishes it, so `latest` tracks the default branch and a version tag pins a known build:
+Images are built for `linux/amd64`. Every merge to `main` cuts the next version and publishes it, so `latest` tracks the default branch and a version tag pins a known build:
 
 ```bash
 docker run -d \

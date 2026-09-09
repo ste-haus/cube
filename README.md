@@ -126,7 +126,7 @@ With Docker, which builds and runs a single image containing both the API and th
 docker compose up --build
 ```
 
-Published images are on GitHub Container Registry, built for `linux/amd64` and `linux/arm64`. Versions are tags, cut by CI on merge; a merge message carrying `#minor` or `#major` moves that part instead of the patch:
+Published images are on GitHub Container Registry, built for `linux/amd64`. Versions are tags, cut by CI on merge; a merge message carrying `#minor` or `#major` moves that part instead of the patch:
 
 ```bash
 docker run -d \
