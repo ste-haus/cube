@@ -297,23 +297,35 @@
   }
 
   .agenda__progress {
+    --meter-height: 0.35em;
+
     display: block;
-    flex: 0 0 90%;
-    height: 0.35em;
+    /* Sized by `width` rather than by a flex basis: a flex item's automatic minimum is its
+     * content's intrinsic size, and a progress element brings one large enough to push the
+     * bar out over both columns. */
+    flex: none;
+    min-width: 0;
+    width: 90%;
+    height: var(--meter-height);
     border: 0;
+    border-radius: calc(var(--meter-height) / 2);
+    overflow: hidden;
     appearance: none;
     background-color: var(--color-faint);
   }
 
   .agenda__progress::-webkit-progress-bar {
+    border-radius: inherit;
     background-color: var(--color-faint);
   }
 
   .agenda__progress::-webkit-progress-value {
+    border-radius: inherit;
     background-color: var(--progress-color, var(--color-muted));
   }
 
   .agenda__progress::-moz-progress-bar {
+    border-radius: inherit;
     background-color: var(--progress-color, var(--color-muted));
   }
 
