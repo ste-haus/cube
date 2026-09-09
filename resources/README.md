@@ -42,9 +42,9 @@ Home Assistant setups often carry a custom iconset for what no standard set cove
 
 A face whose `content` is `custom` is a page from here rather than one compiled into the bundle, so a panel can carry something no published image should. `page: bedroom` is served from `faces/bedroom/index.html`, along with whatever sits beside it in that directory.
 
-The page is an ordinary document on the panel's own origin, given the whole face and no chrome. It has no access to the state the built-in faces share, so it talks to `/api` itself, the way the announcement overlay does. Its assets are stamped like every other document the panel loads, so a rebuild is never needed to get a change onto a wall — replace the file and restart.
-
 Faces here are additive: the built-in `dashboard` and `blank` still exist, and a page that is not on disk when the process starts falls back to a labelled blank with a line in the log, rather than putting a white rectangle on a wall.
+
+[Custom faces](../docs/custom-faces.md) covers what the page can do and what it can reach.
 
 ## The overrides
 

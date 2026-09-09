@@ -112,7 +112,7 @@ A face is `dashboard`, `blank`, or `custom`.
 | `page` | For `custom`: the directory under `faces/` in the resources directory holding its `index.html` |
 | `options` | Handed to the renderer as-is |
 
-`custom` is a page you supply yourself — see [the resources README](../resources/README.md). It is additive: the built-in faces stay where they are, and nothing is rebuilt to add one. A `page` that is not on disk when the process starts falls back to a labelled blank, with a line in the log saying where it looked.
+`custom` is a page you supply yourself — see [Custom faces](custom-faces.md). It is additive: the built-in faces stay where they are, and nothing is rebuilt to add one. A `page` that is not on disk when the process starts falls back to a labelled blank, with a line in the log saying where it looked.
 
 Which cards a face renders is fixed. `options` lets you configure the cards a face already has; it does not add or remove them. Nothing reads it yet, so it is the shape of the seam rather than a feature to reach for today.
 

@@ -12,6 +12,7 @@ The panel presents itself as a cube. One face is the dashboard; swiping, arrow k
 | Change what it shows | [Configuration](configuration.md) |
 | Draw a floorplan it can drive | [Floorplans](floorplans.md) |
 | Serve more than one panel | [Panels and profiles](panels.md) |
+| Put a page of your own on a face | [Custom faces](custom-faces.md) |
 | Work out why something is missing | [Troubleshooting](troubleshooting.md) |
 
 ## What it does
