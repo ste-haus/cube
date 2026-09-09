@@ -123,8 +123,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-qemu-action@v3
-
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to the registry
@@ -149,7 +147,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          # The panel proxy runs on the one amd64 host that serves the house. Emulating arm64
+          # on every merge cost more than the second image was ever worth; adding it back is a
+          # line here and one slow build, on the day something actually needs it.
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
