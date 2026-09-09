@@ -51,13 +51,23 @@
       bucket ? bucket.push(event) : buckets.set(key, [event]);
     }
 
-    return [...buckets.entries()].map(([time, entries]) => ({
-      time,
-      entries,
-      // A slot showing a meter has given up its clock: the meter says when far better.
-      progress: entries.map(progressOf).find((value) => value !== null) ?? null,
-      startsAt: startOf(entries),
-    }));
+    return [...buckets.entries()].map(([time, entries]) => {
+      const running = entries.filter((event) => progressOf(event) !== null);
+      const tracked = running[0] ?? null;
+      const columns = new Set(running.map(side));
+
+      return {
+        time,
+        entries,
+        // A slot showing a meter has given up its clock: the meter says when far better.
+        progress: tracked ? progressOf(tracked) : null,
+        // The bar is drawn in the colour of what it is measuring. A slot running on both
+        // sides at once gets one bar that belongs to neither, so it stays neutral rather
+        // than picking a side.
+        progressColor: tracked && columns.size === 1 ? tracked.color : null,
+        startsAt: startOf(entries),
+      };
+    });
   });
 
   /** When a row begins, or null for an untimed one. */
@@ -127,7 +137,12 @@
               {#if column === LEFT}
                 <span class="agenda__time">
                   {#if slot.progress !== null}
-                    <progress class="agenda__progress" value={slot.progress} max={PERCENT}></progress>
+                    <progress
+                      class="agenda__progress"
+                      style:--progress-color={slot.progressColor}
+                      value={slot.progress}
+                      max={PERCENT}
+                    ></progress>
                   {:else}
                     {slot.time}
                   {/if}
@@ -263,6 +278,12 @@
 
   .agenda__time {
     flex: 0 0 12%;
+    /* Centred as a box rather than on a baseline: `vertical-align: middle` puts an inline
+     * box's midpoint at half an x-height above the baseline, which left the bar riding high
+     * over event titles set a size larger than the gutter. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     color: var(--agenda-label-color);
     font-size: var(--agenda-time-size);
@@ -276,10 +297,9 @@
   }
 
   .agenda__progress {
-    display: inline-block;
-    width: 90%;
+    display: block;
+    flex: 0 0 90%;
     height: 0.35em;
-    vertical-align: middle;
     border: 0;
     appearance: none;
     background-color: var(--color-faint);
@@ -290,11 +310,11 @@
   }
 
   .agenda__progress::-webkit-progress-value {
-    background-color: var(--color-muted);
+    background-color: var(--progress-color, var(--color-muted));
   }
 
   .agenda__progress::-moz-progress-bar {
-    background-color: var(--color-muted);
+    background-color: var(--progress-color, var(--color-muted));
   }
 
   @keyframes agenda-marquee {
