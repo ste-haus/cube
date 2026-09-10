@@ -164,10 +164,71 @@ class GaugeRow(BaseModel):
     unit: str = ""
 
 
+RTSP_WITHOUT_GO2RTC_MESSAGE = (
+    "Camera `{camera}` names an `rtsp` stream but is polled; set `stream_type: go2rtc` to play it."
+)
+
+
+class StreamType(StrEnum):
+    """How a camera's picture reaches the panel."""
+
+    # Stills fetched through cube, one at a time. The only choice for a camera with no stream of
+    # its own — a still-image URL, a file on disk — and the cheap one for anything else.
+    POLLING = "polling"
+    # Live video from go2rtc, straight to the panel and decoded in hardware there, for as long as
+    # the camera's face is the one being looked at.
+    GO2RTC = "go2rtc"
+
+
 class Camera(BaseModel):
     entity_id: str
     title: str | None = None
-    refresh_seconds: float = 10.0
+    stream_type: StreamType = StreamType.POLLING
+    polling_interval: float = Field(
+        default=60.0,
+        description="Seconds between stills for a polled camera on the face being looked at",
+    )
+    rtsp: str | None = Field(
+        default=None,
+        description="An RTSP URL go2rtc plays as the source, so go2rtc needs nothing set up for it",
+    )
+    stream: str | None = Field(
+        default=None,
+        description="What go2rtc is asked to play: `rtsp` when given, else a stream it has by name",
+    )
+
+    @model_validator(mode="after")
+    def name_the_stream(self) -> Self:
+        """Settles what go2rtc is asked for, so the panel has one thing to hand it.
+
+        An RTSP URL goes to go2rtc as the source itself, which is what lets a go2rtc for the
+        panels run with no streams configured at all. Without one, go2rtc is asked for a stream
+        it already has, by the entity's object id unless the camera names another.
+        """
+
+        if self.rtsp is not None and self.stream_type != StreamType.GO2RTC:
+            raise ValueError(RTSP_WITHOUT_GO2RTC_MESSAGE.format(camera=self.entity_id))
+
+        if self.stream_type != StreamType.GO2RTC:
+            return self
+
+        if self.rtsp is not None:
+            self.stream = self.rtsp
+        elif self.stream is None:
+            _, _, object_id = self.entity_id.partition(".")
+            self.stream = object_id
+
+        return self
+
+
+class Go2rtc(BaseModel):
+    """Where a camera with `stream_type: go2rtc` gets its video.
+
+    `url` is the base go2rtc serves its API under. A panel connects to it directly rather than
+    through cube, so it has to be reachable from the tablets, not only from wherever cube runs.
+    """
+
+    url: str
 
 
 class Agenda(BaseModel):
@@ -364,7 +425,7 @@ class Face(BaseModel):
         parsed = model.model_validate(self.options)
 
         self._options = parsed
-        self.options = parsed.model_dump()
+        self.options = parsed.model_dump(mode="json")
 
     @property
     def cameras(self) -> list[Camera]:
@@ -419,6 +480,7 @@ UNSAFE_PAGE_NAME_MESSAGE = (
     "The {face} face of profile `{profile}` names page `{page}`, which is not a plain directory name."
 )
 INVALID_FACE_OPTIONS_MESSAGE = "The {face} face of profile `{profile}` has options it cannot draw with: {error}"
+GO2RTC_WITHOUT_SERVER_MESSAGE = "Camera `{camera}` streams from go2rtc, but no `go2rtc` block says where go2rtc is."
 
 MISSING_FACE_PAGE_MESSAGE = "No page at %s for the %s face of profile %s; that face falls back to blank."
 
@@ -437,6 +499,7 @@ class Dashboard(BaseModel):
     floorplans: dict[str, Floorplan] = Field(default_factory=dict)
     weather: Weather | None = None
     camera: Camera | None = None
+    go2rtc: Go2rtc | None = None
     fuel: GaugeRow = Field(default_factory=GaugeRow)
     transcript: Transcript | None = None
     visualizer: Visualizer | None = None
@@ -490,6 +553,8 @@ class Dashboard(BaseModel):
                     face.bind(options)
                 except ValidationError as error:
                     raise ValueError(INVALID_FACE_OPTIONS_MESSAGE.format(profile=key, face=name, error=error)) from error
+
+        self._require_go2rtc()
 
         return self
 
@@ -545,6 +610,24 @@ class Dashboard(BaseModel):
         """
 
         return frozenset(profile.media_player for profile in self.profiles.values() if profile.media_player)
+
+    def _require_go2rtc(self) -> None:
+        """Refuses a go2rtc camera with nowhere to stream from.
+
+        Otherwise it is a black tile on a wall, found by whoever next walks past it.
+        """
+
+        if self.go2rtc is not None:
+            return
+
+        cameras = [self.camera] if self.camera else []
+        cameras += [
+            camera for profile in self.profiles.values() for face in profile.faces.values() for camera in face.cameras
+        ]
+
+        for camera in cameras:
+            if camera.stream_type == StreamType.GO2RTC:
+                raise ValueError(GO2RTC_WITHOUT_SERVER_MESSAGE.format(camera=camera.entity_id))
 
     @property
     def camera_entities(self) -> frozenset[str]:

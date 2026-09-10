@@ -244,18 +244,18 @@ def test_a_camera_named_on_its_own_arrives_as_a_whole_camera():
 
     assert camera["entity_id"] == FRONT_DOOR
     assert camera["title"] is None
-    assert camera["refresh_seconds"] == Camera(entity_id=FRONT_DOOR).refresh_seconds
+    assert camera["polling_interval"] == Camera(entity_id=FRONT_DOOR).polling_interval
 
 
 def test_a_camera_may_still_be_written_out_in_full():
     title = "Back Yard"
     refresh = 30.0
     dashboard = Dashboard.model_validate(
-        camera_grid([[{"entity_id": BACK_YARD, "title": title, "refresh_seconds": refresh}]]),
+        camera_grid([[{"entity_id": BACK_YARD, "title": title, "polling_interval": refresh}]]),
     )
     camera = dashboard.profiles["gb"].faces["left"].options["rows"][0][0]
 
-    assert (camera["title"], camera["refresh_seconds"]) == (title, refresh)
+    assert (camera["title"], camera["polling_interval"]) == (title, refresh)
 
 
 def test_a_camera_hero_takes_its_hero_and_the_column_beside_it():
@@ -319,3 +319,78 @@ def test_a_face_carries_a_label_strip_unless_it_says_otherwise():
 
     assert faces["front"].label_strip is False
     assert faces["back"].label_strip is True
+
+
+
+GO2RTC_URL = "http://go2rtc.example:1984"
+POLLING_INTERVAL_SECONDS = 60.0
+
+
+def with_go2rtc(document: dict) -> dict:
+    return {**document, "go2rtc": {"url": GO2RTC_URL}}
+
+
+def test_a_camera_is_polled_once_a_minute_unless_it_says_otherwise():
+    camera = Camera(entity_id=FRONT_DOOR)
+
+    assert camera.stream_type == "polling"
+    assert camera.polling_interval == POLLING_INTERVAL_SECONDS
+    assert camera.stream is None
+
+
+def test_a_go2rtc_camera_plays_the_stream_named_after_it():
+    """Frigate names its go2rtc streams after its cameras, and the entities after the same."""
+
+    assert Camera(entity_id=FRONT_DOOR, stream_type="go2rtc").stream == "front_door"
+
+
+def test_a_go2rtc_camera_may_name_a_stream_of_its_own():
+    assert Camera(entity_id=FRONT_DOOR, stream_type="go2rtc", stream="porch").stream == "porch"
+
+
+def test_a_camera_type_nobody_knows_is_refused():
+    with pytest.raises(ValidationError):
+        Camera(entity_id=FRONT_DOOR, stream_type="rtsp")
+
+
+def test_a_go2rtc_camera_on_a_face_needs_somewhere_to_stream_from():
+    with pytest.raises(ValidationError, match="no `go2rtc` block"):
+        Dashboard.model_validate(camera_hero(hero={"entity_id": FRONT_DOOR, "stream_type": "go2rtc"}))
+
+
+def test_the_dashboard_camera_needs_somewhere_to_stream_from_too():
+    document = profiles()
+    document["camera"] = {"entity_id": FRONT_DOOR, "stream_type": "go2rtc"}
+
+    with pytest.raises(ValidationError, match="no `go2rtc` block"):
+        Dashboard.model_validate(document)
+
+
+def test_a_go2rtc_camera_loads_once_go2rtc_is_named():
+    dashboard = Dashboard.model_validate(
+        with_go2rtc(camera_hero(hero={"entity_id": FRONT_DOOR, "stream_type": "go2rtc"})),
+    )
+    hero = dashboard.profiles["gb"].faces["left"].options["hero"]
+
+    assert dashboard.go2rtc.url == GO2RTC_URL
+    assert (hero["stream_type"], hero["stream"]) == ("go2rtc", "front_door")
+
+
+RTSP_URL = "rtsp://frigate.example:8554/front_door_stream"
+
+
+def test_a_go2rtc_camera_with_an_rtsp_url_hands_go2rtc_the_url():
+    """go2rtc takes a URL as the source directly, so it needs no stream set up for the camera."""
+
+    assert Camera(entity_id=FRONT_DOOR, stream_type="go2rtc", rtsp=RTSP_URL).stream == RTSP_URL
+
+
+def test_an_rtsp_url_wins_over_a_stream_name():
+    camera = Camera(entity_id=FRONT_DOOR, stream_type="go2rtc", stream="porch", rtsp=RTSP_URL)
+
+    assert camera.stream == RTSP_URL
+
+
+def test_an_rtsp_url_on_a_polled_camera_is_refused_rather_than_ignored():
+    with pytest.raises(ValidationError, match="set `stream_type: go2rtc`"):
+        Camera(entity_id=FRONT_DOOR, rtsp=RTSP_URL)

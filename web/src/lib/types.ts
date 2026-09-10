@@ -104,10 +104,19 @@ export interface GaugeRow {
   unit: string;
 }
 
+export type StreamType = "polling" | "go2rtc";
+
 export interface Camera {
   entity_id: string;
   title: string | null;
-  refresh_seconds: number;
+  stream_type: StreamType;
+  polling_interval: number;
+  rtsp: string | null;
+  stream: string | null;
+}
+
+export interface Go2rtc {
+  url: string;
 }
 
 export interface Transcript {
@@ -183,6 +192,7 @@ export interface DashboardConfig {
   floorplans: Record<string, Floorplan>;
   weather: Weather | null;
   camera: Camera | null;
+  go2rtc: Go2rtc | null;
   fuel: GaugeRow;
   transcript: Transcript | null;
   visualizer: Visualizer | null;

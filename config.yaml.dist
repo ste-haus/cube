@@ -69,8 +69,9 @@ profiles:
   # `camera-grid` is laid out exactly as written: one row per inner list, read left to right.
   # `camera-hero` gives `hero` the face and stacks `side` in a column beside it.
   #
-  # A camera only refreshes while its face is the one being looked at, so a panel pays for the
-  # face it is showing rather than for every face it could show.
+  # A camera is polled for a still every `polling_interval` seconds, sixty unless it says, or
+  # plays live video from go2rtc with `stream_type: go2rtc`. Either way it only costs anything
+  # while its face is the one being looked at.
   example-cameras:
     name: Example Cameras
     media_player: media_player.example_cameras_speaker
@@ -83,11 +84,15 @@ profiles:
             - - entity_id: camera.example_back_yard
                 title: Back Yard
               - entity_id: camera.example_garage
-                refresh_seconds: 30
+                polling_interval: 30
       right:
         content: camera-hero
         options:
-          hero: camera.example_front_door
+          # Live: go2rtc plays the RTSP URL itself, so it needs nothing set up for the camera.
+          hero:
+            entity_id: camera.example_front_door
+            stream_type: go2rtc
+            rtsp: rtsp://go2rtc.example:8554/example_front_door
           side:
             - camera.example_driveway
             - camera.example_back_yard
@@ -283,6 +288,11 @@ weather:
 camera:
   entity_id: camera.example_street
   title: Traffic
+
+# Where cameras with `stream_type: go2rtc` get live video. Only needed if one does. The panel
+# connects to it directly, so it has to be reachable from the tablets and allow their origin.
+go2rtc:
+  url: http://go2rtc.example:1984
 
 fuel:
   unit: "%"
