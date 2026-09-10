@@ -1,6 +1,7 @@
 <script lang="ts">
   import { floorplanStylesUrl, floorplanUrl, toggle } from "../lib/api";
   import { swipeable, type Direction } from "../lib/cube.svelte";
+  import { nextLevel } from "../lib/levels";
   import { keepTrying } from "../lib/retry";
   import { ha } from "../lib/state.svelte";
   import type { Floorplan } from "../lib/types";
@@ -194,10 +195,7 @@
   }
 
   function step(direction: Direction): void {
-    const index = levels.indexOf(currentLevel);
-    const next = direction === "left" ? index + 1 : index - 1;
-
-    showLevel(levels[(next + levels.length) % levels.length]);
+    showLevel(nextLevel(levels, currentLevel, direction));
   }
 
   function showLevel(name: string): void {
