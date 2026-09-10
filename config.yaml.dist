@@ -19,8 +19,11 @@ profiles:
     name: Default
     floorplan: downstairs
     faces:
+      # The dashboard lays out to the panel's full width, so it names itself and gives the
+      # strip back. Every other face carries one unless it says otherwise.
       front:
         content: dashboard
+        label_strip: false
       back:
         content: blank
         label: back

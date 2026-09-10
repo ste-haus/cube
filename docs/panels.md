@@ -114,11 +114,32 @@ Cycles, a parent that does not exist, and a `floorplan` that was never declared 
 | Field | Meaning |
 |---|---|
 | `content` | Which renderer draws the face |
-| `label` | Shown faintly on a `blank` face, so a rotation is visibly a rotation rather than the screen going dark |
+| `label` | The face's name, set up its left edge |
+| `label_strip` | Whether to draw that strip at all; on unless you say otherwise |
 | `page` | For `custom`: the directory under `faces/` in the resources directory holding its `index.html` |
 | `options` | Handed to the renderer, which decides what it means |
 
 The two camera faces are what `options` is for — see [Camera faces](cameras.md).
+
+### The label strip
+
+Every face but the dashboard carries its name up its left edge, set small and uppercase, reading upward against a hairline rule. It is how a panel says which of the six you are looking at, on faces that have nothing else to say so. A face with no `label` of its own falls back to its position — `back`, `left`, `up`.
+
+```yaml
+faces:
+  # The dashboard lays out to the full width, so it gives the strip back.
+  front:
+    content: dashboard
+    label_strip: false
+
+  right:
+    content: camera-grid
+    label: Traffic Cameras
+```
+
+The strip takes its width off the face rather than sitting over it, so nothing is ever drawn underneath it — worth knowing for a `custom` face, whose page gets the remaining width. The dots in the corner step aside for it, so the two never overlap.
+
+Turning the strip off on a `blank` face puts the name across the middle of it instead, which is where it used to live.
 
 `custom` is a page you supply yourself — see [Custom faces](custom-faces.md). It is additive: the built-in faces stay where they are, and nothing is rebuilt to add one. A `page` that is not on disk when the process starts falls back to a labelled blank, with a line in the log saying where it looked.
 

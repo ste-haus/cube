@@ -55,7 +55,9 @@
   }
 
   /* When the column is tight the frame scales down whole rather than losing its bottom edge,
-   * which is what clipping a map does to the part you were looking at. */
+   * which is what clipping a map does to the part you were looking at. Where the slack goes is
+   * the caller's business: against the top in a column of cards, centred on a face that is
+   * nothing but frames. */
   .camera__frame {
     display: block;
     width: 100%;
@@ -63,7 +65,7 @@
     min-height: 0;
     margin: 0 auto;
     object-fit: contain;
-    object-position: top;
+    object-position: var(--camera-anchor, top);
     filter: brightness(80%);
   }
 </style>

@@ -40,6 +40,11 @@
   --camera-wall-padding: 0.5rem;
   --camera-tile-gap: 0.5rem;
   --camera-hero-side-width: 24%;
+  /* The strip naming a face up its left edge. Wide enough for the type and its rule, and no
+   * wider — every millimetre of it is taken off the face it is labelling. */
+  --label-strip-width: 2.2rem;
+  /* How far the name sits up off the bottom edge. */
+  --label-strip-lift: 5vh;
   /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
   --section-indent: 0.6rem;
 
@@ -57,6 +62,7 @@
   --gauge-value-size: 3.2rem;
   --gauge-name-size: 1.06rem;
   --camera-title-size: 1.06rem;
+  --label-strip-size: 1.15rem;
 }
 
 * {
@@ -194,6 +200,47 @@ body {
   text-align: right;
 }
 
+/*
+ * A face and the strip that names it, side by side. The strip takes its width off the face
+ * rather than sitting over it: a camera with a caption across its corner is a camera with a
+ * corner you cannot see.
+ */
+.face-body {
+  display: flex;
+  height: 100%;
+}
+
+.face-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+}
+
+.face-label {
+  flex: 0 0 var(--label-strip-width);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Sits the name up off the bottom edge rather than hard against it. */
+  padding-bottom: var(--label-strip-lift);
+  border-right: 1px solid var(--color-faint);
+  overflow: hidden;
+}
+
+.face-label__text {
+  /* `vertical-rl` lays the name down the strip and the half turn is what makes it read upward
+   * instead. `sideways-lr` says the same thing in one declaration and is not something to rely
+   * on in the WebView these panels run. */
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  color: var(--color-dim);
+  font-size: var(--label-strip-size);
+  font-weight: var(--weight-light);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
 .blank-face {
   display: flex;
   align-items: center;
@@ -228,6 +275,15 @@ body {
 .camera-grid__row > .camera {
   flex: 1 1 0;
   min-width: 0;
+}
+
+/* A face of cameras is nothing but frames, so a frame that does not fill its tile leaves its
+ * slack evenly above and below rather than all of it underneath. The dashboard's own camera
+ * keeps its top edge: there it is one card in a column, and giving up the bottom is what keeps
+ * it from pushing the gauges off. */
+.camera-grid,
+.camera-hero {
+  --camera-anchor: center;
 }
 
 /* One camera at size, with the rest kept in view down a column beside it. The column is the
@@ -287,7 +343,10 @@ body {
  * still says which way the faces sit. */
 .face-map {
   position: fixed;
-  left: 1vw;
+  /* Clear of the column a label strip occupies, on every face rather than only the ones that
+   * have one. The dots are a fixed landmark: a panel you have to re-find them on each time it
+   * turns is worse than a few millimetres of margin the strip never uses. */
+  left: calc(1vw + var(--label-strip-width));
   bottom: 1vh;
   z-index: 2;
   display: grid;

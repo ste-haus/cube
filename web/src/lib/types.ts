@@ -143,6 +143,7 @@ export interface CameraHeroOptions {
 export interface Face {
   content: string;
   label: string;
+  label_strip: boolean;
   page: string | null;
   options: Record<string, unknown>;
 }
