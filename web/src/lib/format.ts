@@ -107,3 +107,56 @@ export function eventProgress(start: string | null, end: string | null, now: Dat
 
   return ((at - from) / (to - from)) * PERCENT;
 }
+
+/*
+ * How long a mark of punctuation is worth, over and above the character itself. Speech slows at
+ * a comma and stops at a full stop, and those hesitations are most of what separates a line
+ * being read aloud from a line being spooled out at a constant rate. The numbers are beats, not
+ * seconds, so they scale with whatever rate the panel is set to.
+ */
+const DWELL: Record<string, number> = {
+  ",": 2,
+  ";": 3,
+  ":": 3,
+  "—": 2,
+  ".": 4,
+  "!": 4,
+  "?": 4,
+};
+
+const BEATS_PER_CHARACTER = 1;
+const PERCENT = 100;
+const STOP_PRECISION = 4;
+
+/** How many beats a line takes to speak, which is what sets the reveal's length. */
+export function revealBeats(text: string): number {
+  return [...text].reduce((total, character) => total + BEATS_PER_CHARACTER + (DWELL[character] ?? 0), 0);
+}
+
+/**
+ * The reveal's timing, as a CSS `linear()` function.
+ *
+ * Each character gets a flat run of its own, so the line still types rather than wiping, and a
+ * character worth extra beats simply holds longer — which is the hesitation at a comma. This is
+ * what `steps()` cannot do: its steps are all the same length.
+ */
+export function revealEasing(text: string): string {
+  const characters = [...text];
+  const total = revealBeats(text);
+  const stops: string[] = [];
+
+  let elapsed = 0;
+
+  characters.forEach((character, index) => {
+    const progress = ((index + 1) / characters.length).toFixed(STOP_PRECISION);
+    const opens = ((elapsed / total) * PERCENT).toFixed(STOP_PRECISION);
+
+    elapsed += BEATS_PER_CHARACTER + (DWELL[character] ?? 0);
+
+    const closes = ((elapsed / total) * PERCENT).toFixed(STOP_PRECISION);
+
+    stops.push(`${progress} ${opens}%`, `${progress} ${closes}%`);
+  });
+
+  return `linear(0 0%, ${stops.join(", ")})`;
+}

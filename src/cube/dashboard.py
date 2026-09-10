@@ -214,12 +214,16 @@ class Weather(BaseModel):
 class Transcript(BaseModel):
     """A line along the bottom that types itself out, for whatever was last spoken aloud.
 
-    How many steps the typing takes is the length of the line itself, so it is not configurable
-    here: any other number reveals fractions of a character.
+    The pace is set rather than the duration, so a long announcement and a short one are read at
+    the same speed instead of taking the same time. Punctuation costs extra, so the line
+    hesitates where a voice would.
     """
 
     entity_id: str
-    seconds: float = Field(default=6.0, description="How long the line takes to type itself out")
+    characters_per_second: float = Field(
+        default=15.0,
+        description="How fast the line types itself out, near enough to a voice reading it aloud",
+    )
 
 
 class Toggle(BaseModel):
