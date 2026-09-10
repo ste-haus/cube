@@ -285,6 +285,10 @@
     gap: 0.7em;
     /* Roomy enough to be a target on a wall panel, not just a marker. */
     padding: 1em 1.4em;
+    /* Centred on the panel rather than on the column the floorplan occupies, which is what the
+     * announcement below them is centred on. Shifted rather than repositioned, so the dots
+     * keep the vertical place in the card's flow that they already had. */
+    transform: translateX(calc(-1 * var(--centre-column-drift)));
   }
 
   .floorplan__level {

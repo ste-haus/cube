@@ -138,9 +138,6 @@ const DWELL: Record<string, number> = {
   "?": 1,
 };
 
-const PERCENT = 100;
-const STOP_PRECISION = 4;
-
 function syllablesIn(word: string): number {
   return word.match(VOWEL_GROUP)?.length || MINIMUM_SYLLABLES;
 }
@@ -172,35 +169,35 @@ function beatsPerCharacter(text: string): number[] {
   return beats;
 }
 
-/** How many syllables a line takes to speak, which is what sets the reveal's length. */
-export function revealBeats(text: string): number {
-  return beatsPerCharacter(text).reduce((total, beat) => total + beat, 0);
-}
-
 /**
- * The reveal's timing, as a CSS `linear()` function.
+ * When each character of a line is due, in beats from the start of the reveal.
  *
- * Each character gets a flat run of its own, so the line still types rather than wipes, and a
- * character worth more beats simply holds longer. This is what `steps()` cannot do: its steps
- * are all the same length.
+ * Cumulative, so whoever is drawing it reveals however many have come due by the moment they
+ * ask. Beats rather than seconds, so the pace stays the caller's to set.
+ *
+ * This is counted out here rather than handed to CSS as a timing function because a line long
+ * enough to wrap cannot be revealed by growing a box: the second line starts at the left
+ * again, and no amount of width says so.
  */
-export function revealEasing(text: string): string {
-  const beats = beatsPerCharacter(text);
-  const total = beats.reduce((sum, beat) => sum + beat, 0);
-  const stops: string[] = [];
-
+export function revealSchedule(text: string): number[] {
+  const schedule: number[] = [];
   let elapsed = 0;
 
-  beats.forEach((beat, index) => {
-    const progress = ((index + 1) / beats.length).toFixed(STOP_PRECISION);
-    const opens = ((elapsed / total) * PERCENT).toFixed(STOP_PRECISION);
-
+  for (const beat of beatsPerCharacter(text)) {
     elapsed += beat;
+    schedule.push(elapsed);
+  }
 
-    const closes = ((elapsed / total) * PERCENT).toFixed(STOP_PRECISION);
+  return schedule;
+}
 
-    stops.push(`${progress} ${opens}%`, `${progress} ${closes}%`);
-  });
+/** How much of a line is due by a given point, given what its schedule says. */
+export function revealedBy(schedule: number[], beats: number): number {
+  let count = 0;
 
-  return `linear(0 0%, ${stops.join(", ")})`;
+  while (count < schedule.length && schedule[count] <= beats) {
+    count += 1;
+  }
+
+  return count;
 }

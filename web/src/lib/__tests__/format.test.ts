@@ -1,77 +1,84 @@
 import { describe, expect, it } from "vitest";
 
-import { revealBeats, revealEasing } from "../format";
+import { revealSchedule, revealedBy } from "../format";
 
-/** The progress values a `linear()` function steps through, in order. */
-function progressStops(easing: string): number[] {
-  return [...easing.matchAll(/([\d.]+) [\d.]+%/g)].map((match) => Number(match[1]));
+/** How many syllables a line takes to speak, which is where its schedule ends. */
+function beats(text: string): number {
+  return revealSchedule(text).at(-1) ?? 0;
 }
 
-/** The times a `linear()` function holds each progress value between. */
-function timeStops(easing: string): number[] {
-  return [...easing.matchAll(/[\d.]+ ([\d.]+)%/g)].map((match) => Number(match[1]));
-}
-
-describe("revealBeats", () => {
+describe("how a line is paced", () => {
   it("counts a word's vowel groups as its syllables", () => {
-    expect(revealBeats("announcement")).toBeCloseTo(4);
-    expect(revealBeats("sample")).toBeCloseTo(2);
+    expect(beats("announcement")).toBeCloseTo(4);
+    expect(beats("sample")).toBeCloseTo(2);
   });
 
   it("gives a word with no vowel group a syllable anyway", () => {
-    expect(revealBeats("hmm")).toBeCloseTo(1);
+    expect(beats("hmm")).toBeCloseTo(1);
   });
 
   it("does not charge a long word by its spelling", () => {
-    // Same syllable, four times the letters: the reveal should not take four times as long.
-    expect(revealBeats("through")).toBeCloseTo(revealBeats("thru"));
+    // Same syllable, nearly twice the letters: the reveal should not take twice as long.
+    expect(beats("through")).toBeCloseTo(beats("thru"));
   });
 
   it("charges a gap between words less than a syllable", () => {
     // Two syllables either way, so the difference is the space and nothing else.
-    const gap = revealBeats("ab ab") - revealBeats("abab");
+    const gap = beats("ab ab") - beats("abab");
 
     expect(gap).toBeGreaterThan(0);
     expect(gap).toBeLessThan(1);
   });
 
   it("adds a pause for punctuation without depending on there being any", () => {
-    expect(revealBeats("ab,")).toBeGreaterThan(revealBeats("ab"));
-    expect(revealBeats("ab.")).toBeGreaterThan(revealBeats("ab,"));
+    expect(beats("ab,")).toBeGreaterThan(beats("ab"));
+    expect(beats("ab.")).toBeGreaterThan(beats("ab,"));
   });
 
   it("has nothing to say about an empty line", () => {
-    expect(revealBeats("")).toBe(0);
+    expect(beats("")).toBe(0);
   });
 });
 
-describe("revealEasing", () => {
-  it("opens closed and ends fully revealed", () => {
-    const easing = revealEasing("abc");
-
-    expect(easing.startsWith("linear(0 0%,")).toBe(true);
-    expect(timeStops(easing).at(-1)).toBe(100);
-    expect(progressStops(easing).at(-1)).toBe(1);
+describe("revealSchedule", () => {
+  it("gives every character a moment of its own", () => {
+    expect(revealSchedule("abcd")).toHaveLength(4);
   });
 
-  it("holds each character at its own progress, so the line types rather than wipes", () => {
-    // Two stops a character: one where it arrives, one where it gives way to the next.
-    const stops = progressStops(revealEasing("abcd"));
+  it("runs forwards, and ends where the line's beats run out", () => {
+    const schedule = revealSchedule("a sample line");
 
-    expect(stops).toEqual([0, 0.25, 0.25, 0.5, 0.5, 0.75, 0.75, 1, 1]);
+    expect([...schedule].sort((first, second) => first - second)).toEqual(schedule);
+    expect(schedule.at(-1)).toBeCloseTo(beats("a sample line"));
   });
 
-  it("gives every character the same run when none of them are punctuation", () => {
-    const times = timeStops(revealEasing("abcd"));
+  it("holds longer on a comma than on the letters either side of it", () => {
+    const schedule = revealSchedule("ab,cd");
+    const runs = schedule.map((at, index) => at - (schedule[index - 1] ?? 0));
 
-    expect(times).toEqual([0, 0, 25, 25, 50, 50, 75, 75, 100]);
+    expect(runs[2]).toBeGreaterThan(runs[1]);
+    expect(runs[2]).toBeGreaterThan(runs[3]);
+  });
+});
+
+describe("revealedBy", () => {
+  const schedule = revealSchedule("abcd");
+
+  it("shows nothing before the first character is due", () => {
+    expect(revealedBy(schedule, 0)).toBe(0);
   });
 
-  it("dwells on a comma longer than on a letter beside it", () => {
-    const times = timeStops(revealEasing("a,b"));
-    const runs = [times[2] - times[1], times[4] - times[3], times[6] - times[5]];
+  it("shows the whole line once its last beat has passed", () => {
+    expect(revealedBy(schedule, beats("abcd"))).toBe(4);
+  });
 
-    expect(runs[1]).toBeGreaterThan(runs[0]);
-    expect(runs[1]).toBeGreaterThan(runs[2]);
+  it("does not run past the end however long it is left", () => {
+    expect(revealedBy(schedule, Number.MAX_SAFE_INTEGER)).toBe(4);
+  });
+
+  it("reveals more as time goes on and never less", () => {
+    const counts = [0, 0.25, 0.5, 0.75, 1].map((beats) => revealedBy(schedule, beats));
+
+    expect(counts).toEqual([...counts].sort((first, second) => first - second));
   });
 });

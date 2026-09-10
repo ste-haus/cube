@@ -316,6 +316,8 @@ transcript:
 
 `syllables_per_second` is the pace, not the duration: a long announcement and a short one are read at the same speed rather than taking the same time. The default is about the rate of a voice reading aloud. Syllables rather than characters, so a long word takes longer than a short one without taking longer in proportion to how it is spelled; punctuation adds a pause on top where there is any, but nothing depends on there being. It affects only the animation, not what is shown.
 
+Nearly every announcement fits on one line. One that does not wraps once it reaches two thirds of the panel's width, to at most three lines, and anything past that ends in an ellipsis — a line long enough to need a fourth is long enough that a wall is the wrong place to read it. However many lines it runs to, it grows upward over the panel rather than shortening it.
+
 ### visualizer
 
 A full-screen overlay while a media player is playing something matching.

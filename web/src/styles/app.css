@@ -35,6 +35,20 @@
 
   --panel-gap: 1.6vh;
   --panel-padding: 0.5vw;
+  /*
+   * How far the centre column's midpoint falls right of the panel's.
+   *
+   * The rails are 35/35/30, so the middle one is centred on 52.5% of the space between the
+   * padding rather than on 50% of the panel. Anything centred in that column is therefore not
+   * centred on the wall, which goes unnoticed until it has to line up with something that is —
+   * the floorplan's level dots sit directly above the announcement, which the footer centres
+   * across the full width.
+   *
+   * Derived rather than measured: column centre is `padding + gap + 0.525 * (100vw - 2*padding
+   * - 2*gap)`, and this is that less 50vw. Keep the 2.5 and the 0.05s in step with
+   * `grid-template-columns` on `.dashboard` if the rails are ever reweighted.
+   */
+  --centre-column-drift: calc(2.5vw - 0.05 * var(--panel-padding) - 0.05 * var(--panel-gap));
   /* A face given over to cameras is tighter than the dashboard: the frames are the content,
    * and every gap between them is a frame's worth of wall not being shown. */
   --camera-wall-padding: 0.5rem;
@@ -47,6 +61,31 @@
   --label-strip-lift: 5vh;
   /* How far the announcement stands off the bottom edge. */
   --transcript-lift: 2.5vh;
+  /* How wide the announcement is allowed to run before it wraps, and how many rows it may wrap
+   * to before what is left of it is an ellipsis. Nearly all of them fit on one. */
+  --transcript-max-width: 66vw;
+  --transcript-lines: 3;
+  --transcript-line-height: 1.45;
+  --transcript-padding-block: calc(var(--transcript-size) * 0.32);
+  --transcript-padding-inline: calc(var(--transcript-size) * 0.7);
+  --transcript-radius: calc(var(--transcript-size) * 0.28);
+  --transcript-row-height: calc(var(--transcript-size) * var(--transcript-line-height));
+  --transcript-frame-height: calc(var(--transcript-row-height) + 2 * var(--transcript-padding-block));
+  /*
+   * Where a one-row announcement's middle falls above the bottom edge of the panel. The face
+   * map is hung off this, so the dots and the line they sit beside share a horizon.
+   */
+  --announcement-axis: calc(
+    var(--panel-padding) + var(--transcript-lift) + var(--transcript-frame-height) / 2
+  );
+
+  /* The map of faces, and the arithmetic for how tall a grid of them comes out. */
+  --face-map-cell: 7px;
+  --face-map-gap: 5px;
+  --face-map-rows: 3;
+  --face-map-height: calc(
+    var(--face-map-cell) * var(--face-map-rows) + var(--face-map-gap) * (var(--face-map-rows) - 1)
+  );
   /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
   --section-indent: 0.6rem;
 
@@ -350,16 +389,18 @@ body {
    * have one. The dots are a fixed landmark: a panel you have to re-find them on each time it
    * turns is worse than a few millimetres of margin the strip never uses. */
   left: calc(1vw + var(--label-strip-width));
-  bottom: 1vh;
+  /* Hung so the middle of the dots sits on the middle of a one-row announcement, rather than
+   * on a margin of its own. The two share the bottom of the panel and should share a line. */
+  bottom: calc(var(--announcement-axis) - var(--face-map-height) / 2);
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(4, 7px);
-  gap: 5px;
+  grid-template-columns: repeat(4, var(--face-map-cell));
+  gap: var(--face-map-gap);
 }
 
 .face-map__cell {
-  width: 7px;
-  height: 7px;
+  width: var(--face-map-cell);
+  height: var(--face-map-cell);
   padding: 0;
   border: 0;
   border-radius: 50%;
