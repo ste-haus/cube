@@ -272,6 +272,11 @@
    * the title is genuinely wider than its column, so a short one simply does not move. */
   .agenda__summary--focused {
     display: inline-block;
+    /* An inline-block sits its bottom edge on the baseline, so the line box grows by the
+     * strut's descent below it — which made the running row taller than every other, and left
+     * its title above the gutter the meter is centred in. Aligning to the top keeps the line
+     * box the height it is when the title is not travelling. */
+    vertical-align: top;
     text-overflow: clip;
     animation: agenda-marquee 9s ease-in-out infinite alternate;
   }
