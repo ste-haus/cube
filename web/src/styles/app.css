@@ -153,19 +153,23 @@ body {
 
 /*
  * The dashboard grid, carried over from the layout this replaces: a tall centre column
- * flanked by a status rail and a weather rail, with a full-width header and footer.
+ * flanked by a status rail and a weather rail, under a full-width header.
+ *
+ * The announcement is not in it. It comes and goes, and a row that is there only sometimes is
+ * a panel that rearranges itself around whether anyone has spoken lately, so it is positioned
+ * against this rather than laid out by it. Hence `relative`.
  */
 .dashboard {
+  position: relative;
   display: grid;
   height: 100%;
   padding: var(--panel-padding);
   gap: var(--panel-gap);
   grid-template-columns: 35fr 35fr 30fr;
-  grid-template-rows: minmax(0, 34px) 1fr auto;
+  grid-template-rows: minmax(0, 34px) 1fr;
   grid-template-areas:
     "left header header"
-    "left center right"
-    "footer footer footer";
+    "left center right";
 }
 
 .dashboard__header {
@@ -183,10 +187,6 @@ body {
 }
 .dashboard__right {
   grid-area: right;
-  min-height: 0;
-}
-.dashboard__footer {
-  grid-area: footer;
   min-height: 0;
 }
 
@@ -221,8 +221,7 @@ body {
       "left"
       "center"
       "header"
-      "right"
-      "footer";
+      "right";
   }
 }
 

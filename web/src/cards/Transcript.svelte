@@ -61,45 +61,37 @@
 </script>
 
 {#if text}
-  <div class="transcript-slot">
-    <p class="transcript">
-      <span class="transcript__frame">
-        <span class="transcript__marker">&raquo;</span>
-        <span class="transcript__line">{shown}</span>
-        <span class="transcript__marker">&laquo;</span>
-      </span>
-    </p>
-  </div>
+  <p class="transcript">
+    <span class="transcript__frame">
+      <span class="transcript__marker">&raquo;</span>
+      <span class="transcript__line">{shown}</span>
+      <span class="transcript__marker">&laquo;</span>
+    </span>
+  </p>
 {/if}
 
 <style>
-  /*
-   * A row's worth of height, and no more, however many rows the announcement runs to. The line
-   * itself hangs off the bottom of it, so a second or third row grows upward over the panel
-   * rather than shortening the floorplan and dragging everything else up with it — an
-   * announcement is a moment, and the panel should not rearrange itself around one.
-   */
-  .transcript-slot {
-    position: relative;
-    height: calc(var(--transcript-frame-height) + var(--transcript-lift));
-  }
-
   /*
    * The line and the two marks that bracket it are centred as a group, and the line is only as
    * wide as what has been revealed — so the marks close in around a part-read announcement
    * rather than standing off at the width it will eventually reach. They sit on the middle of
    * the line however many rows it has grown to, rather than on its first.
    */
+  /*
+   * Laid over the panel rather than laid out in it. An announcement is a moment: it is there
+   * for a few seconds and gone, and anything that reserves room for one leaves the panel
+   * arranged differently depending on whether somebody has spoken lately. It occupies nothing,
+   * whatever it says and however many rows it grows to.
+   */
   .transcript {
     position: absolute;
+    z-index: 1;
     right: 0;
-    bottom: 0;
+    bottom: calc(var(--panel-padding) + var(--transcript-lift));
     left: 0;
     display: flex;
     justify-content: center;
     margin: 0;
-    /* Stands the line up off the bottom edge rather than letting it sit on it. */
-    padding-bottom: var(--transcript-lift);
     text-transform: lowercase;
     font-family: "Roboto Mono", ui-monospace, monospace;
     font-size: var(--transcript-size);
