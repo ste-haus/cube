@@ -8,6 +8,8 @@
  * aspect ratio.
  */
 
+import { getContext, setContext } from "svelte";
+
 export type FaceName = "front" | "back" | "left" | "right" | "up" | "down";
 export type Direction = "up" | "down" | "left" | "right";
 
@@ -49,16 +51,37 @@ export class Cube {
   current = $state<FaceName>(DEFAULT_FACE);
   transition = $state<Transition | null>(null);
 
+  /**
+   * The faces that have been looked at, and so are built.
+   *
+   * A face is built the first time it is turned to and kept from then on, so a camera keeps
+   * the frame it last had and a floorplan is not fetched twice. What it costs to keep is the
+   * markup: a face that is not being looked at is not painted, and the cards on it hold no
+   * timers, so it is inert rather than merely hidden. A face never turned to is never built.
+   */
+  built = $state<FaceName[]>([DEFAULT_FACE]);
+
   #resetTimer: number | null = null;
   #rotating = false;
 
-  /** Whether a face needs to be in the DOM: the current one, plus both sides of a rotation. */
+  /** Whether a face is in the DOM at all. */
+  isBuilt(face: FaceName): boolean {
+    return this.built.includes(face);
+  }
+
+  /** Whether a face is painted: the current one, plus both sides of a rotation. */
   isVisible(face: FaceName): boolean {
     if (this.transition) {
       return face === this.transition.from || face === this.transition.to;
     }
 
     return face === this.current;
+  }
+
+  #build(face: FaceName): void {
+    if (!this.built.includes(face)) {
+      this.built = [...this.built, face];
+    }
   }
 
   /** The animation class a face wears for the duration of a rotation. */
@@ -90,6 +113,7 @@ export class Cube {
     }
 
     this.#rotating = true;
+    this.#build(to);
     this.transition = { from, to, direction };
     this.current = to;
 
@@ -107,6 +131,7 @@ export class Cube {
       return;
     }
 
+    this.#build(face);
     this.current = face;
     this.#scheduleReset();
   }
@@ -124,6 +149,30 @@ export class Cube {
 
     this.#resetTimer = window.setTimeout(() => this.show(DEFAULT_FACE), IDLE_RESET_MS);
   }
+}
+
+const FACE_VISIBILITY = Symbol("face-visibility");
+
+/** Whether the face a card sits on is the one being looked at. */
+export interface FaceVisibility {
+  readonly showing: boolean;
+}
+
+const ALWAYS_SHOWING: FaceVisibility = { showing: true };
+
+/** Published by the face itself, so a card need not be told which of the six it is on. */
+export function provideVisibility(visibility: FaceVisibility): void {
+  setContext(FACE_VISIBILITY, visibility);
+}
+
+/**
+ * Whether the calling card is on the face being looked at.
+ *
+ * A card outside any face — the announcement overlay, or one mounted on its own in a test —
+ * is always showing, so nothing has to know about the cube in order to be drawn.
+ */
+export function faceVisibility(): FaceVisibility {
+  return getContext<FaceVisibility | undefined>(FACE_VISIBILITY) ?? ALWAYS_SHOWING;
 }
 
 /**

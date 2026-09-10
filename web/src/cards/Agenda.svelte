@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { agenda as store, focusOf, spineBreaks } from "../lib/agenda.svelte";
+  import { agenda as store, focusOf, isPast, spineBreaks } from "../lib/agenda.svelte";
   import { eventProgress, eventTime } from "../lib/format";
   import { ha } from "../lib/state.svelte";
   import type { Agenda, AgendaEvent, Side } from "../lib/types";
@@ -65,6 +65,9 @@
         // sides at once gets one bar that belongs to neither, so it stays neutral rather
         // than picking a side.
         progressColor: tracked && columns.size === 1 ? tracked.color : null,
+        // The time in the gutter is spent exactly when everything it stands for is, so a row
+        // half done keeps its clock lit rather than retiring the half still ahead.
+        past: entries.every((event) => isPast(event, now)),
         startsAt: startOf(entries),
       };
     });
@@ -125,7 +128,7 @@
             {#each [LEFT, RIGHT] as column (column)}
               <div class="agenda__side agenda__side--{column}">
                 {#each slot.entries.filter((event) => side(event) === column) as event, position (event.calendar + event.summary + position)}
-                  {@const past = store.isPast(event)}
+                  {@const past = isPast(event, now)}
                   <div class="agenda__event" style:color={past ? null : event.color} class:agenda__event--past={past}>
                     <span class="agenda__summary" class:agenda__summary--focused={focused.has(event)}>
                       {event.summary}
@@ -135,7 +138,7 @@
               </div>
 
               {#if column === LEFT}
-                <span class="agenda__time">
+                <span class="agenda__time" class:agenda__time--past={slot.past}>
                   {#if slot.progress !== null}
                     <progress
                       class="agenda__progress"
@@ -303,6 +306,12 @@
       var(--color-background) 75%,
       transparent
     );
+  }
+
+  /* The clock retires with the events it stands for, so a row reads as spent all the way
+   * across rather than leaving a lit time beside greyed titles. */
+  .agenda__time--past {
+    color: var(--color-spent);
   }
 
   .agenda__progress {

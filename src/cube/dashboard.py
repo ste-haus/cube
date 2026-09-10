@@ -9,10 +9,10 @@ import logging
 import re
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Self
+from typing import Annotated, Any, Self
 
 import yaml
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, PrivateAttr, ValidationError, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +248,8 @@ class Labels(BaseModel):
 BLANK_FACE_CONTENT = "blank"
 DASHBOARD_FACE_CONTENT = "dashboard"
 CUSTOM_FACE_CONTENT = "custom"
+CAMERA_GRID_FACE_CONTENT = "camera-grid"
+CAMERA_HERO_FACE_CONTENT = "camera-hero"
 
 FACE_DIRECTORY = "faces"
 FACE_ENTRYPOINT = "index.html"
@@ -261,19 +263,99 @@ def is_safe_page_name(name: str) -> bool:
     return SAFE_PAGE_NAME.match(name) is not None
 
 
+def as_camera(value: Any) -> Any:
+    """Reads a camera named on its own as an entity id.
+
+    A wall of cameras is mostly entity ids and nothing else, and writing each one as a mapping
+    to say so is noise. The long form is still there for a tile that wants a title or a refresh
+    rate of its own, and both arrive as a whole camera.
+    """
+
+    return {"entity_id": value} if isinstance(value, str) else value
+
+
+CameraEntry = Annotated[Camera, BeforeValidator(as_camera)]
+CameraRow = Annotated[list[CameraEntry], Field(min_length=1)]
+
+
+class CameraFaceOptions(BaseModel):
+    """Options for a face whose whole content is cameras.
+
+    The cameras are enumerated rather than left to the renderer, because the snapshot endpoint
+    fetches for the entities the config names and nothing else.
+    """
+
+    @property
+    def cameras(self) -> list[Camera]:
+        raise NotImplementedError
+
+
+class CameraGridOptions(CameraFaceOptions):
+    """A grid of cameras: one inner list per row, each read left to right.
+
+    Rows need not be the same length. A short one's tiles share the width between them rather
+    than leaving a hole, which is what a wall of an odd number of cameras wants.
+    """
+
+    rows: list[CameraRow] = Field(min_length=1)
+
+    @property
+    def cameras(self) -> list[Camera]:
+        return [camera for row in self.rows for camera in row]
+
+
+class CameraHeroOptions(CameraFaceOptions):
+    """One camera at size, with the rest stacked in a column beside it."""
+
+    hero: CameraEntry
+    side: list[CameraEntry] = Field(default_factory=list)
+
+    @property
+    def cameras(self) -> list[Camera]:
+        return [self.hero, *self.side]
+
+
+# The renderers that read `options` as something more than a passthrough, and the shape each
+# one reads it as. A content name absent from here takes its options untouched.
+FACE_OPTIONS: dict[str, type[CameraFaceOptions]] = {
+    CAMERA_GRID_FACE_CONTENT: CameraGridOptions,
+    CAMERA_HERO_FACE_CONTENT: CameraHeroOptions,
+}
+
+
 class Face(BaseModel):
     """One face of the cube.
 
     `content` names a renderer the frontend knows about. `page` names a directory under
     `faces/` in the resources directory, for a face an installation supplies itself. `options`
-    is handed to the renderer untouched: a face's cards are fixed, but what they point at is
-    not.
+    is handed to the renderer: a face's cards are fixed, but what they point at is not.
     """
 
     content: str = BLANK_FACE_CONTENT
     label: str = ""
     page: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
+
+    _options: CameraFaceOptions | None = PrivateAttr(default=None)
+
+    def bind(self, model: type[CameraFaceOptions]) -> None:
+        """Reads this face's options as its renderer's own type, and normalises them in place.
+
+        The normalisation is what lets a camera be written as a bare entity id: it is a whole
+        camera by the time anything downstream sees it, so neither the allowlist nor the
+        frontend has two forms to handle.
+        """
+
+        parsed = model.model_validate(self.options)
+
+        self._options = parsed
+        self.options = parsed.model_dump()
+
+    @property
+    def cameras(self) -> list[Camera]:
+        """The cameras this face draws, and none at all when it draws something else."""
+
+        return self._options.cameras if self._options else []
 
 
 class Profile(BaseModel):
@@ -321,6 +403,7 @@ FACE_WITHOUT_PAGE_MESSAGE = (
 UNSAFE_PAGE_NAME_MESSAGE = (
     "The {face} face of profile `{profile}` names page `{page}`, which is not a plain directory name."
 )
+INVALID_FACE_OPTIONS_MESSAGE = "The {face} face of profile `{profile}` has options it cannot draw with: {error}"
 
 MISSING_FACE_PAGE_MESSAGE = "No page at %s for the %s face of profile %s; that face falls back to blank."
 
@@ -377,14 +460,21 @@ class Dashboard(BaseModel):
                 raise ValueError(UNKNOWN_PROFILE_FLOORPLAN_MESSAGE.format(profile=key, floorplan=profile.floorplan))
 
             for name, face in profile.faces.items():
-                if face.content != CUSTOM_FACE_CONTENT:
+                if face.content == CUSTOM_FACE_CONTENT:
+                    if not face.page:
+                        raise ValueError(FACE_WITHOUT_PAGE_MESSAGE.format(profile=key, face=name))
+
+                    if not is_safe_page_name(face.page):
+                        raise ValueError(UNSAFE_PAGE_NAME_MESSAGE.format(profile=key, face=name, page=face.page))
+
+                options = FACE_OPTIONS.get(face.content)
+                if options is None:
                     continue
 
-                if not face.page:
-                    raise ValueError(FACE_WITHOUT_PAGE_MESSAGE.format(profile=key, face=name))
-
-                if not is_safe_page_name(face.page):
-                    raise ValueError(UNSAFE_PAGE_NAME_MESSAGE.format(profile=key, face=name, page=face.page))
+                try:
+                    face.bind(options)
+                except ValidationError as error:
+                    raise ValueError(INVALID_FACE_OPTIONS_MESSAGE.format(profile=key, face=name, error=error)) from error
 
         return self
 
@@ -442,6 +532,23 @@ class Dashboard(BaseModel):
         return frozenset(profile.media_player for profile in self.profiles.values() if profile.media_player)
 
     @property
+    def camera_entities(self) -> frozenset[str]:
+        """Every camera a panel may ask for a frame from.
+
+        This is the snapshot endpoint's allowlist. A camera face puts cameras on a panel that
+        the dashboard's own camera card knows nothing about, so it is the union of both rather
+        than the single camera that card draws.
+        """
+
+        entities = {self.camera.entity_id} if self.camera else set()
+
+        for profile in self.profiles.values():
+            for face in profile.faces.values():
+                entities.update(camera.entity_id for camera in face.cameras)
+
+        return frozenset(entities)
+
+    @property
     def allowed_entities(self) -> frozenset[str]:
         """Every entity the panel subscribes to.
 
@@ -489,8 +596,7 @@ class Dashboard(BaseModel):
             if self.weather.sun_entity_id:
                 entities.add(self.weather.sun_entity_id)
 
-        if self.camera:
-            entities.add(self.camera.entity_id)
+        entities.update(self.camera_entities)
 
         if self.transcript:
             entities.add(self.transcript.entity_id)

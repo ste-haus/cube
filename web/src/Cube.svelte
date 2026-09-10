@@ -1,12 +1,9 @@
 <script lang="ts">
   import { Cube, FACES, swipeable, type Direction, type FaceName } from "./lib/cube.svelte";
-  import Blank from "./faces/Blank.svelte";
-  import CustomFace from "./faces/CustomFace.svelte";
-  import Dashboard from "./faces/Dashboard.svelte";
+  import CubeFace from "./faces/CubeFace.svelte";
   import type { DashboardConfig } from "./lib/types";
 
-  const DASHBOARD_CONTENT = "dashboard";
-  const CUSTOM_CONTENT = "custom";
+  const BLANK_CONTENT = "blank";
 
   // The unfolded cube, laid out the way the face map reads: the equator on the middle row
   // with the poles above and below it.
@@ -21,7 +18,7 @@
   const cube = new Cube();
 
   function faceFor(name: FaceName) {
-    return config.profile.faces[name] ?? { content: "blank", label: name };
+    return config.profile.faces[name] ?? { content: BLANK_CONTENT, label: name, page: null, options: {} };
   }
 
   function onSwipe(direction: Direction) {
@@ -31,17 +28,15 @@
 
 <div class="cube" use:swipeable={{ onSwipe, keyboard: true }}>
   {#each FACES as name (name)}
-    {#if cube.isVisible(name)}
-      {@const face = faceFor(name)}
-      <div class="cube-face {cube.animationClass(name)}">
-        {#if face.content === DASHBOARD_CONTENT}
-          <Dashboard {config} />
-        {:else if face.content === CUSTOM_CONTENT && face.page}
-          <CustomFace page={face.page} label={face.label || name} />
-        {:else}
-          <Blank label={face.label || name} />
-        {/if}
-      </div>
+    {#if cube.isBuilt(name)}
+      <CubeFace
+        face={faceFor(name)}
+        {name}
+        {config}
+        showing={cube.current === name}
+        painted={cube.isVisible(name)}
+        animation={cube.animationClass(name)}
+      />
     {/if}
   {/each}
 </div>

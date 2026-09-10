@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { focusOf, spineBreaks } from "../agenda.svelte";
+import { focusOf, isPast, spineBreaks } from "../agenda.svelte";
 import type { AgendaEvent } from "../types";
 
 function event(summary: string, start: string | null, end: string | null): AgendaEvent {
@@ -55,6 +55,43 @@ describe("focusOf", () => {
 
   it("ignores an event with no times of its own", () => {
     expect(focusOf([event("undated", null, null), midday], at("11:00:00"))).toEqual(new Set([midday]));
+  });
+});
+
+describe("isPast", () => {
+  it("calls an event past once it has ended", () => {
+    expect(isPast(midday, at("13:00:01"))).toBe(true);
+  });
+
+  it("leaves an event under way alone", () => {
+    expect(isPast(midday, at("12:30:00"))).toBe(false);
+  });
+
+  it("leaves one still ahead alone", () => {
+    expect(isPast(evening, at("12:30:00"))).toBe(false);
+  });
+
+  it("never retires an event with no end of its own", () => {
+    expect(isPast(event("undated", null, null), at("23:59:00"))).toBe(false);
+  });
+
+  /*
+   * A bare date is midnight where the panel is, so these are local-to-local. Written with the
+   * `at` helper instead they would carry its fixed offset against a local midnight, and pass
+   * only in the zone that offset happens to name.
+   */
+  it("reads a bare date as local midnight, so an all-day event runs to the end of its day", () => {
+    const allDay = event("all day", "2026-09-08", "2026-09-09");
+    const duringTheDay = new Date(2026, 8, 8, 18, 0, 0);
+
+    expect(isPast(allDay, duringTheDay)).toBe(false);
+  });
+
+  it("retires an all-day event once its own midnight has passed", () => {
+    const allDay = event("all day", "2026-09-08", "2026-09-09");
+    const theNextMorning = new Date(2026, 8, 9, 0, 0, 1);
+
+    expect(isPast(allDay, theNextMorning)).toBe(true);
   });
 });
 

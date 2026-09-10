@@ -1,14 +1,33 @@
 <script lang="ts">
   import { cameraSnapshotUrl } from "../lib/api";
+  import { faceVisibility } from "../lib/cube.svelte";
   import type { Camera } from "../lib/types";
 
   const MS_PER_SECOND = 1000;
 
   let { camera }: { camera: Camera } = $props();
 
+  const visibility = faceVisibility();
+
   let tick = $state(Date.now());
 
+  /*
+   * A frame is only worth fetching while somebody is looking at it, so a camera on a face
+   * turned away asks for nothing: a panel's cameras cost what the face it is showing costs
+   * rather than what every face it could show would. The face stays built, so the frame it
+   * last had is still on it when it comes back — the fetching stops, the picture does not.
+   *
+   * Coming back refreshes immediately rather than waiting out the interval, because the held
+   * frame is exactly as old as the panel has been turned away. The browser keeps showing it
+   * until the new one has decoded, so the swap is a frame changing rather than a gap.
+   */
   $effect(() => {
+    if (!visibility.showing) {
+      return;
+    }
+
+    tick = Date.now();
+
     const timer = window.setInterval(
       () => {
         tick = Date.now();

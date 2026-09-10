@@ -13,6 +13,11 @@ OK = 200
 
 UNCONTROLLABLE_ENTITY = "sensor.example_bin"
 UNKNOWN_CAMERA = "camera.not_configured"
+# Matches a tile of `profiles.example-cameras.faces.left` in the sample config, which no
+# `camera:` block names.
+FACE_CAMERA = "camera.example_back_yard"
+CAMERA_FRAME = b"frame"
+JPEG_CONTENT_TYPE = "image/jpeg"
 OVERRIDE_CSS = ".floorplan__canvas #counter { fill: #555555; }"
 
 # A complete `default` is required of every config, including the ones a test writes to probe
@@ -162,6 +167,21 @@ def test_unconfigured_camera_is_not_reachable(settings):
         response = client.get(f"/api/camera/{UNKNOWN_CAMERA}/snapshot")
 
     assert response.status_code == NOT_FOUND
+
+
+def test_a_camera_only_a_face_names_is_reachable(settings):
+    """A camera face is the other way a camera reaches a panel, and the only way for most."""
+
+    async def snapshot(entity_id: str):
+        return CAMERA_FRAME, JPEG_CONTENT_TYPE
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.rest.camera_snapshot = snapshot
+
+        response = client.get(f"/api/camera/{FACE_CAMERA}/snapshot")
+
+    assert response.status_code == OK
+    assert response.content == CAMERA_FRAME
 
 
 def test_announcement_audio_is_relayed_for_a_watched_speaker(settings):

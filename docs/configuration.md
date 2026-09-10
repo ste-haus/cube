@@ -261,7 +261,9 @@ camera:
   refresh_seconds: 10
 ```
 
-The panel polls stills rather than holding a stream open, which is easier on Home Assistant and avoids showing a half-transferred frame.
+The panel polls stills rather than holding a stream open, which is easier on Home Assistant and avoids showing a half-transferred frame. It polls only while the face the camera is on is the one being looked at, and refreshes the moment the cube turns back to it.
+
+This block is the one camera the dashboard itself draws. A whole face can be given over to cameras instead — see [Camera faces](cameras.md), which take the same block per tile.
 
 ### fuel
 

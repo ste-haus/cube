@@ -27,7 +27,7 @@ Each connected panel reads from its own bounded queue. A panel that stops draini
 
 ## Documentation
 
-`docs/` covers using cube — [setup](docs/setup.md), [configuration](docs/configuration.md), [floorplans](docs/floorplans.md), [panels and profiles](docs/panels.md), [icons](docs/icons.md), and [troubleshooting](docs/troubleshooting.md). What follows here is the shape of the thing.
+`docs/` covers using cube — [setup](docs/setup.md), [configuration](docs/configuration.md), [floorplans](docs/floorplans.md), [panels and profiles](docs/panels.md), [camera faces](docs/cameras.md), [icons](docs/icons.md), and [troubleshooting](docs/troubleshooting.md). What follows here is the shape of the thing.
 
 ## Layout
 
@@ -75,7 +75,7 @@ A profile is a panel's identity — which cube faces it gets, which floorplan le
 
 `default` is the template the others are built from rather than a panel itself: it defines all six faces and names no speaker. Every other profile is a delta against it, or against whichever profile its `inherits` names, so a panel states only what makes it different and a chain can be as long as it is useful. `media_player` is the one field that never inherits, because a panel quietly following another room's speaker is indistinguishable from one that works.
 
-A face is `dashboard`, `blank`, or `custom` — a page from `resources/faces/<page>/`, additive to the built-in ones and needing no rebuild. Config parameterises the cards a face already has; it does not compose them. [Panels and profiles](docs/panels.md) has the whole of it.
+A face is `dashboard`, `blank`, one of the two camera walls — `camera-grid` and `camera-hero` — or `custom`, a page from `resources/faces/<page>/`, additive to the built-in ones and needing no rebuild. Config parameterises the cards a face already has; it does not compose them. A face is built when first turned to and kept, unpainted and with its timers released, so only the face being looked at does any work — a camera on a face turned away holds its last frame and stops fetching, and the dashboard's clock stops ticking. [Panels and profiles](docs/panels.md) has the whole of it.
 
 ### Floorplans
 
@@ -108,7 +108,7 @@ One websocket connection, and four REST paths. Nothing else is ever requested.
 |---|---|---|---|
 | websocket | `/api/websocket` | continuously | `auth`, then one `subscribe_entities` over the allowlist, plus `call_service` per toggle |
 | REST | `/api/calendars/{entity_id}` | one call per configured calendar, every 5 minutes, per panel | merged, filtered, and sorted by the proxy |
-| REST | `/api/camera_proxy/{entity_id}` | once per camera refresh, per panel | a still; this is what the panel actually uses |
+| REST | `/api/camera_proxy/{entity_id}` | once per camera refresh, per panel, and only for cameras on the face being looked at | a still; this is what the panel actually uses |
 | REST | `/api/camera_proxy_stream/{entity_id}` | never, as shipped | MJPEG relay, available but unused by the current panel |
 
 Floorplan drawings and stylesheet overrides are not in that list: they come from `resources/` on disk. Nothing else is ever requested — no state polling, no history, no service or config discovery.

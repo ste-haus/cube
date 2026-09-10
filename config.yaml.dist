@@ -60,6 +60,35 @@ profiles:
     inherits: example-bedroom
     media_player: media_player.example_office_speaker
 
+  # The two camera faces. `options` is read by the renderer named in `content`, and a camera is
+  # either a bare entity id or the same block the `camera:` section below takes.
+  #
+  # `camera-grid` is laid out exactly as written: one row per inner list, read left to right.
+  # `camera-hero` gives `hero` the face and stacks `side` in a column beside it.
+  #
+  # A camera only refreshes while its face is the one being looked at, so a panel pays for the
+  # face it is showing rather than for every face it could show.
+  example-cameras:
+    name: Example Cameras
+    media_player: media_player.example_cameras_speaker
+    faces:
+      left:
+        content: camera-grid
+        options:
+          rows:
+            - [camera.example_front_door, camera.example_driveway]
+            - - entity_id: camera.example_back_yard
+                title: Back Yard
+              - entity_id: camera.example_garage
+                refresh_seconds: 30
+      right:
+        content: camera-hero
+        options:
+          hero: camera.example_front_door
+          side:
+            - camera.example_driveway
+            - camera.example_back_yard
+
 # The panel's palette.
 theme:
   background: "#111111"

@@ -103,24 +103,34 @@ Cycles, a parent that does not exist, and a `floorplan` that was never declared 
 
 ## Faces
 
-A face is `dashboard`, `blank`, or `custom`.
+| `content` | Draws |
+|---|---|
+| `dashboard` | The dashboard: clock, notices, timeline, floorplan, forecast, camera, gauges |
+| `camera-grid` | A grid of cameras, laid out as the config writes it |
+| `camera-hero` | One camera at size, with the rest in a column beside it |
+| `custom` | A page you supply yourself, served from the resources directory |
+| `blank` | Nothing but its own label |
 
 | Field | Meaning |
 |---|---|
 | `content` | Which renderer draws the face |
 | `label` | Shown faintly on a `blank` face, so a rotation is visibly a rotation rather than the screen going dark |
 | `page` | For `custom`: the directory under `faces/` in the resources directory holding its `index.html` |
-| `options` | Handed to the renderer as-is |
+| `options` | Handed to the renderer, which decides what it means |
+
+The two camera faces are what `options` is for — see [Camera faces](cameras.md).
 
 `custom` is a page you supply yourself — see [Custom faces](custom-faces.md). It is additive: the built-in faces stay where they are, and nothing is rebuilt to add one. A `page` that is not on disk when the process starts falls back to a labelled blank, with a line in the log saying where it looked.
 
-Which cards a face renders is fixed. `options` lets you configure the cards a face already has; it does not add or remove them. Nothing reads it yet, so it is the shape of the seam rather than a feature to reach for today.
+Which cards a face renders is fixed. `options` lets you configure the cards a face already has; it does not add or remove them. A face whose options its renderer cannot draw with is refused when the config loads, naming the face and the profile.
 
 ## The cube
 
 Swipe, or press an arrow key, to turn it. The map of dots in the corner shows which face is showing and jumps straight to any of them.
 
 The panel returns to the front face after two minutes untouched, so a panel left mid-rotation rights itself.
+
+A face is built the first time you turn to it and kept from then on, so coming back to one finds it as you left it — the camera still showing its last frame, the floorplan not fetched again. A face you have never turned to is never built. Keeping one costs the markup and nothing else: it is not painted, its animations do not run, and its cards release their timers, so only the face being looked at is doing any work.
 
 Rotation animates two faces at once — the outgoing one pivoting away, the incoming one pivoting in. It is done this way rather than as a single spinning box because a real box needs a depth of half its width to turn one way and half its height to turn the other, and a screen is rarely square.
 

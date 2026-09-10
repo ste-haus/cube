@@ -11,7 +11,7 @@ analyser without `Access-Control-Allow-Origin`, which Home Assistant does not se
 puts the audio on the same origin as the page drawing it, which removes the question rather
 than answering it, and keeps the signed media address Home Assistant published on this side.
 
-Only the camera, the floorplans, and the speakers named in the dashboard config are reachable.
+Only the cameras, the floorplans, and the speakers named in the dashboard config are reachable.
 """
 
 import logging
@@ -183,7 +183,13 @@ def _within_resources(path: Path, hub) -> bool:
 
 
 def _require_configured_camera(entity_id: str, hub) -> None:
-    if hub.dashboard.camera is None or hub.dashboard.camera.entity_id != entity_id:
+    """Resolve whether a frame may be fetched at all, from the config rather than the request.
+
+    Cameras reach a panel two ways — the dashboard's camera card, and the camera faces — so the
+    set is the union of both. Anything not named in `config.yaml` is unreachable through here.
+    """
+
+    if entity_id not in hub.dashboard.camera_entities:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=UNKNOWN_CAMERA_DETAIL)
 
 
