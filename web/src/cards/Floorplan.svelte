@@ -43,6 +43,10 @@
   /** Bins report where they are rather than whether they are on. */
   const BIN_STATES = new Set(["home", "away", "out", "in"]);
 
+  /** Carries a drawing's own placement into the spin, which would otherwise replace it. */
+  const OWN_TRANSFORM_PROPERTY = "--floorplan-own-transform";
+  const NO_TRANSFORM = "translate(0)";
+
   const BRIGHTNESS_MAX = 255;
   const LEVEL_RESET_MS = 60 * 1000;
 
@@ -113,6 +117,7 @@
           for (const element of root.querySelectorAll(`#${CSS.escape(entityId)}`)) {
             element.setAttribute("class", classFor(group, entityId));
             paintLight(element as SVGElement, group, entityId);
+            keepPlacement(element as SVGGraphicsElement, group);
           }
         }
       }
@@ -140,6 +145,21 @@
     return `${prefix} ${state && ACTIVE_STATES.has(state) ? ACTIVE : INACTIVE}`;
   }
 
+  /** A spinning fan turns about where the drawing put it, rather than jumping back to the origin. */
+  function keepPlacement(element: SVGGraphicsElement, group: string): void {
+    if (group !== "fans") {
+      return;
+    }
+
+    // Copied as a matrix rather than as the attribute's own text: SVG lets a transform carry
+    // unitless user units, which the CSS transform property rejects, and one invalid function
+    // drops the whole declaration.
+    const own = element.transform?.baseVal.consolidate()?.matrix;
+    const placement = own ? `matrix(${own.a}, ${own.b}, ${own.c}, ${own.d}, ${own.e}, ${own.f})` : NO_TRANSFORM;
+
+    element.style.setProperty(OWN_TRANSFORM_PROPERTY, placement);
+  }
+
   /** Lights carry their brightness and color through to the drawing. */
   function paintLight(element: SVGElement, group: string, entityId: string): void {
     if (group !== "lights") {
@@ -159,15 +179,14 @@
       return;
     }
 
-    const target = (event.target as Element | null)?.closest("[id]");
-    const entityId = target?.id;
-    if (!entityId) {
-      return;
-    }
+    const controllable = new Set([...CONTROLLABLE_GROUPS].flatMap((group) => plan.groups[group] ?? []));
 
-    for (const group of CONTROLLABLE_GROUPS) {
-      if (plan.groups[group]?.includes(entityId)) {
-        toggle(entityId);
+    // Walked up rather than taken from the nearest id, because a drawing is free to give the
+    // parts of a control ids of its own — a fan is a group of blades over a hit area, and the
+    // entity is on the group, not on whichever piece the finger landed.
+    for (let element = event.target as Element | null; element; element = element.parentElement) {
+      if (controllable.has(element.id)) {
+        toggle(element.id);
 
         return;
       }
