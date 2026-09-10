@@ -258,12 +258,21 @@ weather:
 camera:
   entity_id: camera.street
   title: Traffic
-  refresh_seconds: 10
+  polling_interval: 60
 ```
 
-The panel polls stills rather than holding a stream open, which is easier on Home Assistant and avoids showing a half-transferred frame. It polls only while the face the camera is on is the one being looked at, and refreshes the moment the cube turns back to it.
+The panel polls stills rather than holding a stream open, which is easier on Home Assistant and avoids showing a half-transferred frame. It polls only while the face the camera is on is the one being looked at, and refreshes the moment the cube turns back to it. `polling_interval` defaults to sixty seconds, and each still is asked for only once the last has arrived, so a slow camera cannot pile requests up behind itself.
 
-This block is the one camera the dashboard itself draws. A whole face can be given over to cameras instead — see [Camera faces](cameras.md), which take the same block per tile.
+A camera can play live video from go2rtc instead, with `stream_type: go2rtc` — see [Camera faces](cameras.md#live-video). This block is the one camera the dashboard itself draws; a whole face can be given over to cameras, and [Camera faces](cameras.md) take the same block per tile.
+
+### go2rtc
+
+```yaml
+go2rtc:
+  url: http://go2rtc.example:1984
+```
+
+Where cameras with `stream_type: go2rtc` get their video. Needed only if one does, and the load refuses a go2rtc camera without it. The panel connects to it directly, so it has to be reachable from the tablets and allow their origin — see [Live video](cameras.md#live-video).
 
 ### fuel
 

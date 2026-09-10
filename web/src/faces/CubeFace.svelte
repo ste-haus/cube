@@ -5,6 +5,7 @@
   import CustomFace from "./CustomFace.svelte";
   import Dashboard from "./Dashboard.svelte";
   import { provideVisibility } from "../lib/cube.svelte";
+  import { provideGo2rtc } from "../lib/go2rtc";
   import type { CameraGridOptions, CameraHeroOptions, DashboardConfig, Face } from "../lib/types";
 
   /*
@@ -45,6 +46,13 @@
   provideVisibility({
     get showing() {
       return showing;
+    },
+  });
+
+  // Where a live camera streams from, for whichever card on this face has one.
+  provideGo2rtc({
+    get url() {
+      return config.go2rtc?.url ?? null;
     },
   });
 
