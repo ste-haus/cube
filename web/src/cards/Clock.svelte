@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { faceVisibility } from "../lib/cube.svelte";
   import { strftime } from "../lib/format";
   import type { Clock } from "../lib/types";
 
@@ -6,9 +7,20 @@
 
   let { clock }: { clock: Clock } = $props();
 
+  const visibility = faceVisibility();
+
   let now = $state(new Date());
 
+  /* A clock nobody is looking at does not need to be right, and a second's tick is the most
+   * frequent thing the panel does. Reading the time again on the way back is what stops the
+   * face coming up showing the minute it was turned away on. */
   $effect(() => {
+    if (!visibility.showing) {
+      return;
+    }
+
+    now = new Date();
+
     const timer = window.setInterval(() => {
       now = new Date();
     }, TICK_MS);

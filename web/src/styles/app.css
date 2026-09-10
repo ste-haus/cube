@@ -35,6 +35,11 @@
 
   --panel-gap: 1.6vh;
   --panel-padding: 0.5vw;
+  /* A face given over to cameras is tighter than the dashboard: the frames are the content,
+   * and every gap between them is a frame's worth of wall not being shown. */
+  --camera-wall-padding: 0.5rem;
+  --camera-tile-gap: 0.5rem;
+  --camera-hero-side-width: 24%;
   /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
   --section-indent: 0.6rem;
 
@@ -51,6 +56,7 @@
   --weather-summary-size: 1.28rem;
   --gauge-value-size: 3.2rem;
   --gauge-name-size: 1.06rem;
+  --camera-title-size: 1.06rem;
 }
 
 * {
@@ -197,6 +203,74 @@ body {
   font-size: var(--title-size);
   text-transform: uppercase;
   letter-spacing: 0.5em;
+}
+
+/*
+ * A wall of cameras, laid out as the config writes it: one row per inner list. Rows share the
+ * height and tiles share their row's width, so a ragged last row spreads out rather than
+ * leaving a hole where the missing camera would have been.
+ */
+.camera-grid {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--camera-wall-padding);
+  gap: var(--camera-tile-gap);
+}
+
+.camera-grid__row {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  gap: var(--camera-tile-gap);
+}
+
+.camera-grid__row > .camera {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* One camera at size, with the rest kept in view down a column beside it. The column is the
+ * same share of the width however many are in it, so the main frame is the size it is on
+ * every panel drawing this face rather than a size derived from how many cameras there are. */
+.camera-hero {
+  display: grid;
+  height: 100%;
+  padding: var(--camera-wall-padding);
+  gap: var(--camera-tile-gap);
+  grid-template-columns: 1fr var(--camera-hero-side-width);
+}
+
+/* Nothing beside it, so the frame takes the face rather than reserving an empty column. */
+.camera-hero--alone {
+  grid-template-columns: 1fr;
+}
+
+.camera-hero > .camera {
+  min-width: 0;
+}
+
+.camera-hero__side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: var(--camera-tile-gap);
+}
+
+.camera-hero__side > .camera {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* On these faces a title names one frame among several rather than heading a section of the
+ * dashboard, so it gives up the rule and most of the size a section heading carries. */
+.camera-grid .panel-title,
+.camera-hero .panel-title {
+  margin: 0 0 0.35em 0;
+  padding: 0;
+  border-bottom: 0;
+  color: var(--color-muted);
+  font-size: var(--camera-title-size);
 }
 
 /* A face served from the resources directory, given the whole face and no chrome of its own. */

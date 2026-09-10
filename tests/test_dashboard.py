@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from cube.dashboard import (
     CUBE_FACES,
     DEFAULT_PROFILE_KEY,
+    Camera,
     Dashboard,
     ThresholdBand,
     ThresholdScale,
@@ -214,3 +215,97 @@ def test_a_custom_face_survives_when_its_page_is_on_disk(tmp_path):
     drop_missing_custom_faces(dashboard, tmp_path)
 
     assert dashboard.profiles["pb"].faces["front"].content == "custom"
+
+
+FRONT_DOOR = "camera.front_door"
+DRIVEWAY = "camera.driveway"
+BACK_YARD = "camera.back_yard"
+GARAGE = "camera.garage"
+
+
+def camera_grid(rows: list) -> dict:
+    return profiles(gb={"faces": {"left": {"content": "camera-grid", "options": {"rows": rows}}}})
+
+
+def camera_hero(**options) -> dict:
+    return profiles(gb={"faces": {"left": {"content": "camera-hero", "options": options}}})
+
+
+def test_a_camera_grid_keeps_the_shape_the_config_wrote():
+    dashboard = Dashboard.model_validate(camera_grid([[FRONT_DOOR, DRIVEWAY], [BACK_YARD]]))
+    rows = dashboard.profiles["gb"].faces["left"].options["rows"]
+
+    assert [[camera["entity_id"] for camera in row] for row in rows] == [[FRONT_DOOR, DRIVEWAY], [BACK_YARD]]
+
+
+def test_a_camera_named_on_its_own_arrives_as_a_whole_camera():
+    dashboard = Dashboard.model_validate(camera_grid([[FRONT_DOOR]]))
+    camera = dashboard.profiles["gb"].faces["left"].options["rows"][0][0]
+
+    assert camera["entity_id"] == FRONT_DOOR
+    assert camera["title"] is None
+    assert camera["refresh_seconds"] == Camera(entity_id=FRONT_DOOR).refresh_seconds
+
+
+def test_a_camera_may_still_be_written_out_in_full():
+    title = "Back Yard"
+    refresh = 30.0
+    dashboard = Dashboard.model_validate(
+        camera_grid([[{"entity_id": BACK_YARD, "title": title, "refresh_seconds": refresh}]]),
+    )
+    camera = dashboard.profiles["gb"].faces["left"].options["rows"][0][0]
+
+    assert (camera["title"], camera["refresh_seconds"]) == (title, refresh)
+
+
+def test_a_camera_hero_takes_its_hero_and_the_column_beside_it():
+    dashboard = Dashboard.model_validate(camera_hero(hero=FRONT_DOOR, side=[DRIVEWAY, GARAGE]))
+    options = dashboard.profiles["gb"].faces["left"].options
+
+    assert options["hero"]["entity_id"] == FRONT_DOOR
+    assert [camera["entity_id"] for camera in options["side"]] == [DRIVEWAY, GARAGE]
+
+
+def test_a_camera_hero_may_stand_alone():
+    dashboard = Dashboard.model_validate(camera_hero(hero=FRONT_DOOR))
+
+    assert dashboard.profiles["gb"].faces["left"].options["side"] == []
+
+
+def test_every_camera_a_face_draws_is_reachable_and_subscribed():
+    dashboard = Dashboard.model_validate(camera_grid([[FRONT_DOOR, DRIVEWAY], [BACK_YARD, GARAGE]]))
+    cameras = {FRONT_DOOR, DRIVEWAY, BACK_YARD, GARAGE}
+
+    assert cameras <= dashboard.camera_entities
+    assert cameras <= dashboard.allowed_entities
+
+
+def test_the_dashboard_camera_stays_reachable_alongside_the_faces():
+    document = camera_grid([[FRONT_DOOR]])
+    document["camera"] = {"entity_id": DRIVEWAY}
+
+    dashboard = Dashboard.model_validate(document)
+
+    assert dashboard.camera_entities == frozenset({FRONT_DOOR, DRIVEWAY})
+
+
+def test_a_face_the_config_never_names_reaches_no_camera():
+    dashboard = Dashboard.model_validate(profiles(gb={"media_player": SPEAKER}))
+
+    assert dashboard.camera_entities == frozenset()
+    assert dashboard.profiles["gb"].faces["left"].cameras == []
+
+
+def test_a_camera_grid_must_hold_a_camera():
+    with pytest.raises(ValidationError, match="options it cannot draw with"):
+        Dashboard.model_validate(camera_grid([]))
+
+
+def test_a_camera_grid_row_must_hold_a_camera():
+    with pytest.raises(ValidationError, match="options it cannot draw with"):
+        Dashboard.model_validate(camera_grid([[]]))
+
+
+def test_a_camera_hero_must_name_the_camera_it_leads_with():
+    with pytest.raises(ValidationError, match="options it cannot draw with"):
+        Dashboard.model_validate(camera_hero(side=[DRIVEWAY]))

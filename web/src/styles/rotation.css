@@ -27,6 +27,14 @@
   z-index: 1;
 }
 
+/* A face that has been turned away from keeps everything it drew, and stops costing anything
+ * to keep it: `display: none` is what takes it out of layout and paint, and what stops the CSS
+ * animations on it — the marquee, the scrolling timeline — from running to an empty room. The
+ * timers its cards hold are released separately, by the cards themselves. */
+.cube-face--unpainted {
+  display: none;
+}
+
 .rotate-out-left {
   transform-origin: 100% 50%;
   animation: rotate-cube-left-out var(--rotation-duration) both ease-in;

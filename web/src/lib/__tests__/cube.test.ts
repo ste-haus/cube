@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ADJACENCY, FACES, swipeable, type Direction, type FaceName } from "../cube.svelte";
+import { ADJACENCY, Cube, FACES, swipeable, type Direction, type FaceName } from "../cube.svelte";
 
 const DIRECTIONS: Direction[] = ["up", "down", "left", "right"];
 
@@ -174,5 +174,62 @@ describe("swipeable", () => {
     node.dispatch("pointerup", pointer(400, 300));
 
     expect(swipes).toEqual([]);
+  });
+});
+
+/**
+ * The timers the cube sets for itself: the one that ends a rotation, and the one that returns
+ * an untouched panel to the front. Nothing here waits on either, so holding the handle and
+ * doing nothing with it is the whole of what the class needs from a browser.
+ */
+function fakeWindow() {
+  return { setTimeout: () => 0, clearTimeout: () => undefined };
+}
+
+describe("which faces are built", () => {
+  beforeEach(() => vi.stubGlobal("window", fakeWindow()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("starts with only the face it opens on", () => {
+    expect(new Cube().built).toEqual(["front"]);
+  });
+
+  it("builds a face the first time the cube turns to it", () => {
+    const cube = new Cube();
+    cube.rotate("left");
+
+    expect(cube.isBuilt(cube.current)).toBe(true);
+  });
+
+  it("builds a face the map jumps straight to", () => {
+    const cube = new Cube();
+    cube.show("down");
+
+    expect(cube.isBuilt("down")).toBe(true);
+  });
+
+  it("keeps a face built once it has been turned away from", () => {
+    const cube = new Cube();
+    cube.show("left");
+    cube.show("front");
+
+    expect(cube.isBuilt("left")).toBe(true);
+    expect(cube.isVisible("left")).toBe(false);
+  });
+
+  it("builds a face once however often it is returned to", () => {
+    const cube = new Cube();
+    cube.show("back");
+    cube.show("front");
+    cube.show("back");
+
+    expect(cube.built.filter((face) => face === "back")).toHaveLength(1);
+  });
+
+  it("never builds a face nothing has turned to", () => {
+    const cube = new Cube();
+    cube.show("left");
+
+    expect(cube.isBuilt("up")).toBe(false);
   });
 });

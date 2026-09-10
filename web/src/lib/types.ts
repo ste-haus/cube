@@ -129,6 +129,17 @@ export interface Visualizer {
   content_marker: string;
 }
 
+/** A grid of cameras, one inner list per row, each row read left to right. */
+export interface CameraGridOptions {
+  rows: Camera[][];
+}
+
+/** One camera at size, with the rest stacked in a column beside it. */
+export interface CameraHeroOptions {
+  hero: Camera;
+  side: Camera[];
+}
+
 export interface Face {
   content: string;
   label: string;

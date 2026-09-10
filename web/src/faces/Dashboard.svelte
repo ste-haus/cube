@@ -11,11 +11,21 @@
   import Visualizer from "../cards/Visualizer.svelte";
   import Weather from "../cards/Weather.svelte";
   import { agenda } from "../lib/agenda.svelte";
+  import { faceVisibility } from "../lib/cube.svelte";
   import type { DashboardConfig } from "../lib/types";
 
   let { config }: { config: DashboardConfig } = $props();
 
+  const visibility = faceVisibility();
+
+  /* Calendars are fetched per panel, so a face turned away should not be asking for them. The
+   * poll loads once on the way back, which is sooner than the interval would have come round
+   * anyway. */
   $effect(() => {
+    if (!visibility.showing) {
+      return;
+    }
+
     agenda.start();
 
     return () => agenda.stop();
@@ -59,6 +69,9 @@
   </footer>
 </div>
 
-{#if config.visualizer}
+<!-- The overlay is a picture of a sound, and there is nobody in front of it to see one while
+     the cube is turned elsewhere. Gating it here keeps a hidden face from pulling the
+     announcement audio down and animating it to a screen that is not being painted. -->
+{#if config.visualizer && visibility.showing}
   <Visualizer visualizer={config.visualizer} mediaPlayer={config.profile.media_player} />
 {/if}
