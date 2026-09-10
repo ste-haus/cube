@@ -39,11 +39,7 @@ class Agenda {
 
   /** Whether an event has finished, and so should read as spent rather than upcoming. */
   isPast(event: AgendaEvent): boolean {
-    if (!event.end) {
-      return false;
-    }
-
-    return moment(event.end) < this.now.getTime();
+    return isPast(event, this.now);
   }
 
   start(): void {
@@ -79,6 +75,19 @@ class Agenda {
         // The day's events are worth less than the panel staying up; the next tick tries again.
       });
   }
+}
+
+/**
+ * Whether an event has finished, and so should read as spent rather than upcoming.
+ *
+ * An event with no end never has: an undated entry is not something the day gets past.
+ */
+export function isPast(event: AgendaEvent, now: Date): boolean {
+  if (!event.end) {
+    return false;
+  }
+
+  return moment(event.end) < now.getTime();
 }
 
 /**
