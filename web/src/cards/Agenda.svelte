@@ -307,16 +307,12 @@
 
   .agenda__progress {
     --meter-height: 0.35em;
-    /* Glyphs do not sit in the middle of their line box: the gap between a face's ascent and
-     * its descent puts the x-height middle below the box's, by half the difference between
-     * ascent, descent and x-height — about 0.08 of the type size in Roboto. Text beside text
-     * hides this, because both sides are offset alike. A meter has no glyphs, so centring it
-     * in the row leaves it riding above the titles it sits between; this drops it onto their
-     * optical centre. */
-    --optical-centre: 0.0775;
 
+    /* Centred in the row, which is where the times it stands in for sit: their ink lands
+     * within a fifth of a pixel of the row's middle. Aligning to the titles instead would
+     * read better against the one title beside it and worse against the column of times it
+     * runs down, and the column is what the eye follows. */
     display: block;
-    transform: translateY(calc(var(--agenda-size) * var(--optical-centre)));
     /* Sized by `width`, never by a flex basis or an intrinsic minimum, so the meter stays
      * inside the gutter it is centred in. Titles sit hard against the gutter on both sides,
      * so the slack left over here is the only margin between the two. */
