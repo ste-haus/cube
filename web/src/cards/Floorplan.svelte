@@ -1,6 +1,7 @@
 <script lang="ts">
   import { floorplanStylesUrl, floorplanUrl, toggle } from "../lib/api";
   import { swipeable, type Direction } from "../lib/cube.svelte";
+  import { nextLevel } from "../lib/levels";
   import { keepTrying } from "../lib/retry";
   import { ha } from "../lib/state.svelte";
   import type { Floorplan } from "../lib/types";
@@ -194,10 +195,7 @@
   }
 
   function step(direction: Direction): void {
-    const index = levels.indexOf(currentLevel);
-    const next = direction === "left" ? index + 1 : index - 1;
-
-    showLevel(levels[(next + levels.length) % levels.length]);
+    showLevel(nextLevel(levels, currentLevel, direction));
   }
 
   function showLevel(name: string): void {
@@ -285,6 +283,10 @@
     gap: 0.7em;
     /* Roomy enough to be a target on a wall panel, not just a marker. */
     padding: 1em 1.4em;
+    /* Centred on the panel rather than on the column the floorplan occupies, which is what the
+     * announcement below them is centred on. Shifted rather than repositioned, so the dots
+     * keep the vertical place in the card's flow that they already had. */
+    transform: translateX(calc(-1 * var(--centre-column-drift)));
   }
 
   .floorplan__level {

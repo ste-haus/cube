@@ -1,6 +1,7 @@
 /*
- * Roboto, the face Home Assistant's own dashboards use. Bundled rather than fetched, because a
- * wall panel should render correctly with no route off the local network.
+ * Roboto, the face Home Assistant's own dashboards use, and its monospaced sibling for the
+ * announcement. Bundled rather than fetched, because a wall panel should render correctly with
+ * no route off the local network.
  */
 
 @font-face {
@@ -33,4 +34,14 @@
   font-style: normal;
   font-display: block;
   src: url("../fonts/Roboto-Medium.woff2") format("woff2");
+}
+
+/* Latin only, and only the weight the announcement is set in — it is one line of text, not a
+ * reason to ship four more faces. */
+@font-face {
+  font-family: "Roboto Mono";
+  font-weight: 300;
+  font-style: normal;
+  font-display: block;
+  src: url("../fonts/RobotoMono-Light.woff2") format("woff2");
 }

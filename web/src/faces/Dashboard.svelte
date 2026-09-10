@@ -62,11 +62,9 @@
     <Gauges row={config.fuel} />
   </div>
 
-  <footer class="dashboard__footer">
-    {#if config.transcript}
-      <Transcript transcript={config.transcript} />
-    {/if}
-  </footer>
+  {#if config.transcript}
+    <Transcript transcript={config.transcript} />
+  {/if}
 </div>
 
 <!-- The overlay is a picture of a sound, and there is nobody in front of it to see one while

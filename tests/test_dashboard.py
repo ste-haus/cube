@@ -309,3 +309,13 @@ def test_a_camera_grid_row_must_hold_a_camera():
 def test_a_camera_hero_must_name_the_camera_it_leads_with():
     with pytest.raises(ValidationError, match="options it cannot draw with"):
         Dashboard.model_validate(camera_hero(side=[DRIVEWAY]))
+
+
+def test_a_face_carries_a_label_strip_unless_it_says_otherwise():
+    dashboard = Dashboard.model_validate(
+        profiles(gb={"faces": {"front": {"content": "dashboard", "label_strip": False}}}),
+    )
+    faces = dashboard.profiles["gb"].faces
+
+    assert faces["front"].label_strip is False
+    assert faces["back"].label_strip is True

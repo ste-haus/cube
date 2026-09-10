@@ -35,11 +35,57 @@
 
   --panel-gap: 1.6vh;
   --panel-padding: 0.5vw;
+  /*
+   * How far the centre column's midpoint falls right of the panel's.
+   *
+   * The rails are 35/35/30, so the middle one is centred on 52.5% of the space between the
+   * padding rather than on 50% of the panel. Anything centred in that column is therefore not
+   * centred on the wall, which goes unnoticed until it has to line up with something that is —
+   * the floorplan's level dots sit directly above the announcement, which the footer centres
+   * across the full width.
+   *
+   * Derived rather than measured: column centre is `padding + gap + 0.525 * (100vw - 2*padding
+   * - 2*gap)`, and this is that less 50vw. Keep the 2.5 and the 0.05s in step with
+   * `grid-template-columns` on `.dashboard` if the rails are ever reweighted.
+   */
+  --centre-column-drift: calc(2.5vw - 0.05 * var(--panel-padding) - 0.05 * var(--panel-gap));
   /* A face given over to cameras is tighter than the dashboard: the frames are the content,
    * and every gap between them is a frame's worth of wall not being shown. */
   --camera-wall-padding: 0.5rem;
   --camera-tile-gap: 0.5rem;
   --camera-hero-side-width: 24%;
+  /* The strip naming a face up its left edge. Wide enough for the type and its rule, and no
+   * wider — every millimetre of it is taken off the face it is labelling. */
+  --label-strip-width: 2.2rem;
+  /* How far the name sits up off the bottom edge. */
+  --label-strip-lift: 5vh;
+  /* How far the announcement stands off the bottom edge. */
+  --transcript-lift: 2.5vh;
+  /* How wide the announcement is allowed to run before it wraps, and how many rows it may wrap
+   * to before what is left of it is an ellipsis. Nearly all of them fit on one. */
+  --transcript-max-width: 66vw;
+  --transcript-lines: 3;
+  --transcript-line-height: 1.45;
+  --transcript-padding-block: calc(var(--transcript-size) * 0.32);
+  --transcript-padding-inline: calc(var(--transcript-size) * 0.7);
+  --transcript-radius: calc(var(--transcript-size) * 0.28);
+  --transcript-row-height: calc(var(--transcript-size) * var(--transcript-line-height));
+  --transcript-frame-height: calc(var(--transcript-row-height) + 2 * var(--transcript-padding-block));
+  /*
+   * Where a one-row announcement's middle falls above the bottom edge of the panel. The face
+   * map is hung off this, so the dots and the line they sit beside share a horizon.
+   */
+  --announcement-axis: calc(
+    var(--panel-padding) + var(--transcript-lift) + var(--transcript-frame-height) / 2
+  );
+
+  /* The map of faces, and the arithmetic for how tall a grid of them comes out. */
+  --face-map-cell: 7px;
+  --face-map-gap: 5px;
+  --face-map-rows: 3;
+  --face-map-height: calc(
+    var(--face-map-cell) * var(--face-map-rows) + var(--face-map-gap) * (var(--face-map-rows) - 1)
+  );
   /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
   --section-indent: 0.6rem;
 
@@ -57,6 +103,8 @@
   --gauge-value-size: 3.2rem;
   --gauge-name-size: 1.06rem;
   --camera-title-size: 1.06rem;
+  --label-strip-size: 1.15rem;
+  --transcript-size: 1.3rem;
 }
 
 * {
@@ -105,19 +153,23 @@ body {
 
 /*
  * The dashboard grid, carried over from the layout this replaces: a tall centre column
- * flanked by a status rail and a weather rail, with a full-width header and footer.
+ * flanked by a status rail and a weather rail, under a full-width header.
+ *
+ * The announcement is not in it. It comes and goes, and a row that is there only sometimes is
+ * a panel that rearranges itself around whether anyone has spoken lately, so it is positioned
+ * against this rather than laid out by it. Hence `relative`.
  */
 .dashboard {
+  position: relative;
   display: grid;
   height: 100%;
   padding: var(--panel-padding);
   gap: var(--panel-gap);
   grid-template-columns: 35fr 35fr 30fr;
-  grid-template-rows: minmax(0, 34px) 1fr auto;
+  grid-template-rows: minmax(0, 34px) 1fr;
   grid-template-areas:
     "left header header"
-    "left center right"
-    "footer footer footer";
+    "left center right";
 }
 
 .dashboard__header {
@@ -135,10 +187,6 @@ body {
 }
 .dashboard__right {
   grid-area: right;
-  min-height: 0;
-}
-.dashboard__footer {
-  grid-area: footer;
   min-height: 0;
 }
 
@@ -173,8 +221,7 @@ body {
       "left"
       "center"
       "header"
-      "right"
-      "footer";
+      "right";
   }
 }
 
@@ -192,6 +239,47 @@ body {
 
 .panel-title--right {
   text-align: right;
+}
+
+/*
+ * A face and the strip that names it, side by side. The strip takes its width off the face
+ * rather than sitting over it: a camera with a caption across its corner is a camera with a
+ * corner you cannot see.
+ */
+.face-body {
+  display: flex;
+  height: 100%;
+}
+
+.face-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+}
+
+.face-label {
+  flex: 0 0 var(--label-strip-width);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Sits the name up off the bottom edge rather than hard against it. */
+  padding-bottom: var(--label-strip-lift);
+  border-right: 1px solid var(--color-faint);
+  overflow: hidden;
+}
+
+.face-label__text {
+  /* `vertical-rl` lays the name down the strip and the half turn is what makes it read upward
+   * instead. `sideways-lr` says the same thing in one declaration and is not something to rely
+   * on in the WebView these panels run. */
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  color: var(--color-dim);
+  font-size: var(--label-strip-size);
+  font-weight: var(--weight-light);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
 }
 
 .blank-face {
@@ -228,6 +316,15 @@ body {
 .camera-grid__row > .camera {
   flex: 1 1 0;
   min-width: 0;
+}
+
+/* A face of cameras is nothing but frames, so a frame that does not fill its tile leaves its
+ * slack evenly above and below rather than all of it underneath. The dashboard's own camera
+ * keeps its top edge: there it is one card in a column, and giving up the bottom is what keeps
+ * it from pushing the gauges off. */
+.camera-grid,
+.camera-hero {
+  --camera-anchor: center;
 }
 
 /* One camera at size, with the rest kept in view down a column beside it. The column is the
@@ -287,17 +384,22 @@ body {
  * still says which way the faces sit. */
 .face-map {
   position: fixed;
-  left: 1vw;
-  bottom: 1vh;
+  /* Clear of the column a label strip occupies, on every face rather than only the ones that
+   * have one. The dots are a fixed landmark: a panel you have to re-find them on each time it
+   * turns is worse than a few millimetres of margin the strip never uses. */
+  left: calc(1vw + var(--label-strip-width));
+  /* Hung so the middle of the dots sits on the middle of a one-row announcement, rather than
+   * on a margin of its own. The two share the bottom of the panel and should share a line. */
+  bottom: calc(var(--announcement-axis) - var(--face-map-height) / 2);
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(4, 7px);
-  gap: 5px;
+  grid-template-columns: repeat(4, var(--face-map-cell));
+  gap: var(--face-map-gap);
 }
 
 .face-map__cell {
-  width: 7px;
-  height: 7px;
+  width: var(--face-map-cell);
+  height: var(--face-map-cell);
   padding: 0;
   border: 0;
   border-radius: 50%;

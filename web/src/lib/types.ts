@@ -112,8 +112,7 @@ export interface Camera {
 
 export interface Transcript {
   entity_id: string;
-  characters: number;
-  seconds: number;
+  syllables_per_second: number;
 }
 
 export interface Toggle {
@@ -143,6 +142,7 @@ export interface CameraHeroOptions {
 export interface Face {
   content: string;
   label: string;
+  label_strip: boolean;
   page: string | null;
   options: Record<string, unknown>;
 }

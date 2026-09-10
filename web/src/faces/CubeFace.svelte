@@ -52,18 +52,30 @@
    * already refused a face whose options that renderer could not draw with. */
   const gridOptions = $derived(face.options as unknown as CameraGridOptions);
   const heroOptions = $derived(face.options as unknown as CameraHeroOptions);
+
+  const label = $derived(face.label || name);
 </script>
 
 <div class="cube-face {animation}" class:cube-face--unpainted={!painted}>
-  {#if face.content === DASHBOARD_CONTENT}
-    <Dashboard {config} />
-  {:else if face.content === CUSTOM_CONTENT && face.page}
-    <CustomFace page={face.page} label={face.label || name} />
-  {:else if face.content === CAMERA_GRID_CONTENT}
-    <CameraGrid options={gridOptions} />
-  {:else if face.content === CAMERA_HERO_CONTENT}
-    <CameraHero options={heroOptions} />
-  {:else}
-    <Blank label={face.label || name} />
-  {/if}
+  <div class="face-body">
+    {#if face.label_strip}
+      <div class="face-label">
+        <span class="face-label__text">{label}</span>
+      </div>
+    {/if}
+
+    <div class="face-content">
+      {#if face.content === DASHBOARD_CONTENT}
+        <Dashboard {config} />
+      {:else if face.content === CUSTOM_CONTENT && face.page}
+        <CustomFace page={face.page} {label} />
+      {:else if face.content === CAMERA_GRID_CONTENT}
+        <CameraGrid options={gridOptions} />
+      {:else if face.content === CAMERA_HERO_CONTENT}
+        <CameraHero options={heroOptions} />
+      {:else}
+        <Blank {label} named={!face.label_strip} />
+      {/if}
+    </div>
+  </div>
 </div>

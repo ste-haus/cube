@@ -107,3 +107,97 @@ export function eventProgress(start: string | null, end: string | null, now: Dat
 
   return ((at - from) / (to - from)) * PERCENT;
 }
+
+/*
+ * A syllable is the unit speech actually spends time in, so it is what the reveal is paced
+ * against. Counting vowel groups is a serviceable way to find them without a dictionary —
+ * "a" has one, "announcement" has four — and it is wrong in the direction that does not
+ * matter, because nothing here has to agree with the voice to the word.
+ */
+const VOWEL_GROUP = /[aeiouy]+/gi;
+const WORDS_AND_GAPS = /(\s+)/;
+const ONLY_WHITESPACE = /^\s+$/;
+
+const MINIMUM_SYLLABLES = 1;
+
+/** A gap between words is a beat of its own, and a short one. */
+const SPACE_BEATS = 0.3;
+
+/*
+ * What a mark of punctuation is worth on top of the word it ends, in syllables. Speech slows at
+ * a comma and stops at a full stop. Announcements often arrive with no punctuation at all,
+ * which is why this only ever adds to a pace the syllables have already set.
+ */
+const DWELL: Record<string, number> = {
+  ",": 0.5,
+  ";": 0.7,
+  ":": 0.7,
+  "—": 0.5,
+  ".": 1,
+  "!": 1,
+  "?": 1,
+};
+
+function syllablesIn(word: string): number {
+  return word.match(VOWEL_GROUP)?.length || MINIMUM_SYLLABLES;
+}
+
+/**
+ * What each character of a line is worth, in syllables.
+ *
+ * A word's syllables are shared out across its letters, so a long word takes longer than a
+ * short one but not in proportion to how it is spelled — which is the difference between
+ * reading and spooling.
+ */
+function beatsPerCharacter(text: string): number[] {
+  const beats: number[] = [];
+
+  for (const chunk of text.split(WORDS_AND_GAPS)) {
+    if (chunk === "") {
+      continue;
+    }
+
+    if (ONLY_WHITESPACE.test(chunk)) {
+      beats.push(...[...chunk].map(() => SPACE_BEATS));
+      continue;
+    }
+
+    const share = syllablesIn(chunk) / chunk.length;
+    beats.push(...[...chunk].map((character) => share + (DWELL[character] ?? 0)));
+  }
+
+  return beats;
+}
+
+/**
+ * When each character of a line is due, in beats from the start of the reveal.
+ *
+ * Cumulative, so whoever is drawing it reveals however many have come due by the moment they
+ * ask. Beats rather than seconds, so the pace stays the caller's to set.
+ *
+ * This is counted out here rather than handed to CSS as a timing function because a line long
+ * enough to wrap cannot be revealed by growing a box: the second line starts at the left
+ * again, and no amount of width says so.
+ */
+export function revealSchedule(text: string): number[] {
+  const schedule: number[] = [];
+  let elapsed = 0;
+
+  for (const beat of beatsPerCharacter(text)) {
+    elapsed += beat;
+    schedule.push(elapsed);
+  }
+
+  return schedule;
+}
+
+/** How much of a line is due by a given point, given what its schedule says. */
+export function revealedBy(schedule: number[], beats: number): number {
+  let count = 0;
+
+  while (count < schedule.length && schedule[count] <= beats) {
+    count += 1;
+  }
+
+  return count;
+}

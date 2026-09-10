@@ -140,6 +140,28 @@ describe("swipeable", () => {
     expect(node.style.touchAction).toBe("");
   });
 
+  /*
+   * With a fine cursor the browser offers a drag starting on an image as a drag of the image,
+   * which hands the pointer a ghost of a camera frame and swallows the swipe. Touch never
+   * offers, so this is a laptop-only failure and nothing on a wall ever saw it.
+   */
+  it("declines the browser's offer to drag an image instead of the cube", () => {
+    const node = fakeNode();
+    let prevented = false;
+    const preventable = { preventDefault: () => { prevented = true; } };
+
+    const action = swipeable(node as unknown as HTMLElement, { onSwipe: () => {} });
+    node.dispatch("dragstart", preventable);
+
+    expect(prevented).toBe(true);
+
+    action.destroy();
+    prevented = false;
+    node.dispatch("dragstart", preventable);
+
+    expect(prevented).toBe(false);
+  });
+
   it("rotates on a drag past the threshold", () => {
     const swipes: Direction[] = [];
     const node = fakeNode();

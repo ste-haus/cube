@@ -212,9 +212,19 @@ class Weather(BaseModel):
 
 
 class Transcript(BaseModel):
+    """A line along the bottom that types itself out, for whatever was last spoken aloud.
+
+    The pace is set rather than the duration, so a long announcement and a short one are read at
+    the same speed instead of taking the same time. It is paced in syllables rather than
+    characters, so a long word takes longer than a short one without taking longer in
+    proportion to how it is spelled.
+    """
+
     entity_id: str
-    characters: int = 22
-    seconds: float = 6.0
+    syllables_per_second: float = Field(
+        default=4.0,
+        description="How fast the line types itself out, in the unit speech is measured in",
+    )
 
 
 class Toggle(BaseModel):
@@ -329,10 +339,15 @@ class Face(BaseModel):
     `content` names a renderer the frontend knows about. `page` names a directory under
     `faces/` in the resources directory, for a face an installation supplies itself. `options`
     is handed to the renderer: a face's cards are fixed, but what they point at is not.
+
+    `label` is the face's name, set up its left edge in a strip. A face that fills its own
+    width — the dashboard — turns the strip off; on anything else it is the only thing saying
+    which of the six you are looking at.
     """
 
     content: str = BLANK_FACE_CONTENT
     label: str = ""
+    label_strip: bool = Field(default=True, description="Name this face up its left edge")
     page: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
 

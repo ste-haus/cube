@@ -38,6 +38,8 @@ Because faces are inherited, a custom face named once on a parent profile appear
 
 It is an ordinary document, served from the panel's own origin, filling the face with no chrome of its own. There is no framework to adopt and nothing to import; a single file of HTML is a valid face.
 
+The one thing outside the page is the strip naming the face up its left edge, which takes its own width rather than sitting over the page — so the width the page gets is the face less that strip. Set `label_strip: false` on the face to have the whole width, and see [Panels and profiles](panels.md).
+
 ```html
 <!doctype html>
 <meta charset="utf-8" />

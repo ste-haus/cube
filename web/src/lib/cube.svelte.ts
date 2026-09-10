@@ -256,6 +256,17 @@ export function swipeable(node: HTMLElement, options: SwipeOptions) {
     tracking = false;
   }
 
+  /*
+   * A pointer drag on this panel is a rotation and nothing else. Left alone, a drag that starts
+   * on an image is read by the browser as an offer to drag the image itself: the cursor picks
+   * up a ghost of a camera frame, the gesture becomes a file drag, and no `pointerup` ever
+   * decides a swipe. A touchscreen never makes that offer, so the panels on the wall were fine
+   * and only a laptop could see it.
+   */
+  function drag(event: DragEvent) {
+    event.preventDefault();
+  }
+
   const inheritedTouchAction = node.style.touchAction;
   node.style.touchAction = TOUCH_ACTION_NONE;
 
@@ -265,6 +276,7 @@ export function swipeable(node: HTMLElement, options: SwipeOptions) {
   node.addEventListener("pointerdown", down);
   node.addEventListener("pointerup", up);
   node.addEventListener("pointercancel", cancel);
+  node.addEventListener("dragstart", drag);
 
   if (bindsKeyboard) {
     window.addEventListener("keydown", key);
@@ -279,6 +291,7 @@ export function swipeable(node: HTMLElement, options: SwipeOptions) {
       node.removeEventListener("pointerdown", down);
       node.removeEventListener("pointerup", up);
       node.removeEventListener("pointercancel", cancel);
+      node.removeEventListener("dragstart", drag);
 
       if (bindsKeyboard) {
         window.removeEventListener("keydown", key);

@@ -18,7 +18,10 @@
   const cube = new Cube();
 
   function faceFor(name: FaceName) {
-    return config.profile.faces[name] ?? { content: BLANK_CONTENT, label: name, page: null, options: {} };
+    return (
+      config.profile.faces[name] ??
+      { content: BLANK_CONTENT, label: name, label_strip: true, page: null, options: {} }
+    );
   }
 
   function onSwipe(direction: Direction) {
