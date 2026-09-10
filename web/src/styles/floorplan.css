@@ -312,12 +312,19 @@
   }
 }
 
+/* A drawing may place an element with a `transform` attribute of its own, and the CSS transform
+ * property replaces that attribute outright — a fan whose group carries a translate jumped the
+ * moment it began spinning. Carrying the element's own transform through in a custom property
+ * puts the turn inside it, in the right order: the element is placed, then turned about the
+ * centre it was placed at. Applying the turn outside it instead, with the individual `rotate`
+ * property, leaves the origin computed before the placement and the fan orbits rather than
+ * spins. */
 @keyframes floorplan-spin {
   from {
-    transform: rotate(0deg);
+    transform: var(--floorplan-own-transform, translate(0)) rotate(0deg);
   }
   to {
-    transform: rotate(360deg);
+    transform: var(--floorplan-own-transform, translate(0)) rotate(360deg);
   }
 }
 
