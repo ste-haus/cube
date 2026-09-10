@@ -112,7 +112,6 @@ export interface Camera {
 
 export interface Transcript {
   entity_id: string;
-  characters: number;
   seconds: number;
 }
 

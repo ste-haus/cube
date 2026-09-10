@@ -311,11 +311,10 @@ A line along the bottom that types itself out, for whatever was last spoken alou
 ```yaml
 transcript:
   entity_id: input_text.last_announcement
-  characters: 22
   seconds: 6
 ```
 
-`characters` and `seconds` set how many steps the typing animation takes and how long it runs. They only affect the animation, not what is shown.
+`seconds` is how long the line takes to type itself out. It affects only the animation, not what is shown. How many steps that takes is the length of the line itself, so there is nothing to set: any other number reveals fractions of a character.
 
 ### visualizer
 

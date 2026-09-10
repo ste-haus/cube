@@ -10,12 +10,12 @@
 {#if text}
   <!-- Keyed on the text so each new line retypes itself rather than resuming mid-animation. -->
   {#key text}
-    <p
-      class="transcript"
-      style:--type-steps={transcript.characters}
-      style:--type-duration="{transcript.seconds}s"
-    >
-      {text}
+    <p class="transcript">
+      <span
+        class="transcript__line"
+        style:--type-steps={text.length}
+        style:--type-duration="{transcript.seconds}s"
+      >{text}</span>
     </p>
   {/key}
 {/if}
@@ -28,6 +28,16 @@
     text-align: center;
     text-transform: lowercase;
     font-family: ui-monospace, monospace;
+  }
+
+  /*
+   * The line is laid out at its full width from the first frame and revealed by moving a clip
+   * across it. Growing the box instead is what made this crawl: a centred line in a box that
+   * is widening is re-centred on every frame, so the words slid across the footer rather than
+   * arriving one at a time. Clipping leaves the layout alone, so only the reveal moves.
+   */
+  .transcript__line {
+    display: inline-block;
     animation: type var(--type-duration) steps(var(--type-steps), end) forwards;
   }
 
@@ -43,10 +53,10 @@
 
   @keyframes type {
     from {
-      width: 0;
+      clip-path: inset(0 100% 0 0);
     }
     to {
-      width: 100%;
+      clip-path: inset(0 0 0 0);
     }
   }
 </style>
