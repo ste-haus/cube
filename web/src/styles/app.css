@@ -45,6 +45,8 @@
   --label-strip-width: 2.2rem;
   /* How far the name sits up off the bottom edge. */
   --label-strip-lift: 5vh;
+  /* How far the announcement stands off the bottom edge. */
+  --transcript-lift: 2.5vh;
   /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
   --section-indent: 0.6rem;
 
@@ -63,7 +65,7 @@
   --gauge-name-size: 1.06rem;
   --camera-title-size: 1.06rem;
   --label-strip-size: 1.15rem;
-  --transcript-size: 1.6rem;
+  --transcript-size: 1.3rem;
 }
 
 * {

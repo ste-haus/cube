@@ -311,10 +311,10 @@ A line along the bottom that types itself out, for whatever was last spoken alou
 ```yaml
 transcript:
   entity_id: input_text.last_announcement
-  characters_per_second: 15
+  syllables_per_second: 4
 ```
 
-`characters_per_second` is the pace, not the duration: a long announcement and a short one are read at the same speed rather than taking the same time. The default is about the rate of a voice reading aloud. Punctuation costs extra, so the line hesitates at a comma and stops at a full stop, which is most of what separates being read from being spooled out. It affects only the animation, not what is shown.
+`syllables_per_second` is the pace, not the duration: a long announcement and a short one are read at the same speed rather than taking the same time. The default is about the rate of a voice reading aloud. Syllables rather than characters, so a long word takes longer than a short one without taking longer in proportion to how it is spelled; punctuation adds a pause on top where there is any, but nothing depends on there being. It affects only the animation, not what is shown.
 
 ### visualizer
 

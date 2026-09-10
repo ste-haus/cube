@@ -9,7 +9,7 @@
 
   /* Length sets the duration rather than the panel setting it, so a long announcement and a
    * short one are read at the same pace instead of taking the same time. */
-  const seconds = $derived(text ? revealBeats(text) / transcript.characters_per_second : 0);
+  const seconds = $derived(text ? revealBeats(text) / transcript.syllables_per_second : 0);
 </script>
 
 {#if text}
@@ -47,9 +47,12 @@
      * own, so the gap holds while the line between them grows. */
     gap: 1ch;
     margin: 0;
+    /* Stands the line up off the bottom edge rather than letting it sit on it. */
+    padding-bottom: var(--transcript-lift);
     text-transform: lowercase;
     font-family: ui-monospace, monospace;
     font-size: var(--transcript-size);
+    font-weight: var(--weight-light);
   }
 
   .transcript__marker {

@@ -109,49 +109,93 @@ export function eventProgress(start: string | null, end: string | null, now: Dat
 }
 
 /*
- * How long a mark of punctuation is worth, over and above the character itself. Speech slows at
- * a comma and stops at a full stop, and those hesitations are most of what separates a line
- * being read aloud from a line being spooled out at a constant rate. The numbers are beats, not
- * seconds, so they scale with whatever rate the panel is set to.
+ * A syllable is the unit speech actually spends time in, so it is what the reveal is paced
+ * against. Counting vowel groups is a serviceable way to find them without a dictionary —
+ * "a" has one, "announcement" has four — and it is wrong in the direction that does not
+ * matter, because nothing here has to agree with the voice to the word.
+ */
+const VOWEL_GROUP = /[aeiouy]+/gi;
+const WORDS_AND_GAPS = /(\s+)/;
+const ONLY_WHITESPACE = /^\s+$/;
+
+const MINIMUM_SYLLABLES = 1;
+
+/** A gap between words is a beat of its own, and a short one. */
+const SPACE_BEATS = 0.3;
+
+/*
+ * What a mark of punctuation is worth on top of the word it ends, in syllables. Speech slows at
+ * a comma and stops at a full stop. Announcements often arrive with no punctuation at all,
+ * which is why this only ever adds to a pace the syllables have already set.
  */
 const DWELL: Record<string, number> = {
-  ",": 2,
-  ";": 3,
-  ":": 3,
-  "—": 2,
-  ".": 4,
-  "!": 4,
-  "?": 4,
+  ",": 0.5,
+  ";": 0.7,
+  ":": 0.7,
+  "—": 0.5,
+  ".": 1,
+  "!": 1,
+  "?": 1,
 };
 
-const BEATS_PER_CHARACTER = 1;
 const PERCENT = 100;
 const STOP_PRECISION = 4;
 
-/** How many beats a line takes to speak, which is what sets the reveal's length. */
+function syllablesIn(word: string): number {
+  return word.match(VOWEL_GROUP)?.length || MINIMUM_SYLLABLES;
+}
+
+/**
+ * What each character of a line is worth, in syllables.
+ *
+ * A word's syllables are shared out across its letters, so a long word takes longer than a
+ * short one but not in proportion to how it is spelled — which is the difference between
+ * reading and spooling.
+ */
+function beatsPerCharacter(text: string): number[] {
+  const beats: number[] = [];
+
+  for (const chunk of text.split(WORDS_AND_GAPS)) {
+    if (chunk === "") {
+      continue;
+    }
+
+    if (ONLY_WHITESPACE.test(chunk)) {
+      beats.push(...[...chunk].map(() => SPACE_BEATS));
+      continue;
+    }
+
+    const share = syllablesIn(chunk) / chunk.length;
+    beats.push(...[...chunk].map((character) => share + (DWELL[character] ?? 0)));
+  }
+
+  return beats;
+}
+
+/** How many syllables a line takes to speak, which is what sets the reveal's length. */
 export function revealBeats(text: string): number {
-  return [...text].reduce((total, character) => total + BEATS_PER_CHARACTER + (DWELL[character] ?? 0), 0);
+  return beatsPerCharacter(text).reduce((total, beat) => total + beat, 0);
 }
 
 /**
  * The reveal's timing, as a CSS `linear()` function.
  *
- * Each character gets a flat run of its own, so the line still types rather than wiping, and a
- * character worth extra beats simply holds longer — which is the hesitation at a comma. This is
- * what `steps()` cannot do: its steps are all the same length.
+ * Each character gets a flat run of its own, so the line still types rather than wipes, and a
+ * character worth more beats simply holds longer. This is what `steps()` cannot do: its steps
+ * are all the same length.
  */
 export function revealEasing(text: string): string {
-  const characters = [...text];
-  const total = revealBeats(text);
+  const beats = beatsPerCharacter(text);
+  const total = beats.reduce((sum, beat) => sum + beat, 0);
   const stops: string[] = [];
 
   let elapsed = 0;
 
-  characters.forEach((character, index) => {
-    const progress = ((index + 1) / characters.length).toFixed(STOP_PRECISION);
+  beats.forEach((beat, index) => {
+    const progress = ((index + 1) / beats.length).toFixed(STOP_PRECISION);
     const opens = ((elapsed / total) * PERCENT).toFixed(STOP_PRECISION);
 
-    elapsed += BEATS_PER_CHARACTER + (DWELL[character] ?? 0);
+    elapsed += beat;
 
     const closes = ((elapsed / total) * PERCENT).toFixed(STOP_PRECISION);
 

@@ -215,14 +215,15 @@ class Transcript(BaseModel):
     """A line along the bottom that types itself out, for whatever was last spoken aloud.
 
     The pace is set rather than the duration, so a long announcement and a short one are read at
-    the same speed instead of taking the same time. Punctuation costs extra, so the line
-    hesitates where a voice would.
+    the same speed instead of taking the same time. It is paced in syllables rather than
+    characters, so a long word takes longer than a short one without taking longer in
+    proportion to how it is spelled.
     """
 
     entity_id: str
-    characters_per_second: float = Field(
-        default=15.0,
-        description="How fast the line types itself out, near enough to a voice reading it aloud",
+    syllables_per_second: float = Field(
+        default=4.0,
+        description="How fast the line types itself out, in the unit speech is measured in",
     )
 
 

@@ -13,15 +13,30 @@ function timeStops(easing: string): number[] {
 }
 
 describe("revealBeats", () => {
-  it("counts a plain line as one beat a character", () => {
-    expect(revealBeats("abc")).toBe(3);
+  it("counts a word's vowel groups as its syllables", () => {
+    expect(revealBeats("announcement")).toBeCloseTo(4);
+    expect(revealBeats("sample")).toBeCloseTo(2);
   });
 
-  it("buys a mark of punctuation extra beats, so the line hesitates there", () => {
-    expect(revealBeats("ab,")).toBeGreaterThan(revealBeats("abc"));
+  it("gives a word with no vowel group a syllable anyway", () => {
+    expect(revealBeats("hmm")).toBeCloseTo(1);
   });
 
-  it("stops longer at the end of a sentence than at a comma", () => {
+  it("does not charge a long word by its spelling", () => {
+    // Same syllable, four times the letters: the reveal should not take four times as long.
+    expect(revealBeats("through")).toBeCloseTo(revealBeats("thru"));
+  });
+
+  it("charges a gap between words less than a syllable", () => {
+    // Two syllables either way, so the difference is the space and nothing else.
+    const gap = revealBeats("ab ab") - revealBeats("abab");
+
+    expect(gap).toBeGreaterThan(0);
+    expect(gap).toBeLessThan(1);
+  });
+
+  it("adds a pause for punctuation without depending on there being any", () => {
+    expect(revealBeats("ab,")).toBeGreaterThan(revealBeats("ab"));
     expect(revealBeats("ab.")).toBeGreaterThan(revealBeats("ab,"));
   });
 
