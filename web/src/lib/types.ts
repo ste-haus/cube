@@ -17,7 +17,14 @@ export interface Reading {
 }
 
 export interface Extreme extends Reading {
-  hours_attribute: string | null;
+  turning_point_attribute: string | null;
+}
+
+/** The next or last point the temperature turns round, as the sensor's attribute carries it. */
+export interface TurningPoint {
+  temperature: number;
+  hours: number;
+  upcoming: boolean;
 }
 
 export interface Indicator extends Reading {
@@ -77,6 +84,11 @@ export interface Clock {
   easter_egg_text: string;
 }
 
+export interface TemperatureStop {
+  at: number;
+  color: string;
+}
+
 export interface Weather {
   entity_id: string;
   sun_entity_id: string | null;
@@ -86,6 +98,28 @@ export interface Weather {
   summary_max_length: number;
   summary_min_scale: number;
   summary_max_scale: number;
+  zone_entity_id: string | null;
+  forecast_days: number;
+  forecast_hours: number;
+  wind_gust_threshold: number;
+  temperature_gradient: TemperatureStop[];
+}
+
+/** One hour of the forecast, from the hour under way on. */
+export interface ForecastHour {
+  time: string;
+  condition: string | null;
+  temperature: number | null;
+  precipitation_probability: number | null;
+}
+
+/** One day of the forecast, already settled to the local date it is for. */
+export interface ForecastDay {
+  date: string;
+  condition: string | null;
+  high: number | null;
+  low: number | null;
+  precipitation_probability: number | null;
 }
 
 export interface Floorplan {
@@ -148,6 +182,35 @@ export interface CameraHeroOptions {
   side: Camera[];
 }
 
+/** Somebody else's page, drawn edge to edge. */
+export interface Frame {
+  url: string;
+  title: string | null;
+  interactive: boolean;
+}
+
+export type DistanceUnit = "mi" | "km";
+
+/** Recent rain, looped over a dark map centred on the weather's zone. */
+export interface Radar {
+  zoom: number;
+  rings: number[];
+  ring_unit: DistanceUnit;
+  frame_seconds: number;
+  pause_seconds: number;
+}
+
+export interface RadarTile {
+  radar: Radar;
+}
+
+export type WeatherTile = Camera | Frame | RadarTile;
+
+/** Tiles laid out after the weather face's own cards, filling its grid left to right. */
+export interface WeatherFaceOptions {
+  tiles: WeatherTile[];
+}
+
 export interface Face {
   content: string;
   label: string;
@@ -167,6 +230,9 @@ export interface Profile {
 export interface Labels {
   notices: string;
   agenda: string;
+  sunrise: string;
+  sunset: string;
+  now: string;
 }
 
 export interface Theme {
@@ -179,9 +245,21 @@ export interface Theme {
   accent: string;
 }
 
+/** The installation's own colours; everything the config colours by name is already resolved. */
+export interface Colors {
+  primary: string;
+  secondary: string;
+  day: string;
+  night: string;
+  twilight: string;
+  sun: string;
+  sun_below: string;
+}
+
 export interface DashboardConfig {
   profile: Profile;
   theme: Theme;
+  colors: Colors;
   labels: Labels;
   clock: Clock;
   indicators: Indicator[];

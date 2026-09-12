@@ -108,6 +108,7 @@ Cycles, a parent that does not exist, and a `floorplan` that was never declared 
 | `dashboard` | The dashboard: clock, notices, timeline, floorplan, forecast, camera, gauges |
 | `camera-grid` | A grid of cameras, laid out as the config writes it |
 | `camera-hero` | One camera at size, with the rest in a column beside it |
+| `weather` | The conditions, the wind, and how it feels, today's range, the sun and moon against the horizon, the forecast, and a radar and cameras |
 | `custom` | A page you supply yourself, served from the resources directory |
 | `blank` | Nothing but its own label |
 
@@ -120,6 +121,52 @@ Cycles, a parent that does not exist, and a `floorplan` that was never declared 
 | `options` | Handed to the renderer, which decides what it means |
 
 The two camera faces are what `options` is for — see [Camera faces](cameras.md).
+
+The `weather` face draws from the `weather` block, and a config that puts one on a panel without that block is refused when it loads. Its card for the sky and the temperature now is the dashboard's own, so the two faces never disagree about the present. The high and low the dashboard sets beside it are left out here, where the temperature range gives the day's. See [weather](configuration.md#weather) for the settings only this face reads.
+
+The face lays out like the dashboard, without boxes or headings, in two columns each as wide as the dashboard's middle one, centred on the face. The right column starts as far down as the dashboard's own, so the sky now sits at the same height on either face, and spaces its rows wider, so the forecast at its foot is shorter for it. The sky now sits in the middle of its row with the wind to its left and how the weather feels to its right, each centred in the space beside it; under them are today's temperature range and the daylight bar one over the other with their ends lined up; then the sun's path, drawn from half a day before now to half a day after so the sun and moon stay in its middle while the day and night move past, with the part of the day already gone in the same faint wash as the chance of rain; and the forecast in whatever height is left. The dashboard's forecast in words is left out, since the chart says as much. The range reads over its bar and the daylight under its own, so the pair sit close. The daylight bar carries the sunrise and sunset times, so the path leaves them out rather than showing them twice. The left column is the radar, with the pictures in a row beneath it, dimmed a little so they sit behind it.
+
+The wind is a compass without its letters, the cross running out past the circle and short marks across it at the points between, with an arrow across it pointing the way the wind is blowing and the speed at the arrow's point, in the weather entity's own unit, which it leaves unsaid. Home Assistant gives the bearing the wind comes from, degrees or a compass point, so the arrow points the other way. A calm draws no arrow and gives its speed at the centre. A gust at or over the `weather` block's `wind_gust_threshold` (15 unless you say otherwise, in the entity's own unit), and stronger than the steady wind, is given past the arrow's tail; a lighter one says nothing the wind itself does not.
+
+How the weather feels is the temperature it feels like, from the weather entity's `apparent_temperature`, in the middle of a ring that fills with its `humidity` from the top round clockwise, shading from a dark grey when the air is dry to the same muted blue as the chance of rain when it is saturated. The feels-like figure is greyed while it is within two degrees of the temperature itself, when it says little the temperature does not. An entity that gives neither leaves the card out.
+
+The forecast opens on the hours from now to twelve hours on: a smooth line of the temperature, in the primary colour when the span ends no cooler than it starts and the secondary when it ends cooler, counted in the whole degrees it shows, and given in figures now, at the far end, and at any high or low between that the ends do not show, with the other hours as dots; the sky now, at the far end, and at each hour it changes between; and the chance of rain as a shaded, edged curve behind it all, along the chart's foot for a dry hour among wet ones, its full height for certain, and not drawn at all when every hour is dry. When any of the hours, now among them, is forecast to snow, it is drawn as snow instead: a white edge over a light grey wash. The figure and the sky now are the current temperature and the current sky, day or night as the sun really is, so they agree with the rest of the face. Both curves pass through every hour's value without overshooting it, so a peak tops out at the hour's own figure and a dry stretch stays flat. The temperature is drawn over at least ten degrees Fahrenheit, or five and a half Celsius, so a degree or two either way looks like a degree or two rather than filling the chart. It is headed only by "Now" and the time it runs to, on a 24-hour clock, in grey. A sideways swipe across it slides to the week, whose highs and lows are the same smooth curves, with no lines between the days, and whose chance of rain or snow is drawn behind them as the hours' is. It slides back to the hours a minute after it was last swiped, the way the floorplan goes back to its own storey, and an upward or downward swipe on it still turns the cube. The daylight bar runs sunrise to sunset while the sun is up and sunset to sunrise after dark, so its marker always travels left to right, and the reading under the marker is how long is left — whole hours, then minutes for the last one.
+
+Its one option is `tiles`, and where each lands follows from what it is. A radar goes at the top of the left column, over two thirds of it. Cameras and frames go in a row across the third beneath, in the order written, sharing its width. A `title` captions any of them; leave it out for a picture with no caption. With no radar the pictures take the whole column, and with no pictures the radar does.
+
+```yaml
+up:
+  content: weather
+  label: Weather
+  options:
+    tiles:
+      - radar:
+      - camera.satellite
+      - entity_id: camera.smoke_forecast
+        polling_interval: 600
+      - url: https://frames.example/wind.html
+        title: Wind
+```
+
+A **radar** is the last couple of hours of rain from RainViewer, looped over OpenStreetMap's own dark vector map and centred on `weather.zone_entity_id`, which it will not load without. It never pans or zooms. `radar:` on its own takes the defaults:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `zoom` | `7` | How close the map is. RainViewer's free radar goes no closer than 7, and a config asking for more is refused |
+| `rings` | `[25, 50, 100]` | Distances from home to draw a ring at |
+| `ring_unit` | `mi` | `mi` or `km` |
+| `frame_seconds` | `0.2` | How long each frame shows |
+| `pause_seconds` | `0.5` | How long the newest frame holds before the loop starts over |
+
+The map is drawn in the panel by MapLibre, from the vector tiles and the "eclipse" style OpenStreetMap serves, so it needs no key; the rain goes in under its place names so they read through it. Its highways are greyed, since the style's orange reads like rain, and home is a white dot at the centre. The panel fetches the map and the radar straight from OpenStreetMap and RainViewer, not through cube, and only while the face is being looked at. The rain is RainViewer's "Universal Blue": the faint tan under the blue is its weakest band, echoes too slight to be measurable rain, which is often birds, insects, or the ground near a radar rather than weather.
+
+MapLibre needs WebGL2. A panel without it, or whose browser takes the drawing context back, gets the rain, rings, and home on plain dark ground instead of a map.
+
+Credits sit in a footer along the radar's foot that fades up when a pointer is over it; on a touchscreen, a tap does the same.
+
+Otherwise a tile is a camera, written exactly as on a camera face, or a **frame**: another page, drawn edge to edge with no border, title, or scrollbars. `url` must be http or https. The frame itself draws nothing but the page; its `title` names it to anything reading the panel, and on the weather face it is the caption over the frame.
+
+A frame is loaded only while its face is being looked at and unloaded when the cube turns away, so a page that animates for as long as it is open costs nothing on a face nobody is looking at; coming back reloads it. It takes no touches unless it has `interactive: true`, so a swipe across it turns the cube rather than panning whatever the page is showing. The page has to allow being framed by the panel's origin, which is the page's decision rather than cube's.
 
 ### The label strip
 
@@ -161,4 +208,4 @@ The graph tracks which face is showing but not how the cube is rolled. Each grea
 
 Add a profile per panel and give each its own address. They share one connection to Home Assistant, so the tenth panel costs no more upstream traffic than the first.
 
-Panels that show a camera or an agenda do each ask for those separately, so if you run many of them and notice Home Assistant working harder than you expected, that is where to look first.
+Panels that show a camera, an agenda, or a forecast do each ask for those separately, so if you run many of them and notice Home Assistant working harder than you expected, that is where to look first.

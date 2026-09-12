@@ -5,7 +5,10 @@ from pydantic import ValidationError
 
 from cube.dashboard import (
     CUBE_FACES,
+    DEFAULT_FORECAST_DAYS,
     DEFAULT_PROFILE_KEY,
+    DEFAULT_WIND_GUST_THRESHOLD,
+    RAINVIEWER_MAX_ZOOM,
     Camera,
     Dashboard,
     ThresholdBand,
@@ -62,6 +65,27 @@ def test_only_controls_are_toggleable(dashboard):
 
 def test_unknown_entity_is_never_toggleable(dashboard):
     assert not dashboard.may_toggle("light.not_in_the_config")
+
+
+TURNING_POINT = "turning_point"
+
+
+def test_an_extreme_may_name_a_turning_point():
+    weather = {
+        "entity_id": "weather.home",
+        "high": {"entity_id": "sensor.high", "turning_point_attribute": TURNING_POINT},
+        "low": {"entity_id": "sensor.low"},
+    }
+    dashboard = Dashboard.model_validate(profiles() | {"weather": weather})
+
+    assert dashboard.weather.high.turning_point_attribute == TURNING_POINT
+    assert dashboard.weather.low.turning_point_attribute is None
+    assert "sensor.high" in dashboard.allowed_entities
+
+
+def test_the_sample_config_reads_its_extremes_as_turning_points(dashboard):
+    assert dashboard.weather.high.turning_point_attribute == TURNING_POINT
+    assert dashboard.weather.low.turning_point_attribute == TURNING_POINT
 
 
 def test_threshold_scale_picks_the_highest_matching_band():
@@ -124,6 +148,198 @@ def test_a_speaker_never_crosses_an_inheritance_edge():
 
     assert dashboard.profiles["pb"].media_player == SPEAKER
     assert dashboard.profiles["ob"].media_player is None
+
+
+WEATHER = {"entity_id": "weather.home", "zone_entity_id": "zone.home"}
+WEATHER_FACE = {"faces": {"up": {"content": "weather"}}}
+COLD_STOP = {"at": 30, "color": "#0000ff"}
+HOT_STOP = {"at": 90, "color": "#ff0000"}
+
+
+def test_a_weather_face_needs_a_weather_block_to_draw():
+    with pytest.raises(ValidationError, match="no `weather` block"):
+        Dashboard.model_validate(profiles(pb=WEATHER_FACE))
+
+
+def test_a_weather_face_loads_once_there_is_weather():
+    dashboard = Dashboard.model_validate(profiles(pb=WEATHER_FACE) | {"weather": WEATHER})
+
+    assert dashboard.profiles["pb"].faces["up"].content == "weather"
+
+
+def test_the_zone_placing_the_sky_is_subscribed():
+    dashboard = Dashboard.model_validate(profiles() | {"weather": WEATHER})
+
+    assert WEATHER["zone_entity_id"] in dashboard.allowed_entities
+
+
+def test_the_temperature_gradient_is_read_coldest_first():
+    weather = WEATHER | {"temperature_gradient": [HOT_STOP, COLD_STOP]}
+    dashboard = Dashboard.model_validate(profiles() | {"weather": weather})
+
+    assert [stop.at for stop in dashboard.weather.temperature_gradient] == [COLD_STOP["at"], HOT_STOP["at"]]
+
+
+PRIMARY = "#f205f2"
+SECONDARY = "#00bfff"
+CUSTOM_PRIMARY = "#123456"
+
+
+def test_a_colour_may_name_the_palette():
+    document = profiles() | {
+        "agenda": {"calendars": [{"entity_id": "calendar.a", "name": "A", "color": "primary"}]},
+        "fuel": {"scale": {"default_color": "secondary", "bands": [{"at": 33, "color": "primary"}]}},
+    }
+    dashboard = Dashboard.model_validate(document)
+
+    assert dashboard.agenda.calendars[0].color == PRIMARY
+    assert dashboard.fuel.scale.default_color == SECONDARY
+    assert dashboard.fuel.scale.bands[0].color == PRIMARY
+
+
+def test_a_state_colour_may_name_the_palette():
+    document = profiles() | {
+        "status_indicators": [
+            {
+                "entity_id": "sensor.a",
+                "icon": "mdi:alert",
+                "nominal_state": "Safe",
+                "state_colors": {"Unsafe": "primary"},
+            }
+        ]
+    }
+
+    assert Dashboard.model_validate(document).status_indicators[0].state_colors == {"Unsafe": PRIMARY}
+
+
+def test_only_colour_settings_are_read_as_palette_names():
+    document = profiles() | {
+        "agenda": {"calendars": [{"entity_id": "calendar.a", "name": "primary", "color": "#ffffff"}]}
+    }
+
+    assert Dashboard.model_validate(document).agenda.calendars[0].name == "primary"
+
+
+def test_the_palette_is_the_installations_to_change():
+    document = profiles() | {
+        "colors": {"primary": CUSTOM_PRIMARY},
+        "agenda": {"calendars": [{"entity_id": "calendar.a", "name": "A", "color": "primary"}]},
+    }
+    dashboard = Dashboard.model_validate(document)
+
+    assert dashboard.colors.primary == CUSTOM_PRIMARY
+    assert dashboard.colors.secondary == SECONDARY
+    assert dashboard.agenda.calendars[0].color == CUSTOM_PRIMARY
+
+
+DUSK = {
+    "day": "#7a8fa0",
+    "night": "#2e2a45",
+    "twilight": "#a0706b",
+    "sun": "#d0a46c",
+    "sun_below": "#6d5a50",
+}
+
+
+def test_the_sky_colours_need_not_be_written_down():
+    colors = Dashboard.model_validate(profiles()).colors
+
+    assert {name: getattr(colors, name) for name in DUSK} == DUSK
+
+
+def test_a_colour_may_name_a_sky_colour():
+    document = profiles() | {"fuel": {"scale": {"default_color": "night", "bands": [{"at": 15, "color": "twilight"}]}}}
+    dashboard = Dashboard.model_validate(document)
+
+    assert dashboard.fuel.scale.default_color == DUSK["night"]
+    assert dashboard.fuel.scale.bands[0].color == DUSK["twilight"]
+
+
+def test_the_sample_config_speaks_only_in_colours_once_loaded(dashboard):
+    for calendar in dashboard.agenda.calendars:
+        assert calendar.color.startswith("#")
+
+    for band in dashboard.fuel.scale.bands:
+        assert band.color.startswith("#")
+
+
+SATELLITE = "camera.satellite"
+WIND = {"url": "https://frames.example/wind.html", "title": "Wind"}
+
+
+def weather_face(*tiles) -> dict:
+    return {"faces": {"up": {"content": "weather", "options": {"tiles": list(tiles)}}}}
+
+
+def weather_tiles(dashboard: Dashboard) -> list[dict]:
+    return dashboard.profiles["pb"].faces["up"].options["tiles"]
+
+
+def test_weather_tiles_read_an_entity_id_as_a_camera_a_url_as_a_frame_and_radar_as_a_radar():
+    dashboard = Dashboard.model_validate(
+        profiles(pb=weather_face(SATELLITE, WIND, {"radar": None})) | {"weather": WEATHER}
+    )
+    camera, frame, radar = weather_tiles(dashboard)
+
+    assert camera["entity_id"] == SATELLITE
+    assert frame["url"] == WIND["url"]
+    assert radar["radar"]["zoom"] == RAINVIEWER_MAX_ZOOM
+
+
+def test_a_radar_goes_no_closer_than_rainviewer_serves():
+    with pytest.raises(ValidationError, match="less than or equal to"):
+        Dashboard.model_validate(
+            profiles(pb=weather_face({"radar": {"zoom": RAINVIEWER_MAX_ZOOM + 1}})) | {"weather": WEATHER}
+        )
+
+
+def test_a_radar_needs_a_zone_to_centre_on():
+    weather = {"entity_id": WEATHER["entity_id"]}
+
+    with pytest.raises(ValidationError, match="no `weather.zone_entity_id`"):
+        Dashboard.model_validate(profiles(pb=weather_face({"radar": None})) | {"weather": weather})
+
+
+def test_a_camera_among_the_weather_tiles_is_reachable_and_subscribed():
+    dashboard = Dashboard.model_validate(profiles(pb=weather_face(SATELLITE)) | {"weather": WEATHER})
+
+    assert SATELLITE in dashboard.camera_entities
+    assert SATELLITE in dashboard.allowed_entities
+
+
+def test_a_frame_takes_no_touches_unless_it_says_so():
+    dashboard = Dashboard.model_validate(profiles(pb=weather_face(WIND)) | {"weather": WEATHER})
+
+    assert weather_tiles(dashboard)[0]["interactive"] is False
+
+
+def test_a_frame_must_be_a_web_address():
+    with pytest.raises(ValidationError, match="not an http or https address"):
+        Dashboard.model_validate(profiles(pb=weather_face({"url": "javascript:alert(1)"})) | {"weather": WEATHER})
+
+
+def test_a_weather_face_without_tiles_is_its_own_cards_alone():
+    dashboard = Dashboard.model_validate(profiles(pb=WEATHER_FACE) | {"weather": WEATHER})
+
+    assert weather_tiles(dashboard) == []
+
+
+def test_weather_brings_a_gradient_and_a_week_unless_told_otherwise():
+    dashboard = Dashboard.model_validate(profiles() | {"weather": WEATHER})
+
+    assert dashboard.weather.temperature_gradient
+    assert dashboard.weather.forecast_days == DEFAULT_FORECAST_DAYS
+
+
+def test_a_gust_is_worth_giving_from_the_default_unless_told_otherwise():
+    dashboard = Dashboard.model_validate(profiles() | {"weather": WEATHER})
+
+    assert dashboard.weather.wind_gust_threshold == DEFAULT_WIND_GUST_THRESHOLD
+
+
+def test_a_gust_threshold_cannot_be_negative():
+    with pytest.raises(ValidationError, match="wind_gust_threshold"):
+        Dashboard.model_validate(profiles() | {"weather": WEATHER | {"wind_gust_threshold": -1}})
 
 
 def test_a_profile_without_a_name_is_called_after_its_key():

@@ -4,9 +4,16 @@
   import CameraHero from "./CameraHero.svelte";
   import CustomFace from "./CustomFace.svelte";
   import Dashboard from "./Dashboard.svelte";
+  import WeatherFace from "./WeatherFace.svelte";
   import { provideVisibility } from "../lib/cube.svelte";
   import { provideGo2rtc } from "../lib/go2rtc";
-  import type { CameraGridOptions, CameraHeroOptions, DashboardConfig, Face } from "../lib/types";
+  import type {
+    CameraGridOptions,
+    CameraHeroOptions,
+    DashboardConfig,
+    Face,
+    WeatherFaceOptions,
+  } from "../lib/types";
 
   /*
    * One side of the cube: which renderer draws it, and whether it is the side being looked at.
@@ -25,6 +32,7 @@
   const CUSTOM_CONTENT = "custom";
   const CAMERA_GRID_CONTENT = "camera-grid";
   const CAMERA_HERO_CONTENT = "camera-hero";
+  const WEATHER_CONTENT = "weather";
 
   let {
     face,
@@ -60,6 +68,7 @@
    * already refused a face whose options that renderer could not draw with. */
   const gridOptions = $derived(face.options as unknown as CameraGridOptions);
   const heroOptions = $derived(face.options as unknown as CameraHeroOptions);
+  const weatherOptions = $derived(face.options as unknown as WeatherFaceOptions);
 
   const label = $derived(face.label || name);
 </script>
@@ -81,6 +90,8 @@
         <CameraGrid options={gridOptions} />
       {:else if face.content === CAMERA_HERO_CONTENT}
         <CameraHero options={heroOptions} />
+      {:else if face.content === WEATHER_CONTENT && config.weather}
+        <WeatherFace {config} weather={config.weather} options={weatherOptions} />
       {:else}
         <Blank {label} named={!face.label_strip} />
       {/if}

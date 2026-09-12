@@ -62,3 +62,39 @@ def test_added_state_keeps_a_distinct_last_changed():
     protocol.apply_event(states, {"a": {ENTITY_ID: {"s": "on", "a": {}, "lc": 1, "lu": 2}}})
 
     assert states[ENTITY_ID]["lc"] == 1
+
+
+WEATHER_ENTITY_ID = "weather.example"
+DAILY = {"type": "daily"}
+
+
+def test_a_service_call_asks_for_no_answer_unless_told_to():
+    """Home Assistant refuses a service that returns nothing when it is asked for a response."""
+
+    message = protocol.call_service(1, "homeassistant", "toggle", ENTITY_ID)
+
+    assert protocol.RETURN_RESPONSE not in message
+    assert protocol.SERVICE_DATA not in message
+
+
+def test_a_service_call_can_ask_for_its_answer():
+    message = protocol.call_service(1, "weather", "get_forecasts", WEATHER_ENTITY_ID, DAILY, return_response=True)
+
+    assert message[protocol.RETURN_RESPONSE] is True
+    assert message[protocol.SERVICE_DATA] == DAILY
+
+
+def test_the_answer_is_read_out_of_the_result():
+    result = {
+        "id": 1,
+        "type": "result",
+        "success": True,
+        "result": {"context": {}, "response": {WEATHER_ENTITY_ID: {}}},
+    }
+
+    assert protocol.service_response(result) == {WEATHER_ENTITY_ID: {}}
+
+
+def test_a_result_with_no_answer_reads_as_empty():
+    assert protocol.service_response({"success": True, "result": None}) == {}
+    assert protocol.service_response({"success": True}) == {}

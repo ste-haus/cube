@@ -84,12 +84,31 @@ class HassClient:
             self._subscribers.discard(queue)
 
     async def call_service(self, domain: str, service: str, entity_id: str) -> None:
-        message_id = self._next_message_id()
-        result = await self._send_awaiting_result(protocol.call_service(message_id, domain, service, entity_id))
+        await self._call(protocol.call_service(self._next_message_id(), domain, service, entity_id))
+
+    async def query_service(
+        self, domain: str, service: str, entity_id: str, service_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Calls a service for what it answers rather than for what it does.
+
+        Rides the shared connection like everything else, so a panel asking for a forecast
+        costs Home Assistant one request and no connection of its own.
+        """
+
+        message = protocol.call_service(
+            self._next_message_id(), domain, service, entity_id, service_data, return_response=True
+        )
+
+        return protocol.service_response(await self._call(message))
+
+    async def _call(self, message: dict[str, Any]) -> dict[str, Any]:
+        result = await self._send_awaiting_result(message)
 
         if not result.get(protocol.SUCCESS, False):
             error = result.get(protocol.ERROR, {})
             raise HassError(error.get(protocol.MESSAGE, "service call failed"))
+
+        return result
 
     async def _run(self) -> None:
         delay = self._settings.reconnect_min_seconds

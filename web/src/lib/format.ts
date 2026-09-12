@@ -1,4 +1,4 @@
-import type { ThresholdScale } from "./types";
+import type { ThresholdScale, TurningPoint } from "./types";
 
 /** Compass points at 22.5° intervals, indexed by rounded bearing / 22.5. */
 const COMPASS_POINTS = [
@@ -189,6 +189,43 @@ export function revealSchedule(text: string): number[] {
   }
 
   return schedule;
+}
+
+const HOURS_SUFFIX = "h";
+const AHEAD = "+";
+const BEHIND = "-";
+
+/**
+ * A turning point read out of an attribute, or null when there is none to show.
+ *
+ * The sensor writes an empty mapping when it has nothing, and anything without a temperature and
+ * hours is treated the same way, so a half-written attribute shows the state rather than "NaN".
+ * A point that does not say whether it is ahead is taken as ahead when its hours are.
+ */
+export function turningPoint(value: unknown): TurningPoint | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const { temperature, hours, upcoming } = value as Partial<Record<keyof TurningPoint, unknown>>;
+  if (typeof temperature !== "number" || typeof hours !== "number") {
+    return null;
+  }
+
+  return { temperature, hours, upcoming: typeof upcoming === "boolean" ? upcoming : hours >= 0 };
+}
+
+/**
+ * How far off a turning point is, as the panel shows it: "+5h" counting down to the next one,
+ * "-3h" counting up from the last, and nothing at all while we are at it, since "0h" says nothing
+ * the temperature beside it does not.
+ */
+export function turningPointHours(point: TurningPoint): string | null {
+  if (point.hours === 0) {
+    return null;
+  }
+
+  return `${point.upcoming ? AHEAD : BEHIND}${Math.abs(point.hours)}${HOURS_SUFFIX}`;
 }
 
 /** How much of a line is due by a given point, given what its schedule says. */
