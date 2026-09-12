@@ -12,3 +12,5 @@ services:
       # are mounted rather than baked into the image.
       - ./config.yaml:/app/config.yaml:ro
       - ./resources:/app/resources:ro
+      # Where the radar and its map are kept, so a rebuild does not start them cold.
+      - ./cache:/cache

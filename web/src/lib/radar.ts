@@ -1,12 +1,12 @@
 /**
  * The radar's geometry and where its pictures come from.
  *
- * The map beneath the rain is OpenStreetMap, drawn by MapLibre in VersaTiles' dark style from
- * VersaTiles' own servers, so it needs no key. OpenStreetMap hosts the same style, but hands it
- * only to the sites it knows, and a panel on a domain of its own is not one of them. Where there
- * is no WebGL2 to draw it with, or the style never arrives, the rain is laid out as plain tiles on
- * dark ground instead, which is what the tile arithmetic here is for; the ring arithmetic serves
- * both.
+ * The map beneath the rain is OpenStreetMap, drawn by MapLibre in VersaTiles' dark style, so it
+ * needs no key. The rain, and the style with the icons and lettering it draws with, come through
+ * cube, which fetches each once for every panel and keeps it; only the map's own tiles come
+ * straight from VersaTiles. Where there is no WebGL2 to draw the map with, or the style never
+ * arrives, the rain is laid out as plain tiles on dark ground instead, which is what the tile
+ * arithmetic here is for; the ring arithmetic serves both.
  *
  * Everything is Web Mercator.
  */
@@ -31,14 +31,13 @@ const METRES_PER: Record<DistanceUnit, number> = {
  * scale on the ground is one zoom level lower on the map. */
 const VECTOR_ZOOM_OFFSET = 1;
 
-export const MAP_STYLE_URL = "https://tiles.versatiles.org/assets/styles/eclipse/style.json";
+export const MAP_STYLE_PATH = "/api/map/style.json";
 const LABEL_LAYER_TYPE = "symbol";
 const FRAME_LAYER_PREFIX = "radar-";
 
-const RAINVIEWER_MAPS_URL = "https://api.rainviewer.com/public/weather-maps.json";
-/* RainViewer's "Universal Blue", smoothed and without snow, as the dashboard's radar card asks. */
-const RADAR_COLOR_SCHEME = 2;
-const RADAR_OPTIONS = "1_0";
+const RADAR_FRAMES_PATH = "/api/radar/frames";
+const RADAR_TILES_PATH = "/api/radar/tiles";
+const RADAR_TILE_SUFFIX = ".png";
 
 const ZOOM_PLACEHOLDER = "{z}";
 const X_PLACEHOLDER = "{x}";
@@ -58,13 +57,13 @@ export interface Tile {
   top: number;
 }
 
+/** A frame of rain, by the moment it shows and the name cube keeps its tiles under. */
 export interface RadarFrame {
   time: number;
-  path: string;
+  id: string;
 }
 
 export interface RadarFrames {
-  host: string;
   frames: RadarFrame[];
 }
 
@@ -174,32 +173,57 @@ export function withQuietHighways<Style extends { layers: StyleLayer[] }>(
   } as Style;
 }
 
+const ROOT = "/";
+const PROTOCOL_RELATIVE = "//";
+
+type SpriteSheet = { id: string; url: string };
+type StyleAssets = { sprite?: string | SpriteSheet[]; glyphs?: string };
+
+/**
+ * A style whose sprite and glyph addresses are whole, against `origin` wherever cube gave them as
+ * paths. Only the panel knows where it was loaded from, and MapLibre will not take a sprite by a path.
+ */
+export function withAbsoluteAssets<Style extends StyleAssets>(style: Style, origin: string): Style {
+  const absolute = (url: string) =>
+    url.startsWith(ROOT) && !url.startsWith(PROTOCOL_RELATIVE) ? `${origin}${url}` : url;
+  const sprite =
+    typeof style.sprite === "string"
+      ? absolute(style.sprite)
+      : style.sprite?.map((sheet) => ({ ...sheet, url: absolute(sheet.url) }));
+
+  return {
+    ...style,
+    ...(sprite === undefined ? {} : { sprite }),
+    ...(style.glyphs === undefined ? {} : { glyphs: absolute(style.glyphs) }),
+  } as Style;
+}
+
 export function frameLayerId(frame: RadarFrame): string {
   return `${FRAME_LAYER_PREFIX}${frame.time}`;
 }
 
 /** A frame's tile address with the tile left as placeholders, which is the form MapLibre takes. */
-export function radarTileTemplate(host: string, frame: RadarFrame): string {
-  return `${host}${frame.path}/${TILE_SIZE}/${ZOOM_PLACEHOLDER}/${X_PLACEHOLDER}/${Y_PLACEHOLDER}/${RADAR_COLOR_SCHEME}/${RADAR_OPTIONS}.png`;
+export function radarTileTemplate(origin: string, frame: RadarFrame): string {
+  return `${origin}${RADAR_TILES_PATH}/${frame.id}/${ZOOM_PLACEHOLDER}/${X_PLACEHOLDER}/${Y_PLACEHOLDER}${RADAR_TILE_SUFFIX}`;
 }
 
-export function radarUrl(host: string, frame: RadarFrame, tile: Tile, zoom: number): string {
-  return radarTileTemplate(host, frame)
+export function radarUrl(origin: string, frame: RadarFrame, tile: Tile, zoom: number): string {
+  return radarTileTemplate(origin, frame)
     .replace(ZOOM_PLACEHOLDER, String(zoom))
     .replace(X_PLACEHOLDER, String(tile.x))
     .replace(Y_PLACEHOLDER, String(tile.y));
 }
 
-/** The radar frames RainViewer has now: the last couple of hours, oldest first. */
+/** The radar frames there are now: the last couple of hours, oldest first. */
 export async function fetchRadarFrames(): Promise<RadarFrames> {
-  const response = await fetch(RAINVIEWER_MAPS_URL);
+  const response = await fetch(RADAR_FRAMES_PATH);
   if (!response.ok) {
     throw new Error(`Could not load radar frames: ${response.status}`);
   }
 
   const body = await response.json();
 
-  return { host: body.host, frames: body.radar?.past ?? [] };
+  return { frames: body.frames ?? [] };
 }
 
 /** How long a frame shows before the next. The newest holds for the pause as well, so the loop has an end. */

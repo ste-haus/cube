@@ -8,7 +8,7 @@
     firstLabelLayer,
     frameDelay,
     frameLayerId,
-    MAP_STYLE_URL,
+    MAP_STYLE_PATH,
     mapZoom,
     project,
     radarTileTemplate,
@@ -16,6 +16,7 @@
     ringRadius,
     TILE_SIZE,
     tilesAround,
+    withAbsoluteAssets,
     withQuietHighways,
     type RadarFrames,
     type Tile,
@@ -64,6 +65,7 @@
   let { radar, weather }: { radar: Radar; weather: Weather } = $props();
 
   const visibility = faceVisibility();
+  const origin = window.location.origin;
 
   function supportsWebGL2(): boolean {
     try {
@@ -146,8 +148,12 @@
         const styles = getComputedStyle(element);
         const line = styles.getPropertyValue(HIGHWAY_COLOR_TOKEN).trim();
         const outline = styles.getPropertyValue(HIGHWAY_OUTLINE_COLOR_TOKEN).trim();
-        created.setStyle(MAP_STYLE_URL, {
-          transformStyle: (_previous, next) => (line && outline ? withQuietHighways(next, line, outline) : next),
+        created.setStyle(`${origin}${MAP_STYLE_PATH}`, {
+          transformStyle: (_previous, next) => {
+            const whole = withAbsoluteAssets(next, origin);
+
+            return line && outline ? withQuietHighways(whole, line, outline) : whole;
+          },
         });
 
         const ready = created;
@@ -204,7 +210,7 @@
       // Tiles past the radar's zoom are RainViewer's placeholder, so the map enlarges the closest real ones.
       target.addSource(id, {
         type: RASTER,
-        tiles: [radarTileTemplate(frames.host, frame)],
+        tiles: [radarTileTemplate(origin, frame)],
         tileSize: TILE_SIZE,
         maxzoom: radar.zoom,
       });
@@ -299,7 +305,7 @@
         {#each tiles as tile (key(tile))}
           <img
             class="radar__tile"
-            src={radarUrl(loaded.host, frame, tile, radar.zoom)}
+            src={radarUrl(origin, frame, tile, radar.zoom)}
             style:left="{tile.left}px"
             style:top="{tile.top}px"
             alt=""

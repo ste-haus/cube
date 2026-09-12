@@ -13,6 +13,7 @@ import {
   ringRadius,
   TILE_SIZE,
   tilesAround,
+  withAbsoluteAssets,
   withQuietHighways,
 } from "../radar";
 
@@ -104,7 +105,7 @@ describe("the vector map", () => {
   });
 
   it("names each frame's layer after the moment it shows", () => {
-    expect(frameLayerId({ time: 1, path: "/a" })).not.toBe(frameLayerId({ time: 2, path: "/a" }));
+    expect(frameLayerId({ time: 1, id: "a" })).not.toBe(frameLayerId({ time: 2, id: "a" }));
   });
 
   it("finds the orange highways: every highway's outline, and the motorways themselves", () => {
@@ -149,17 +150,45 @@ describe("the vector map", () => {
   });
 });
 
-describe("tile addresses", () => {
-  const frame = { time: 0, path: "/v2/radar/abc" };
-  const host = "https://tilecache.example";
+describe("the map's assets", () => {
+  const origin = "https://cube.example";
 
-  it("leaves the tile to MapLibre in the template", () => {
-    expect(radarTileTemplate(host, frame)).toBe("https://tilecache.example/v2/radar/abc/256/{z}/{x}/{y}/2/1_0.png");
+  it("completes the addresses cube gives as paths", () => {
+    const style = {
+      sprite: [{ id: "basics", url: "/api/map/sprites/basics/sprites" }],
+      glyphs: "/api/map/glyphs/{fontstack}/{range}.pbf",
+    };
+
+    expect(withAbsoluteAssets(style, origin)).toEqual({
+      sprite: [{ id: "basics", url: "https://cube.example/api/map/sprites/basics/sprites" }],
+      glyphs: "https://cube.example/api/map/glyphs/{fontstack}/{range}.pbf",
+    });
   });
 
-  it("asks RainViewer for the smoothed blue scheme without snow, tile by tile", () => {
-    expect(radarUrl(host, frame, { x: 20, y: 44, left: 0, top: 0 }, ZOOM)).toBe(
-      "https://tilecache.example/v2/radar/abc/256/7/20/44/2/1_0.png",
+  it("leaves whole addresses alone", () => {
+    const style = { sprite: "https://elsewhere.example/sprite", glyphs: "//elsewhere.example/{fontstack}/{range}.pbf" };
+
+    expect(withAbsoluteAssets(style, origin)).toEqual(style);
+  });
+
+  it("adds nothing a style did not have", () => {
+    expect(withAbsoluteAssets({ glyphs: "/api/map/glyphs/{fontstack}/{range}.pbf" }, origin)).not.toHaveProperty(
+      "sprite",
+    );
+  });
+});
+
+describe("tile addresses", () => {
+  const frame = { time: 0, id: "abc" };
+  const origin = "https://cube.example";
+
+  it("leaves the tile to MapLibre in the template", () => {
+    expect(radarTileTemplate(origin, frame)).toBe("https://cube.example/api/radar/tiles/abc/{z}/{x}/{y}.png");
+  });
+
+  it("asks cube for each tile by frame, zoom, column and row", () => {
+    expect(radarUrl(origin, frame, { x: 20, y: 44, left: 0, top: 0 }, ZOOM)).toBe(
+      "https://cube.example/api/radar/tiles/abc/7/20/44.png",
     );
   });
 });

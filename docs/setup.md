@@ -64,12 +64,13 @@ docker run -d \
   -e TZ=America/Los_Angeles \
   -v ./config.yaml:/app/config.yaml:ro \
   -v ./resources:/app/resources:ro \
+  -v ./cache:/cache \
   ghcr.io/ste-haus/cube:latest
 ```
 
 Passing the token on the command line leaves it in your shell history and in `ps` output. `--env-file .env` keeps it out of both, which is what the compose file does.
 
-The two mounts are your dashboard definition and your floorplan drawings. Both describe your home, so they are mounted rather than baked into the image.
+The first two mounts are your dashboard definition and your floorplan drawings. Both describe your home, so they are mounted rather than baked into the image. The third is where cube keeps the radar and its map between restarts; see [the cache](configuration.md#the-cache).
 
 ## Putting it on a wall
 

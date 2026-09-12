@@ -15,3 +15,6 @@ web/dist/
 # Floorplan drawings and installation-specific overrides; see resources/README.md.
 resources/*
 !resources/README.md
+
+# What cube fetches for the radar when run from source; see docs/configuration.md.
+cache/
