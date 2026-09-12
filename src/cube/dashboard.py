@@ -937,6 +937,12 @@ class Dashboard(BaseModel):
         return frozenset(entities)
 
     @property
+    def radars(self) -> list[Radar]:
+        """Every radar some face draws, which is what the radar cache fetches ahead for."""
+
+        return [radar for profile in self.profiles.values() for face in profile.faces.values() for radar in face.radars]
+
+    @property
     def allowed_entities(self) -> frozenset[str]:
         """Every entity the panel subscribes to.
 

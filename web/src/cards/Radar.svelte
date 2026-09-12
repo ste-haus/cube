@@ -8,7 +8,7 @@
     firstLabelLayer,
     frameDelay,
     frameLayerId,
-    MAP_STYLE_URL,
+    MAP_STYLE_PATH,
     mapZoom,
     project,
     radarTileTemplate,
@@ -16,6 +16,7 @@
     ringRadius,
     TILE_SIZE,
     tilesAround,
+    withAbsoluteAssets,
     withQuietHighways,
     type RadarFrames,
     type Tile,
@@ -26,10 +27,11 @@
   /*
    * The last couple of hours of rain, looped over a dark map of the country round home.
    *
-   * The map is OpenStreetMap's vector map, drawn by MapLibre, with one layer of rain per frame
-   * slotted in under the place names so they read through it; only the current frame is opaque.
-   * Range rings and home sit over the top. Without WebGL2 there is no map, and the rain is laid
-   * out as plain tiles on dark ground instead — less to go on, but nothing stamped across it.
+   * The map is OpenStreetMap's, drawn by MapLibre from VersaTiles' vector tiles, with one layer of
+   * rain per frame slotted in under the place names so they read through it; only the current
+   * frame is opaque. Range rings and home sit over the top. Without WebGL2, or without the map's
+   * style, there is no map, and the rain is laid out as plain tiles on dark ground instead — less
+   * to go on, but nothing stamped across it.
    *
    * The frames are fetched and the loop runs only while the face is being looked at. The map is
    * never touchable, so a swipe across it turns the cube.
@@ -63,6 +65,7 @@
   let { radar, weather }: { radar: Radar; weather: Weather } = $props();
 
   const visibility = faceVisibility();
+  const origin = window.location.origin;
 
   function supportsWebGL2(): boolean {
     try {
@@ -145,13 +148,30 @@
         const styles = getComputedStyle(element);
         const line = styles.getPropertyValue(HIGHWAY_COLOR_TOKEN).trim();
         const outline = styles.getPropertyValue(HIGHWAY_OUTLINE_COLOR_TOKEN).trim();
-        created.setStyle(MAP_STYLE_URL, {
-          transformStyle: (_previous, next) => (line && outline ? withQuietHighways(next, line, outline) : next),
+        created.setStyle(`${origin}${MAP_STYLE_PATH}`, {
+          transformStyle: (_previous, next) => {
+            const whole = withAbsoluteAssets(next, origin);
+
+            return line && outline ? withQuietHighways(whole, line, outline) : whole;
+          },
         });
 
         const ready = created;
         ready.on("load", () => {
           map = ready;
+        });
+
+        // An error before the style has arrived is the style failing to, and then no map is ever
+        // drawn, so the rain goes on plain ground instead. After it, the error is a tile or an
+        // icon, and the map carries on without it.
+        let styled = false;
+        ready.once("styledata", () => {
+          styled = true;
+        });
+        ready.on("error", () => {
+          if (!styled) {
+            vector = false;
+          }
         });
         ready.on("webglcontextlost", () => {
           vector = false;
@@ -190,7 +210,7 @@
       // Tiles past the radar's zoom are RainViewer's placeholder, so the map enlarges the closest real ones.
       target.addSource(id, {
         type: RASTER,
-        tiles: [radarTileTemplate(frames.host, frame)],
+        tiles: [radarTileTemplate(origin, frame)],
         tileSize: TILE_SIZE,
         maxzoom: radar.zoom,
       });
@@ -285,7 +305,7 @@
         {#each tiles as tile (key(tile))}
           <img
             class="radar__tile"
-            src={radarUrl(loaded.host, frame, tile, radar.zoom)}
+            src={radarUrl(origin, frame, tile, radar.zoom)}
             style:left="{tile.left}px"
             style:top="{tile.top}px"
             alt=""

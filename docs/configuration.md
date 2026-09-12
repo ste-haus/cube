@@ -24,6 +24,7 @@ Only the first two are required.
 | `CUBE_LOG_LEVEL` | `info` | `debug` if you want to watch the connection |
 | `CUBE_DASHBOARD_PATH` | `config.yaml` | Where the dashboard definition is |
 | `CUBE_RESOURCES_PATH` | `resources` | Where floorplans and icons are |
+| `CUBE_CACHE_PATH` | `cache` | Where the radar and its map are kept; the image uses `/cache`. See [the cache](#the-cache) |
 | `CUBE_FRONTEND_PATH` | the built bundle | Where the compiled panel is; the image sets its own |
 | `CUBE_MAX_PANELS` | `16` | How many panels may stream at once |
 | `CUBE_HEARTBEAT_INTERVAL_SECONDS` | `5` | How often to prove the connection is alive |
@@ -38,8 +39,26 @@ Rarely touched, but here for completeness:
 | `CUBE_REQUEST_TIMEOUT_SECONDS` | `15` | How long to wait for Home Assistant to answer |
 | `CUBE_ASSET_CACHE_SECONDS` | `300` | How long a panel may cache a floorplan |
 | `CUBE_CAMERA_CACHE_SECONDS` | `5` | How long a panel may cache a camera still |
+| `CUBE_CACHE_RETENTION_DAYS` | `60` | How long a cached file is kept after a panel last asked for it |
+| `CUBE_RADAR_CACHE_RETENTION_DAYS` | `1` | The same for radar tiles, which are stale within two hours |
+| `CUBE_CACHE_SWEEP_INTERVAL_HOURS` | `24` | How often the cache is swept |
 
 The heartbeat is worth knowing about. Many setups put a reverse proxy in front of Home Assistant, and some of those close a websocket they think has gone quiet — sometimes after only a few seconds. cube sends a small keep-alive to stop that happening. If your panel is reconnecting every few seconds, this is the number to lower.
+
+## The cache
+
+A radar's rain, and the style, icons, and lettering of the map beneath it, are fetched by cube rather than by each panel, and kept on disk under `CUBE_CACHE_PATH`. RainViewer limits how much one address may fetch and every panel in a house shares one, so the house asks for each tile once, however many panels show it. Each kind of thing has a directory of its own:
+
+| Directory | Holds |
+|---|---|
+| `radar/` | RainViewer's list of frames, and each frame's tiles |
+| `map/` | VersaTiles' style, sprite sheets, and glyphs |
+
+A new frame's tiles round home are fetched as soon as RainViewer publishes it, so a panel turning to the radar finds them waiting. cube holds itself to 200 requests a minute to RainViewer, well inside what RainViewer allows an address and leaving room for anything else in the house that uses it, so an empty cache fills in about a minute, newest frame first. The map's own vector tiles are not kept; a panel fetches those straight from VersaTiles.
+
+Serving a file marks it as used. When cube starts, and every `CUBE_CACHE_SWEEP_INTERVAL_HOURS` after, anything nobody has asked for in longer than its retention is removed: `CUBE_RADAR_CACHE_RETENTION_DAYS` for the radar, `CUBE_CACHE_RETENTION_DAYS` for everything else. `python -m cube.cache sweep` does the same by hand.
+
+In a container, mount a volume at `/cache` so a restart does not begin cold. Without one the cache lives and dies with the container, which works, but fetches everything again after every upgrade.
 
 ## The dashboard
 

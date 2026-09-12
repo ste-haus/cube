@@ -148,7 +148,7 @@ up:
         title: Wind
 ```
 
-A **radar** is the last couple of hours of rain from RainViewer, looped over OpenStreetMap's own dark vector map and centred on `weather.zone_entity_id`, which it will not load without. It never pans or zooms. `radar:` on its own takes the defaults:
+A **radar** is the last couple of hours of rain from RainViewer, looped over a dark vector map of OpenStreetMap and centred on `weather.zone_entity_id`, which it will not load without. It never pans or zooms. `radar:` on its own takes the defaults:
 
 | Field | Default | Meaning |
 |---|---|---|
@@ -158,7 +158,7 @@ A **radar** is the last couple of hours of rain from RainViewer, looped over Ope
 | `frame_seconds` | `0.2` | How long each frame shows |
 | `pause_seconds` | `0.5` | How long the newest frame holds before the loop starts over |
 
-The map is drawn in the panel by MapLibre, from the vector tiles and the "eclipse" style OpenStreetMap serves, so it needs no key; the rain goes in under its place names so they read through it. Its highways are greyed, since the style's orange reads like rain, and home is a white dot at the centre. The panel fetches the map and the radar straight from OpenStreetMap and RainViewer, not through cube, and only while the face is being looked at. The rain is RainViewer's "Universal Blue": the faint tan under the blue is its weakest band, echoes too slight to be measurable rain, which is often birds, insects, or the ground near a radar rather than weather.
+The map is drawn in the panel by MapLibre, from OpenStreetMap's vector tiles and the "eclipse" style VersaTiles serves, so it needs no key; the rain goes in under its place names so they read through it. Its highways are greyed, since the style's orange reads like rain, and home is a white dot at the centre. The rain, and the map's style, icons, and lettering, come through cube, which fetches each once for every panel and keeps it on disk (see [the cache](configuration.md#the-cache)); only the map's vector tiles come straight from VersaTiles. A panel asks for any of it only while the face is being looked at. The rain is RainViewer's "Universal Blue": the faint tan under the blue is its weakest band, echoes too slight to be measurable rain, which is often birds, insects, or the ground near a radar rather than weather.
 
 MapLibre needs WebGL2. A panel without it, or whose browser takes the drawing context back, gets the rain, rings, and home on plain dark ground instead of a map.
 
