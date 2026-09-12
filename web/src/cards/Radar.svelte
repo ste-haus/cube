@@ -26,10 +26,11 @@
   /*
    * The last couple of hours of rain, looped over a dark map of the country round home.
    *
-   * The map is OpenStreetMap's vector map, drawn by MapLibre, with one layer of rain per frame
-   * slotted in under the place names so they read through it; only the current frame is opaque.
-   * Range rings and home sit over the top. Without WebGL2 there is no map, and the rain is laid
-   * out as plain tiles on dark ground instead — less to go on, but nothing stamped across it.
+   * The map is OpenStreetMap's, drawn by MapLibre from VersaTiles' vector tiles, with one layer of
+   * rain per frame slotted in under the place names so they read through it; only the current
+   * frame is opaque. Range rings and home sit over the top. Without WebGL2, or without the map's
+   * style, there is no map, and the rain is laid out as plain tiles on dark ground instead — less
+   * to go on, but nothing stamped across it.
    *
    * The frames are fetched and the loop runs only while the face is being looked at. The map is
    * never touchable, so a swipe across it turns the cube.
@@ -152,6 +153,19 @@
         const ready = created;
         ready.on("load", () => {
           map = ready;
+        });
+
+        // An error before the style has arrived is the style failing to, and then no map is ever
+        // drawn, so the rain goes on plain ground instead. After it, the error is a tile or an
+        // icon, and the map carries on without it.
+        let styled = false;
+        ready.once("styledata", () => {
+          styled = true;
+        });
+        ready.on("error", () => {
+          if (!styled) {
+            vector = false;
+          }
         });
         ready.on("webglcontextlost", () => {
           vector = false;

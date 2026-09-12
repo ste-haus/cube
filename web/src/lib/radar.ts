@@ -1,10 +1,12 @@
 /**
  * The radar's geometry and where its pictures come from.
  *
- * The map beneath the rain is OpenStreetMap's own vector map, drawn by MapLibre in the dark
- * style OpenStreetMap hosts, so it needs no key and matches Home Assistant's own maps. Where
- * there is no WebGL2 to draw it with, the rain is laid out as plain tiles on dark ground instead,
- * which is what the tile arithmetic here is for; the ring arithmetic serves both.
+ * The map beneath the rain is OpenStreetMap, drawn by MapLibre in VersaTiles' dark style from
+ * VersaTiles' own servers, so it needs no key. OpenStreetMap hosts the same style, but hands it
+ * only to the sites it knows, and a panel on a domain of its own is not one of them. Where there
+ * is no WebGL2 to draw it with, or the style never arrives, the rain is laid out as plain tiles on
+ * dark ground instead, which is what the tile arithmetic here is for; the ring arithmetic serves
+ * both.
  *
  * Everything is Web Mercator.
  */
@@ -29,7 +31,7 @@ const METRES_PER: Record<DistanceUnit, number> = {
  * scale on the ground is one zoom level lower on the map. */
 const VECTOR_ZOOM_OFFSET = 1;
 
-export const MAP_STYLE_URL = "https://vector.openstreetmap.org/styles/shortbread/eclipse.json";
+export const MAP_STYLE_URL = "https://tiles.versatiles.org/assets/styles/eclipse/style.json";
 const LABEL_LAYER_TYPE = "symbol";
 const FRAME_LAYER_PREFIX = "radar-";
 
