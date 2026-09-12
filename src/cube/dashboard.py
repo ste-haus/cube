@@ -12,7 +12,17 @@ from pathlib import Path
 from typing import Annotated, Any, Self
 
 import yaml
-from pydantic import BaseModel, BeforeValidator, Field, PrivateAttr, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Discriminator,
+    Field,
+    PrivateAttr,
+    Tag,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +37,61 @@ class Theme(BaseModel):
     faint: str = "#333333"
     spent: str = Field(default="#4a4a4a", description="Something the day has already been past")
     accent: str = "#11fcf7"
+
+
+class Colors(BaseModel):
+    """The installation's own colours, named so the rest of the config can point at them.
+
+    Any colour elsewhere in the config may be written as one of these names instead of a value,
+    so everything that should match is changed in one place. `primary` and `secondary` tie the
+    panel together. The rest are the sky's, for the horizon and the daylight bar, and are muted on
+    purpose: the weather should read as part of the panel rather than a picture pasted onto it.
+    """
+
+    primary: str = "#f205f2"
+    secondary: str = "#00bfff"
+
+    day: str = "#7a8fa0"
+    night: str = "#2e2a45"
+    twilight: str = "#a0706b"
+    sun: str = "#d0a46c"
+    sun_below: str = Field(default="#6d5a50", description="The sun while it is below the horizon")
+
+
+COLORS_SECTION = "colors"
+COLOR_KEY = "color"
+COLOR_SUFFIX = "_color"
+COLORS_SUFFIX = "_colors"
+
+
+def resolve_named_colors(value: Any, palette: dict[str, str]) -> Any:
+    """Swaps a palette name for its colour wherever the config expects a colour.
+
+    Only values under colour keys are looked at: `color`, anything ending `_color`, and the values
+    of anything ending `_colors`. A calendar that happens to be called "primary" stays called that.
+    """
+
+    if isinstance(value, list):
+        return [resolve_named_colors(item, palette) for item in value]
+
+    if not isinstance(value, dict):
+        return value
+
+    def named(colour: Any) -> Any:
+        return palette.get(colour, colour) if isinstance(colour, str) else colour
+
+    resolved: dict[Any, Any] = {}
+    for key, item in value.items():
+        colour_key = isinstance(key, str)
+
+        if colour_key and (key == COLOR_KEY or key.endswith(COLOR_SUFFIX)):
+            resolved[key] = named(item)
+        elif colour_key and key.endswith(COLORS_SUFFIX) and isinstance(item, dict):
+            resolved[key] = {state: named(colour) for state, colour in item.items()}
+        else:
+            resolved[key] = resolve_named_colors(item, palette)
+
+    return resolved
 
 
 class ThresholdBand(BaseModel):
@@ -64,9 +129,15 @@ class Reading(BaseModel):
 
 
 class Extreme(Reading):
-    """A forecast high or low, and optionally how far off it is."""
+    """A forecast high or low, and optionally how far off it is.
 
-    hours_attribute: str | None = None
+    `turning_point_attribute` names a mapping of `temperature`, `hours`, and `upcoming`: the next
+    or last point the temperature turns round, tide-table style. When one is there the panel shows
+    its temperature and hours in place of the state's; when it is empty the panel shows the state
+    alone.
+    """
+
+    turning_point_attribute: str | None = None
 
 
 class Indicator(Reading):
@@ -259,6 +330,33 @@ class Clock(BaseModel):
     easter_egg_text: str = ""
 
 
+class TemperatureStop(BaseModel):
+    """One point on the temperature gradient: `color` at exactly `at`, blended between points."""
+
+    at: float
+    color: str
+
+
+# In Fahrenheit, which is what a `weather` entity reports unless it has been told otherwise.
+# An installation in Celsius restates the whole list rather than having it converted, because
+# what counts as a warm day is not a unit conversion.
+DEFAULT_TEMPERATURE_GRADIENT = [
+    TemperatureStop(at=10, color="#8ab4f8"),
+    TemperatureStop(at=32, color="#7ecfe0"),
+    TemperatureStop(at=50, color="#93d3a2"),
+    TemperatureStop(at=70, color="#fbee84"),
+    TemperatureStop(at=85, color="#f7b267"),
+    TemperatureStop(at=100, color="#f2645a"),
+]
+
+DEFAULT_FORECAST_DAYS = 7
+DEFAULT_FORECAST_HOURS = 12
+
+
+# A gust under this, in miles an hour, says nothing the steady wind does not.
+DEFAULT_WIND_GUST_THRESHOLD = 15
+
+
 class Weather(BaseModel):
     entity_id: str
     sun_entity_id: str | None = Field(default=None, description="Distinguishes day from night icons")
@@ -270,6 +368,29 @@ class Weather(BaseModel):
     summary_max_length: int = 150
     summary_min_scale: float = 0.8
     summary_max_scale: float = 1.0
+
+    # The weather face.
+    zone_entity_id: str | None = Field(
+        default=None,
+        description="A zone whose latitude and longitude place the sun and moon; the horizon needs one",
+    )
+    forecast_days: int = Field(default=DEFAULT_FORECAST_DAYS, ge=1)
+    forecast_hours: int = Field(default=DEFAULT_FORECAST_HOURS, ge=1)
+    wind_gust_threshold: float = Field(
+        default=DEFAULT_WIND_GUST_THRESHOLD,
+        ge=0,
+        description="Gusts at or over this, in the weather entity's own unit, show at the wind arrow's tail",
+    )
+    temperature_gradient: list[TemperatureStop] = Field(
+        default_factory=lambda: [stop.model_copy() for stop in DEFAULT_TEMPERATURE_GRADIENT],
+        min_length=1,
+    )
+
+    @model_validator(mode="after")
+    def sort_gradient_ascending(self) -> Self:
+        self.temperature_gradient.sort(key=lambda stop: stop.at)
+
+        return self
 
 
 class Transcript(BaseModel):
@@ -314,6 +435,9 @@ class Labels(BaseModel):
 
     notices: str = "Notices"
     agenda: str = "Today"
+    sunrise: str = "Sunrise"
+    sunset: str = "Sunset"
+    now: str = Field(default="Now", description="Where the hourly forecast starts")
 
 
 BLANK_FACE_CONTENT = "blank"
@@ -321,6 +445,7 @@ DASHBOARD_FACE_CONTENT = "dashboard"
 CUSTOM_FACE_CONTENT = "custom"
 CAMERA_GRID_FACE_CONTENT = "camera-grid"
 CAMERA_HERO_FACE_CONTENT = "camera-hero"
+WEATHER_FACE_CONTENT = "weather"
 
 FACE_DIRECTORY = "faces"
 FACE_ENTRYPOINT = "index.html"
@@ -350,7 +475,7 @@ CameraRow = Annotated[list[CameraEntry], Field(min_length=1)]
 
 
 class CameraFaceOptions(BaseModel):
-    """Options for a face whose whole content is cameras.
+    """Options for a face that draws cameras.
 
     The cameras are enumerated rather than left to the renderer, because the snapshot endpoint
     fetches for the entities the config names and nothing else.
@@ -386,11 +511,139 @@ class CameraHeroOptions(CameraFaceOptions):
         return [self.hero, *self.side]
 
 
+FRAME_SCHEMES = ("http://", "https://")
+UNFRAMEABLE_URL_MESSAGE = "Frame `{url}` is not an http or https address."
+
+
+class Frame(BaseModel):
+    """Somebody else's page, drawn edge to edge with nothing of the panel's around it.
+
+    `title` is never drawn; it is what the page is called to anything reading the panel rather
+    than looking at it. A frame takes no touches unless it is `interactive`, because a touch that
+    reaches the page is a swipe that never reaches the cube.
+    """
+
+    url: str
+    title: str | None = None
+    interactive: bool = Field(default=False, description="Let touches reach the page instead of turning the cube")
+
+    @model_validator(mode="after")
+    def require_web_address(self) -> Self:
+        if not self.url.startswith(FRAME_SCHEMES):
+            raise ValueError(UNFRAMEABLE_URL_MESSAGE.format(url=self.url))
+
+        return self
+
+
+# RainViewer serves its free radar tiles no closer than this; past it, every tile is a
+# placeholder saying so.
+RAINVIEWER_MAX_ZOOM = 7
+DEFAULT_RADAR_RINGS = [25.0, 50.0, 100.0]
+DEFAULT_RADAR_FRAME_SECONDS = 0.2
+DEFAULT_RADAR_PAUSE_SECONDS = 0.5
+
+
+class DistanceUnit(StrEnum):
+    MILES = "mi"
+    KILOMETRES = "km"
+
+
+class Radar(BaseModel):
+    """The last couple of hours of rain, looped over a dark map centred on the weather's zone.
+
+    The map neither pans nor zooms. It is the same stretch of country every time, which is what
+    makes it readable from across a room.
+    """
+
+    zoom: int = Field(
+        default=RAINVIEWER_MAX_ZOOM,
+        ge=1,
+        le=RAINVIEWER_MAX_ZOOM,
+        description="How close the map is; RainViewer's free radar goes no closer than 7",
+    )
+    rings: list[float] = Field(
+        default_factory=lambda: list(DEFAULT_RADAR_RINGS),
+        description="Distances from home to draw a ring at",
+    )
+    ring_unit: DistanceUnit = DistanceUnit.MILES
+    frame_seconds: float = Field(default=DEFAULT_RADAR_FRAME_SECONDS, gt=0)
+    pause_seconds: float = Field(
+        default=DEFAULT_RADAR_PAUSE_SECONDS,
+        ge=0,
+        description="How long the newest frame holds before the loop starts over",
+    )
+
+
+class RadarTile(BaseModel):
+    """A tile that is a radar, written `radar:` on its own for the defaults."""
+
+    radar: Radar = Field(default_factory=Radar)
+
+    @field_validator("radar", mode="before")
+    @classmethod
+    def default_when_bare(cls, value: Any) -> Any:
+        return {} if value is None else value
+
+
+FRAME_TILE = "frame"
+RADAR_TILE = "radar"
+CAMERA_TILE = "camera"
+FRAME_KEY = "url"
+RADAR_KEY = "radar"
+
+
+def tile_kind(value: Any) -> str:
+    """A tile naming a `url` is a frame and one naming `radar` is a radar. Anything else, a bare
+    entity id included, is a camera."""
+
+    if isinstance(value, Frame):
+        return FRAME_TILE
+
+    if isinstance(value, RadarTile):
+        return RADAR_TILE
+
+    if isinstance(value, dict):
+        if FRAME_KEY in value:
+            return FRAME_TILE
+
+        if RADAR_KEY in value:
+            return RADAR_TILE
+
+    return CAMERA_TILE
+
+
+WeatherTile = Annotated[
+    Annotated[Frame, Tag(FRAME_TILE)]
+    | Annotated[RadarTile, Tag(RADAR_TILE)]
+    | Annotated[CameraEntry, Tag(CAMERA_TILE)],
+    Discriminator(tile_kind),
+]
+
+
+class WeatherFaceOptions(CameraFaceOptions):
+    """Tiles laid out after the weather face's own cards, filling its grid left to right.
+
+    A tile is a camera, written as it would be on a camera face, a frame, or a radar. With no
+    tiles the face is its own cards alone.
+    """
+
+    tiles: list[WeatherTile] = Field(default_factory=list)
+
+    @property
+    def cameras(self) -> list[Camera]:
+        return [tile for tile in self.tiles if isinstance(tile, Camera)]
+
+    @property
+    def radars(self) -> list[Radar]:
+        return [tile.radar for tile in self.tiles if isinstance(tile, RadarTile)]
+
+
 # The renderers that read `options` as something more than a passthrough, and the shape each
 # one reads it as. A content name absent from here takes its options untouched.
 FACE_OPTIONS: dict[str, type[CameraFaceOptions]] = {
     CAMERA_GRID_FACE_CONTENT: CameraGridOptions,
     CAMERA_HERO_FACE_CONTENT: CameraHeroOptions,
+    WEATHER_FACE_CONTENT: WeatherFaceOptions,
 }
 
 
@@ -432,6 +685,12 @@ class Face(BaseModel):
         """The cameras this face draws, and none at all when it draws something else."""
 
         return self._options.cameras if self._options else []
+
+    @property
+    def radars(self) -> list[Radar]:
+        """The radars this face draws, each of which needs somewhere to centre on."""
+
+        return self._options.radars if isinstance(self._options, WeatherFaceOptions) else []
 
 
 class Profile(BaseModel):
@@ -481,6 +740,12 @@ UNSAFE_PAGE_NAME_MESSAGE = (
 )
 INVALID_FACE_OPTIONS_MESSAGE = "The {face} face of profile `{profile}` has options it cannot draw with: {error}"
 GO2RTC_WITHOUT_SERVER_MESSAGE = "Camera `{camera}` streams from go2rtc, but no `go2rtc` block says where go2rtc is."
+RADAR_WITHOUT_ZONE_MESSAGE = (
+    "The {face} face of profile `{profile}` has a radar, but no `weather.zone_entity_id` to centre it on."
+)
+WEATHER_FACE_WITHOUT_WEATHER_MESSAGE = (
+    f"The {{face}} face of profile `{{profile}}` is `{WEATHER_FACE_CONTENT}`, but there is no `weather` block to draw."
+)
 
 MISSING_FACE_PAGE_MESSAGE = "No page at %s for the %s face of profile %s; that face falls back to blank."
 
@@ -489,6 +754,7 @@ class Dashboard(BaseModel):
     profiles: dict[str, Profile] = Field(default_factory=dict)
 
     theme: Theme = Field(default_factory=Theme)
+    colors: Colors = Field(default_factory=Colors)
     labels: Labels = Field(default_factory=Labels)
     clock: Clock = Field(default_factory=Clock)
     indicators: list[Indicator] = Field(default_factory=list)
@@ -507,6 +773,24 @@ class Dashboard(BaseModel):
     toggleable_domains: list[str] = Field(default_factory=lambda: list(DEFAULT_TOGGLEABLE_DOMAINS))
     # Counts that drive the agenda's scroll animation, rather than anything rendered directly.
     item_count_entities: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_palette(cls, data: Any) -> Any:
+        """Reads every colour written as a palette name as the colour it names.
+
+        Done on the document before anything else sees it, so every section downstream — and the
+        config endpoint — only ever deals in colours.
+        """
+
+        if not isinstance(data, dict):
+            return data
+
+        palette = Colors.model_validate(data.get(COLORS_SECTION) or {}).model_dump()
+
+        return {
+            key: value if key == COLORS_SECTION else resolve_named_colors(value, palette) for key, value in data.items()
+        }
 
     @model_validator(mode="after")
     def resolve_profiles(self) -> Self:
@@ -545,6 +829,9 @@ class Dashboard(BaseModel):
                     if not is_safe_page_name(face.page):
                         raise ValueError(UNSAFE_PAGE_NAME_MESSAGE.format(profile=key, face=name, page=face.page))
 
+                if face.content == WEATHER_FACE_CONTENT and self.weather is None:
+                    raise ValueError(WEATHER_FACE_WITHOUT_WEATHER_MESSAGE.format(profile=key, face=name))
+
                 options = FACE_OPTIONS.get(face.content)
                 if options is None:
                     continue
@@ -553,6 +840,9 @@ class Dashboard(BaseModel):
                     face.bind(options)
                 except ValidationError as error:
                     raise ValueError(INVALID_FACE_OPTIONS_MESSAGE.format(profile=key, face=name, error=error)) from error
+
+                if face.radars and (self.weather is None or self.weather.zone_entity_id is None):
+                    raise ValueError(RADAR_WITHOUT_ZONE_MESSAGE.format(profile=key, face=name))
 
         self._require_go2rtc()
 
@@ -693,6 +983,8 @@ class Dashboard(BaseModel):
                 entities.add(self.weather.summary_entity_id)
             if self.weather.sun_entity_id:
                 entities.add(self.weather.sun_entity_id)
+            if self.weather.zone_entity_id:
+                entities.add(self.weather.zone_entity_id)
 
         entities.update(self.camera_entities)
 

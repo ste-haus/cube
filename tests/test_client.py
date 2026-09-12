@@ -38,6 +38,7 @@ class StubHomeAssistant:
         self.initial_states: dict[str, dict] = {}
         self.subscribed: list[str] = []
         self.calls: list[dict] = []
+        self.response: dict = {}
         self._connection = None
         self._subscription_id = 0
         self._ready = asyncio.Event()
@@ -81,7 +82,20 @@ class StubHomeAssistant:
             self._ready.set()
         elif message_type == protocol.CALL_SERVICE:
             self.calls.append(message)
-            await self._result(connection, message_id)
+
+            if message.get(protocol.RETURN_RESPONSE):
+                await connection.send(
+                    json.dumps(
+                        {
+                            protocol.ID: message_id,
+                            protocol.TYPE: protocol.RESULT,
+                            protocol.SUCCESS: True,
+                            protocol.RESULT_PAYLOAD: {protocol.RESPONSE: self.response},
+                        }
+                    )
+                )
+            else:
+                await self._result(connection, message_id)
 
     async def _result(self, connection, message_id: int) -> None:
         await connection.send(
@@ -199,3 +213,21 @@ async def test_service_calls_reach_home_assistant(stub, client):
 
     assert stub.calls[0]["service"] == TOGGLE_SERVICE
     assert stub.calls[0]["target"]["entity_id"] == ENTITY_ID
+    assert protocol.RETURN_RESPONSE not in stub.calls[0]
+
+
+FORECAST_DOMAIN = "weather"
+FORECAST_SERVICE = "get_forecasts"
+FORECAST_ENTITY_ID = "weather.example"
+DAILY = {"type": "daily"}
+
+
+async def test_a_service_can_be_asked_for_its_answer(stub, client):
+    stub.response = {FORECAST_ENTITY_ID: {"forecast": [{"temperature": 71}]}}
+    await wait_for(lambda: client.connected, READY_TIMEOUT_SECONDS)
+
+    answer = await client.query_service(FORECAST_DOMAIN, FORECAST_SERVICE, FORECAST_ENTITY_ID, DAILY)
+
+    assert answer == stub.response
+    assert stub.calls[0][protocol.RETURN_RESPONSE] is True
+    assert stub.calls[0][protocol.SERVICE_DATA] == DAILY

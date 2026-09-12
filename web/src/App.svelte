@@ -16,6 +16,16 @@
     "--color-accent": "accent",
   };
 
+  const COLOR_PROPERTIES: Record<string, keyof DashboardConfig["colors"]> = {
+    "--color-primary": "primary",
+    "--color-secondary": "secondary",
+    "--color-day": "day",
+    "--color-night": "night",
+    "--color-twilight": "twilight",
+    "--color-sun": "sun",
+    "--color-sun-below": "sun_below",
+  };
+
   let config = $state<DashboardConfig | null>(null);
 
   $effect(() => {
@@ -25,6 +35,10 @@
 
     for (const [property, key] of Object.entries(THEME_PROPERTIES)) {
       document.documentElement.style.setProperty(property, config.theme[key]);
+    }
+
+    for (const [property, key] of Object.entries(COLOR_PROPERTIES)) {
+      document.documentElement.style.setProperty(property, config.colors[key]);
     }
   });
 

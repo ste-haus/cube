@@ -33,9 +33,25 @@ profiles:
       right:
         content: blank
         label: right
+      # The conditions, today's range, the sun and moon, and the forecast, all from the
+      # `weather` block below. `tiles` is optional, and each goes where its kind belongs: a radar
+      # at the top of the left column, cameras and frames in a row beneath it, in the order
+      # written. A title captions any of them. A tile is a camera,
+      # written as on a camera face; a radar, which centres on `weather.zone_entity_id`; or a
+      # frame — another page, drawn edge to edge. A frame takes no touches unless
+      # `interactive: true`, so a swipe across it still turns the cube.
       up:
-        content: blank
-        label: up
+        content: weather
+        label: Weather
+        options:
+          tiles:
+            - radar:
+                rings: [25, 50, 100]
+                ring_unit: mi
+            - camera.example_satellite
+            - url: https://frames.example/wind.html
+              title: Wind
+            - camera.example_smoke
       down:
         content: blank
         label: down
@@ -97,6 +113,21 @@ profiles:
             - camera.example_driveway
             - camera.example_back_yard
 
+# The installation's own colours. Any colour elsewhere in this file may be written as one of these
+# names instead of a value, so everything meant to match changes in one place. Every one has a
+# default, so the section can be left out, or name only the colours that differ.
+#
+# `primary` and `secondary` tie the panel together and draw the forecast's highs and lows. The rest
+# are the sky's, for the horizon and the daylight bar, and are muted on purpose.
+colors:
+  primary: "#f205f2"
+  secondary: "#00bfff"
+  day: "#7a8fa0"
+  night: "#2e2a45"
+  twilight: "#a0706b"
+  sun: "#d0a46c"
+  sun_below: "#6d5a50"
+
 # The panel's palette.
 theme:
   background: "#111111"
@@ -104,6 +135,9 @@ theme:
 labels:
   notices: Notices
   agenda: Today
+  sunrise: Sunrise
+  sunset: Sunset
+  now: Now
 
 clock:
   date_format: "%A, %B %o, %Y"
@@ -215,11 +249,11 @@ agenda:
   calendars:
     - entity_id: calendar.example_personal
       name: Personal
-      color: "#bd00bd"
+      color: primary
       side: right
     - entity_id: calendar.example_shared
       name: Shared
-      color: "#00bfff"
+      color: secondary
       side: left
     # `extra` belongs to neither column: its events read as notices instead, under this icon.
     - entity_id: calendar.example_chores
@@ -277,13 +311,31 @@ floorplans:
 weather:
   entity_id: weather.example
   sun_entity_id: sun.sun
+  # `turning_point_attribute` names a mapping of `temperature`, `hours`, and `upcoming`, shown as
+  # "66° ↑ +3h".
   high:
     entity_id: sensor.example_temperature_high
-    hours_attribute: hours_until
+    turning_point_attribute: turning_point
   low:
     entity_id: sensor.example_temperature_low
-    hours_attribute: hours_until
+    turning_point_attribute: turning_point
   summary_entity_id: sensor.example_forecast_summary
+  # For the weather face. The zone's latitude and longitude place the sun and moon on the
+  # horizon; without one that card stays empty.
+  zone_entity_id: zone.home
+  forecast_days: 7
+  forecast_hours: 12
+  # Gusts at or over this, in the weather entity's own unit, show at the tail of the wind's arrow.
+  wind_gust_threshold: 15
+  # The range bar's colors, blended between these points. In the weather entity's own unit, so
+  # an installation in Celsius restates the list rather than having it converted.
+  temperature_gradient:
+    - { at: 10, color: "#8ab4f8" }
+    - { at: 32, color: "#7ecfe0" }
+    - { at: 50, color: "#93d3a2" }
+    - { at: 70, color: "#fbee84" }
+    - { at: 85, color: "#f7b267" }
+    - { at: 100, color: "#f2645a" }
 
 camera:
   entity_id: camera.example_street
@@ -299,8 +351,8 @@ fuel:
   scale:
     default_color: "#e1e1e1"
     bands:
-      - { at: 33, color: "#bd00bd" }
-      - { at: 15, color: "#11fcf7" }
+      - { at: 33, color: primary }
+      - { at: 15, color: secondary }
   gauges:
     - entity_id: sensor.example_vehicle_one_fuel_level
       name: Vehicle One

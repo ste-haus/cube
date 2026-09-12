@@ -10,7 +10,7 @@ wiring between entity, SVG element, and stylesheet class can be seen without a r
 import argparse
 import asyncio
 import random
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -35,10 +35,36 @@ NUMERIC_RANGE = (0, 100)
 TEMPERATURE_RANGE = (30, 90)
 BEARING_RANGE = (0, 359)
 BRIGHTNESS_RANGE = (40, 255)
+# Either side of now: a turning point still to come, or one just gone.
+TURNING_POINT_HOURS_RANGE = (-6, 12)
 
 SAMPLE_NOTICE_ICON = "mdi:information-outline"
 SAMPLE_MESSAGE = "Sample notice text"
 SAMPLE_CONDITION = "partlycloudy"
+SAMPLE_HUMIDITY_RANGE = (30, 95)
+SAMPLE_TEMPERATURE_UNIT = "°F"
+SAMPLE_WIND_SPEED_UNIT = "mph"
+# How far a gust runs over the steady wind, sometimes enough to be worth showing.
+GUST_EXTRA_RANGE = (0, 25)
+SUN_UP = "above_horizon"
+
+# A week that has some shape to it, stamped the way most providers stamp a day: its local midnight.
+SAMPLE_FORECAST_DAYS = 7
+# A day of hours from the one under way, the temperature drifting a degree or two at a time.
+SAMPLE_FORECAST_HOURS = 24
+HOURLY_DRIFT_RANGE = (-2, 2)
+SAMPLE_RAIN_CHANCES = (0, 0, 0, 10, 30, 60)
+FORECAST_TYPE_KEY = "type"
+HOURLY_FORECAST_TYPE = "hourly"
+SAMPLE_FORECAST_CONDITIONS = ("sunny", "partlycloudy", "cloudy", "rainy")
+FORECAST_LOW_RANGE = (45, 60)
+FORECAST_SPREAD_RANGE = (8, 20)
+
+# A place where the machine's own clock is roughly solar time, so the horizon the stub draws has
+# its sunrise in the morning wherever it is run. Fifteen degrees of longitude to the hour.
+SAMPLE_LATITUDE = 45.0
+MINUTES_PER_DEGREE = 4
+SECONDS_PER_MINUTE = 60
 SAMPLE_SUMMARY = "Grey, with a decent chance of more grey later on."
 SAMPLE_TRANSCRIPT = "this is a sample announcement"
 
@@ -89,14 +115,30 @@ def _initial_state(dashboard: Dashboard, entity_id: str) -> dict[str, Any]:
         return {protocol.STATE: state, protocol.ATTRIBUTES: attributes}
 
     if domain == "weather":
+        wind_speed = random.randint(*NUMERIC_RANGE)
+
         return {
             protocol.STATE: SAMPLE_CONDITION,
             protocol.ATTRIBUTES: {
                 "temperature": random.randint(*TEMPERATURE_RANGE),
-                "wind_speed": random.randint(*NUMERIC_RANGE),
+                "apparent_temperature": random.randint(*TEMPERATURE_RANGE),
+                "temperature_unit": SAMPLE_TEMPERATURE_UNIT,
+                "humidity": random.randint(*SAMPLE_HUMIDITY_RANGE),
+                "wind_speed": wind_speed,
+                "wind_gust_speed": wind_speed + random.randint(*GUST_EXTRA_RANGE),
                 "wind_bearing": random.randint(*BEARING_RANGE),
+                "wind_speed_unit": SAMPLE_WIND_SPEED_UNIT,
             },
         }
+
+    if domain == "zone":
+        return {
+            protocol.STATE: "0",
+            protocol.ATTRIBUTES: {"latitude": SAMPLE_LATITUDE, "longitude": sample_longitude()},
+        }
+
+    if domain == "sun":
+        return {protocol.STATE: SUN_UP, protocol.ATTRIBUTES: {}}
 
     if domain == "input_text":
         return {protocol.STATE: SAMPLE_TRANSCRIPT, protocol.ATTRIBUTES: {}}
@@ -125,11 +167,64 @@ def _initial_state(dashboard: Dashboard, entity_id: str) -> dict[str, Any]:
 
     for extreme in (dashboard.weather.high, dashboard.weather.low) if dashboard.weather else ():
         if extreme and extreme.entity_id == entity_id:
-            attributes = {extreme.hours_attribute: random.randint(-6, 6)} if extreme.hours_attribute else {}
+            attributes: dict[str, Any] = {}
+
+            if extreme.turning_point_attribute:
+                hours = random.randint(*TURNING_POINT_HOURS_RANGE)
+                attributes[extreme.turning_point_attribute] = {
+                    "time": (datetime.now(UTC) + timedelta(hours=hours)).isoformat(),
+                    "temperature": random.randint(*TEMPERATURE_RANGE),
+                    "upcoming": hours >= 0,
+                    "hours": hours,
+                }
 
             return {protocol.STATE: str(random.randint(*TEMPERATURE_RANGE)), protocol.ATTRIBUTES: attributes}
 
     return {protocol.STATE: str(random.randint(*NUMERIC_RANGE)), protocol.ATTRIBUTES: {}}
+
+
+def sample_longitude() -> float:
+    offset = datetime.now().astimezone().utcoffset() or timedelta(0)
+
+    return offset.total_seconds() / SECONDS_PER_MINUTE / MINUTES_PER_DEGREE
+
+
+def sample_hourly_forecast() -> list[dict[str, Any]]:
+    start = datetime.now().astimezone().replace(minute=0, second=0, microsecond=0)
+    temperature = random.randint(*FORECAST_LOW_RANGE)
+
+    hours = []
+    for offset in range(SAMPLE_FORECAST_HOURS):
+        temperature += random.randint(*HOURLY_DRIFT_RANGE)
+        hours.append(
+            {
+                "datetime": (start + timedelta(hours=offset)).isoformat(),
+                "condition": random.choice(SAMPLE_FORECAST_CONDITIONS),
+                "temperature": temperature,
+                "precipitation_probability": random.choice(SAMPLE_RAIN_CHANCES),
+            }
+        )
+
+    return hours
+
+
+def sample_forecast() -> list[dict[str, Any]]:
+    midnight = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    days = []
+    for offset in range(SAMPLE_FORECAST_DAYS):
+        low = random.randint(*FORECAST_LOW_RANGE)
+        days.append(
+            {
+                "datetime": (midnight + timedelta(days=offset)).isoformat(),
+                "condition": random.choice(SAMPLE_FORECAST_CONDITIONS),
+                "temperature": low + random.randint(*FORECAST_SPREAD_RANGE),
+                "templow": low,
+                "precipitation_probability": random.randint(*NUMERIC_RANGE),
+            }
+        )
+
+    return days
 
 
 def render_floorplan(dashboard: Dashboard, image: str) -> str:
@@ -252,6 +347,20 @@ def create_stub(dashboard: Dashboard) -> FastAPI:
                     protocol.EVENT: {
                         protocol.ADDED: {entity_id: states[entity_id] for entity_id in requested if entity_id in states}
                     },
+                }
+            )
+        elif message_type == protocol.CALL_SERVICE and message.get(protocol.RETURN_RESPONSE):
+            # The only service cube asks an answer of is the forecast, by the day or by the hour.
+            entity_id = message.get("target", {}).get("entity_id")
+            kind = message.get(protocol.SERVICE_DATA, {}).get(FORECAST_TYPE_KEY)
+            forecast = sample_hourly_forecast() if kind == HOURLY_FORECAST_TYPE else sample_forecast()
+
+            await socket.send_json(
+                {
+                    protocol.ID: message_id,
+                    protocol.TYPE: protocol.RESULT,
+                    protocol.SUCCESS: True,
+                    protocol.RESULT_PAYLOAD: {protocol.RESPONSE: {entity_id: {"forecast": forecast}}},
                 }
             )
         elif message_type == protocol.CALL_SERVICE:

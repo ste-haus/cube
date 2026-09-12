@@ -60,6 +60,25 @@ theme:
   accent: "#11fcf7"
 ```
 
+### colors
+
+The installation's own colours. Every one has a default, shown here, so the section can be left out, or name only the colours that differ.
+
+```yaml
+colors:
+  primary: "#f205f2"     # ties the panel together
+  secondary: "#00bfff"
+  day: "#7a8fa0"         # the sky's, for the horizon and the daylight bar
+  night: "#2e2a45"
+  twilight: "#a0706b"
+  sun: "#d0a46c"
+  sun_below: "#6d5a50"   # the sun while it is below the horizon
+```
+
+The sky's colours are muted on purpose: bright ones read as a picture pasted onto the panel rather than part of it.
+
+Any colour anywhere else in the config may be written as one of these names instead of a value — a calendar's `color`, a gauge band, a state colour — so everything meant to match is changed in one place. Only colour settings are read this way: a key called `color`, one ending in `_color`, or the values under one ending in `_colors`. A calendar *named* "primary" is left alone. The forecast's highs and lows are drawn in `primary` and `secondary` without being told.
+
 One trap: keep your calendar colours clear of `spent`. A calendar coloured a mid-grey will look finished when it is not.
 
 ### clock
@@ -180,11 +199,11 @@ agenda:
   calendars:
     - entity_id: calendar.alex
       name: Alex
-      color: "#00bfff"
+      color: secondary
       side: left
     - entity_id: calendar.sam_work
       name: Sam Work
-      color: "#bd00bd"
+      color: primary
       side: right
     - entity_id: calendar.chores
       name: Chores
@@ -241,16 +260,32 @@ weather:
   sun_entity_id: sun.sun
   high:
     entity_id: sensor.temperature_high
-    hours_attribute: hours_until
+    turning_point_attribute: turning_point
   low:
     entity_id: sensor.temperature_low
-    hours_attribute: hours_until
+    turning_point_attribute: turning_point
   summary_entity_id: sensor.forecast_summary
+  zone_entity_id: zone.home
 ```
 
-`sun_entity_id` decides whether a partly-cloudy sky gets a sun or a moon. `hours_attribute` names an attribute holding how far off the high or low is; when it reads zero, the panel drops the label rather than saying "0h".
+`sun_entity_id` decides whether a partly-cloudy sky gets a sun or a moon.
 
+`turning_point_attribute`, on the high and the low, names an attribute holding a mapping of `temperature`, `hours`, and `upcoming`: the next point the temperature turns round, or the last one, tide-table style. The line shows that temperature and its hours — "+3h" counting down to one still to come, "-2h" counting up from one just gone, and no hours at all while the sensor says it is at the turning point, rather than "0h". An empty mapping means there is nothing to show, and the line falls back to the entity's state with no hours.
 `summary_max_length`, `summary_min_scale`, and `summary_max_scale` shrink a wordy forecast so it still fits its panel. The scales multiply the panel's own size, so `1.0` means "as configured".
+
+Five more are read only by the [weather face](panels.md#faces):
+
+| Field | Meaning |
+|---|---|
+| `zone_entity_id` | A zone whose `latitude` and `longitude` place the sun and moon on the horizon. `zone.home` is the usual one; without it the horizon card stays empty |
+| `forecast_days` | How far the week ahead runs, seven days unless you say otherwise |
+| `forecast_hours` | How far past the hour under way the hourly forecast runs, twelve hours unless you say otherwise |
+| `wind_gust_threshold` | The least gust worth giving at the tail of the wind's arrow, in the weather entity's own unit; 15 unless you say otherwise. A gust also has to be stronger than the steady wind to be given |
+| `temperature_gradient` | The colors of today's range bar, as `{ at, color }` points blended between. They are in the weather entity's own unit and the default is Fahrenheit, so an installation in Celsius restates the list rather than having it converted |
+
+The forecast is asked of Home Assistant with `weather.get_forecasts`, by the day and by the hour, when a panel turns to the face and every half hour it stays there. A weather entity that forecasts no hours leaves the face with the week alone. Each day is placed by the local date it forecasts, so a provider that stamps its days at midnight UTC still labels its columns with the right weekday.
+
+The range bar runs from the day's low to its high, taken from `low` and `high` above so it agrees with the dashboard, and falls back to the forecast for either one not configured. When the temperature right now is outside that range, the bar stretches to include it rather than pinning the marker to an end.
 
 ### camera
 
@@ -284,7 +319,7 @@ fuel:
   scale:
     default_color: "#e1e1e1"
     bands:
-      - { at: 33, color: "#bd00bd" }
+      - { at: 33, color: primary }
       - { at: 15, color: "#11fcf7" }
   gauges:
     - entity_id: sensor.car_fuel
@@ -344,12 +379,15 @@ The audio is relayed through the panel rather than read from Home Assistant dire
 
 ### labels
 
-Section headings, in case yours should not read "Notices" and "Today".
+Section headings, the horizon's two captions, and where the hourly forecast starts, in case yours should not read as they do here.
 
 ```yaml
 labels:
   notices: Notices
   agenda: Today
+  sunrise: Sunrise
+  sunset: Sunset
+  now: Now
 ```
 
 ### What the panel may switch

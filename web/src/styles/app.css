@@ -15,6 +15,15 @@
   --color-faint: #333333;
   --color-spent: #4a4a4a;
   --color-accent: #11fcf7;
+  /* The installation's own colours, from `colors` in config.yaml: two that tie the panel
+   * together, and the sky's, muted, for the horizon and the daylight bar. */
+  --color-primary: #f205f2;
+  --color-secondary: #00bfff;
+  --color-day: #7a8fa0;
+  --color-night: #2e2a45;
+  --color-twilight: #a0706b;
+  --color-sun: #d0a46c;
+  --color-sun-below: #6d5a50;
 
   /* The agenda's scaffolding: the column names and the clock beside each row. A step up
    * from the dim grey, so they read as labels rather than as more rule. */
@@ -105,6 +114,68 @@
   --camera-title-size: 1.06rem;
   --label-strip-size: 1.15rem;
   --transcript-size: 1.3rem;
+
+  /* The dashboard's header row, and the gap down its right column. The weather face's right
+   * column is laid out to match both, so the conditions sit in the same place on either face. */
+  --dashboard-header-height: 34px;
+  --rail-gap: 2.8vh;
+  /* The weather face's right column, spaced wider than the dashboard's so its forecast is shorter. */
+  --weather-rail-gap: 5vh;
+
+  /* The weather face. */
+  --range-end-size: 2.2rem;
+  /* The room between today's range and the daylight bar, one over the other. */
+  --range-stack-gap: 2rem;
+  --range-reading-size: 2.6rem;
+  /* A little heavier than a gauge's arc: the same family, but still a bar rather than a rule. */
+  --range-bar-height: 0.55rem;
+  --range-dot-size: 1.8rem;
+  /* The wind's and the comfort's dials, and the figure each gives at its pointer. */
+  --dial-size: 10rem;
+  --dial-reading-size: 1.9rem;
+  --comfort-feels-size: 2.4rem;
+  /* The humidity ring at dry and at saturated, shading between the two with the reading. */
+  --comfort-dry-color: var(--color-spent);
+  --comfort-humid-color: var(--wash-color);
+  --weather-picture-opacity: 0.8;
+  --radar-home-size: 0.9rem;
+  --radar-credits-size: 0.95rem;
+  --horizon-labels-height: 7rem;
+  --horizon-label-size: 1.7rem;
+  --horizon-time-size: 2.7rem;
+  --horizon-sun-size: 3.4rem;
+  --horizon-moon-size: 3rem;
+  /* The sun's path, three times as wide as it is tall. */
+  --horizon-aspect: 3 / 1;
+  --forecast-day-size: 1.6rem;
+  --forecast-value-size: 1.15rem;
+  /* The same for the hours and the week, so sliding from one to the other keeps the sky's size. */
+  --forecast-icon-size: 2.2rem;
+  --forecast-dot-size: 0.5rem;
+
+  --horizon-moon-dark-color: #3d3d3d;
+  --horizon-moon-lit-color: #d6d6d6;
+  --forecast-high-color: var(--color-primary);
+  --forecast-low-color: var(--color-secondary);
+  /* The hours' line: the high colour for a span that ends no cooler than it starts, the low colour
+   * for one that ends cooler. */
+  --forecast-rising-color: var(--color-primary);
+  --forecast-falling-color: var(--color-secondary);
+  /* The secondary colour greyed down and laid faintly over the ground, for the chance of rain and
+   * for the part of the sky's day already gone, so neither shouts over what is drawn on it. */
+  --wash-color: color-mix(in oklab, var(--color-secondary) 40%, var(--color-muted));
+  --wash-opacity: 0.25;
+  --forecast-rain-color: var(--wash-color);
+  /* Snow in place of rain: a white edge over a light grey wash. */
+  --forecast-snow-edge-color: var(--color-foreground);
+  --forecast-snow-fill-color: #c8c8c8;
+  --radar-ring-color: rgba(255, 255, 255, 0.28);
+  --radar-home-color: var(--color-foreground);
+  /* The map's highways, greyed down from the style's orange, which reads like rain. */
+  --radar-highway-color: var(--color-spent);
+  --radar-highway-outline-color: var(--color-faint);
+  /* What the credits along a radar's foot fade up out of, so they read over any map beneath. */
+  --credits-gradient-end: rgba(0, 0, 0, 0.85);
 }
 
 * {
@@ -166,7 +237,7 @@ body {
   padding: var(--panel-padding);
   gap: var(--panel-gap);
   grid-template-columns: 35fr 35fr 30fr;
-  grid-template-rows: minmax(0, 34px) 1fr;
+  grid-template-rows: minmax(0, var(--dashboard-header-height)) 1fr;
   grid-template-areas:
     "left header header"
     "left center right";
@@ -204,10 +275,20 @@ body {
 }
 
 .dashboard__right {
-  gap: 2.8vh;
+  gap: var(--rail-gap);
 }
 
 /* The camera gives up height before the gauges do, so both always fit. */
+/* The sky and the temperature, with the high and low beside them, hard against the column's right.
+ * The sky's glyph carries a wide transparent border for its animation, pulled back out here. */
+.dashboard__conditions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.9rem;
+  margin-top: -2rem;
+}
+
 .dashboard__right > .camera {
   flex: 1 1 auto;
   min-height: 0;
@@ -368,6 +449,153 @@ body {
   border-bottom: 0;
   color: var(--color-muted);
   font-size: var(--camera-title-size);
+}
+
+/*
+ * The weather face, laid out like the dashboard: the same padding and gaps, and two columns each as
+ * wide as the dashboard's middle one, centred on the face. The right one starts as far down as the
+ * dashboard's, so the conditions sit at the same height on either face, and spaces its rows wider.
+ * Nothing is boxed or headed; the columns are told apart by space.
+ */
+.weather-face {
+  /* What the dashboard's three columns share between them once its two gaps are taken out, and the
+   * middle one's part of it. */
+  --dashboard-share: calc(100% - 2 * var(--panel-gap));
+  --weather-face-column: calc(var(--dashboard-share) * 0.4);
+  display: grid;
+  height: 100%;
+  padding: var(--panel-padding);
+  gap: var(--panel-gap);
+  grid-template-columns: var(--weather-face-column) var(--weather-face-column);
+  grid-template-rows: minmax(0, 1fr);
+  justify-content: center;
+}
+
+.weather-face__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Cameras and framed pages in a row under the radar, in the order written, sharing its width, each
+ * as large as it can be within its share and hung from the top of it, and a little dimmed so they
+ * sit behind the radar rather than outshining it. */
+.weather-face__pictures {
+  --camera-anchor: top;
+  display: grid;
+  opacity: var(--weather-picture-opacity);
+  flex: 1 1 0;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--panel-gap);
+  min-height: 0;
+}
+
+/* A caption names one picture among several, as on a camera face, rather than heading a section,
+ * so it gives up the rule and most of the size. */
+.weather-face__pictures .panel-title,
+.weather-face__frame .panel-title {
+  margin: 0 0 0.35em 0;
+  padding: 0;
+  border-bottom: 0;
+  color: var(--color-muted);
+  font-size: var(--camera-title-size);
+}
+
+/* The radar over the pictures: two thirds of the column, the pictures the third beneath it. */
+.weather-face__radar {
+  flex: 2 1 0;
+  min-height: 0;
+}
+
+.weather-face__radar > * {
+  height: 100%;
+}
+
+/* The forecast takes whatever height the right column has left under the bars. */
+.weather-face .weather-face__rail > .forecast-card {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+
+/* The sky now in the middle of the row, with the wind and how it feels each centred in the space to
+ * either side of it. The sky's glyph carries a wide transparent border for its animation, pulled
+ * back out here. */
+.weather-face__now {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: center;
+  margin-top: -2rem;
+}
+
+/* Starting where the dashboard's right column starts, and spaced wider than it, so the forecast at
+ * the foot gives up height to the room between the rows. */
+.weather-face__rail {
+  padding-top: calc(var(--dashboard-header-height) + var(--panel-gap));
+  gap: var(--weather-rail-gap);
+}
+
+/* Today's range and the daylight one over the other above the sun's path. The range reads over its
+ * bar and the daylight under its own, so nothing stands between the two bars but the room that
+ * keeps them apart. Their ends share columns, so the two bars start and stop together. */
+.weather-face__bars {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  row-gap: var(--range-stack-gap);
+}
+
+.weather-face .weather-face__bars > .range-bar {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  height: auto;
+}
+
+/* Each end's figure centred in its column, so a short one such as a temperature sits in the middle
+ * of the space beside its bar rather than against one side of it. */
+.weather-face__bars .range-bar__end {
+  text-align: center;
+}
+
+/* A page fills its share of the row, under its caption if it has one. */
+.weather-face__frame {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.weather-face__page {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+@media (max-width: 600px) {
+  .weather-face {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    height: auto;
+  }
+
+  .weather-face__column {
+    overflow: visible;
+  }
+
+  .weather-face__rail {
+    padding-top: 0;
+  }
+
+  .weather-face__radar,
+  .weather-face__pictures,
+  .weather-face .weather-face__rail > .forecast-card {
+    min-height: 20rem;
+  }
 }
 
 /* A face served from the resources directory, given the whole face and no chrome of its own. */

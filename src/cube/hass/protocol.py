@@ -29,6 +29,12 @@ SUCCESS = "success"
 ERROR = "error"
 MESSAGE = "message"
 
+# A service that answers with data, rather than only acting.
+SERVICE_DATA = "service_data"
+RETURN_RESPONSE = "return_response"
+RESULT_PAYLOAD = "result"
+RESPONSE = "response"
+
 # Event payload sections.
 ADDED = "a"
 CHANGED = "c"
@@ -55,14 +61,37 @@ def subscribe(message_id: int, entity_ids: list[str]) -> dict[str, Any]:
     return {ID: message_id, TYPE: SUBSCRIBE_ENTITIES, ENTITY_IDS: entity_ids}
 
 
-def call_service(message_id: int, domain: str, service: str, entity_id: str) -> dict[str, Any]:
-    return {
+def call_service(
+    message_id: int,
+    domain: str,
+    service: str,
+    entity_id: str,
+    service_data: dict[str, Any] | None = None,
+    return_response: bool = False,
+) -> dict[str, Any]:
+    message = {
         ID: message_id,
         TYPE: CALL_SERVICE,
         "domain": domain,
         "service": service,
         "target": {"entity_id": entity_id},
     }
+
+    if service_data:
+        message[SERVICE_DATA] = service_data
+
+    # Home Assistant refuses a service that answers unless the call says it wants the answer,
+    # and refuses one that does not answer if it does, so the flag is only sent when asked for.
+    if return_response:
+        message[RETURN_RESPONSE] = True
+
+    return message
+
+
+def service_response(result: dict[str, Any]) -> dict[str, Any]:
+    """What a service called with `return_response` answered, from its result message."""
+
+    return (result.get(RESULT_PAYLOAD) or {}).get(RESPONSE) or {}
 
 
 def ping(message_id: int) -> dict[str, Any]:

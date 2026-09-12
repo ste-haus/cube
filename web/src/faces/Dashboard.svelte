@@ -10,6 +10,8 @@
   import Transcript from "../cards/Transcript.svelte";
   import Visualizer from "../cards/Visualizer.svelte";
   import Weather from "../cards/Weather.svelte";
+  import WeatherExtremes from "../cards/WeatherExtremes.svelte";
+  import WeatherSummary from "../cards/WeatherSummary.svelte";
   import { agenda } from "../lib/agenda.svelte";
   import { faceVisibility } from "../lib/cube.svelte";
   import type { DashboardConfig } from "../lib/types";
@@ -54,7 +56,11 @@
 
   <div class="dashboard__right">
     {#if config.weather}
-      <Weather weather={config.weather} />
+      <div class="dashboard__conditions">
+        <Weather weather={config.weather} />
+        <WeatherExtremes weather={config.weather} />
+      </div>
+      <WeatherSummary weather={config.weather} />
     {/if}
     {#if config.camera}
       <Camera camera={config.camera} />

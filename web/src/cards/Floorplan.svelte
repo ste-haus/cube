@@ -2,6 +2,7 @@
   import { floorplanStylesUrl, floorplanUrl, toggle } from "../lib/api";
   import { swipeable, type Direction } from "../lib/cube.svelte";
   import { nextLevel } from "../lib/levels";
+  import { Lapsing, PANE_RESET_MS } from "../lib/panes.svelte";
   import { keepTrying } from "../lib/retry";
   import { ha } from "../lib/state.svelte";
   import type { Floorplan } from "../lib/types";
@@ -49,7 +50,6 @@
   const NO_TRANSFORM = "translate(0)";
 
   const BRIGHTNESS_MAX = 255;
-  const LEVEL_RESET_MS = 60 * 1000;
 
   let {
     floorplans,
@@ -59,12 +59,12 @@
   const levels = $derived(Object.keys(floorplans));
   const defaultLevel = $derived(initial && initial in floorplans ? initial : levels[0]);
 
-  let level = $state<string | null>(null);
+  // A storey other than the panel's own is a choice that lapses, the same way the forecast's week does.
+  const level = new Lapsing<string>(PANE_RESET_MS);
   let markup = $state<Record<string, string>>({});
   let panes = $state<Record<string, HTMLDivElement>>({});
-  let resetTimer: number | null = null;
 
-  const currentLevel = $derived(level ?? defaultLevel);
+  const currentLevel = $derived(level.chosen ?? defaultLevel);
   const index = $derived(Math.max(levels.indexOf(currentLevel), 0));
 
   // The stylesheet lives with the SVG in Home Assistant and applies to inlined markup, so it
@@ -199,16 +199,7 @@
   }
 
   function showLevel(name: string): void {
-    level = name;
-
-    if (resetTimer !== null) {
-      window.clearTimeout(resetTimer);
-    }
-
-    // Wandering off to another level should not leave the panel showing it forever.
-    resetTimer = window.setTimeout(() => {
-      level = null;
-    }, LEVEL_RESET_MS);
+    level.choose(name);
   }
 </script>
 

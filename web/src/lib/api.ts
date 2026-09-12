@@ -1,4 +1,4 @@
-import type { AgendaEvent, DashboardConfig } from "./types";
+import type { AgendaEvent, DashboardConfig, ForecastDay, ForecastHour } from "./types";
 
 const API_ROOT = "/api";
 const FACE_ROOT = "/faces";
@@ -34,6 +34,17 @@ export async function fetchAgenda(): Promise<AgendaEvent[]> {
   const body = await response.json();
 
   return body.events;
+}
+
+export async function fetchForecast(): Promise<{ days: ForecastDay[]; hours: ForecastHour[] }> {
+  const response = await fetch(`${API_ROOT}/forecast`);
+  if (!response.ok) {
+    throw new Error(`Could not load forecast: ${response.status}`);
+  }
+
+  const body = await response.json();
+
+  return { days: body.days ?? [], hours: body.hours ?? [] };
 }
 
 export async function toggle(entityId: string): Promise<void> {
