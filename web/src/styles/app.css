@@ -29,7 +29,7 @@
    * from the dim grey, so they read as labels rather than as more rule. */
   --agenda-label-color: #808080;
   /* The spine behind the times, which should barely register. */
-  --agenda-spine-color: #242424;
+  --agenda-spine-color: #1c1c1c;
 
   --font-stack: Roboto, system-ui, sans-serif;
   --weight-thin: 100;
@@ -111,6 +111,9 @@
   --weather-summary-size: 1.28rem;
   --gauge-value-size: 3.2rem;
   --gauge-name-size: 1.06rem;
+  /* The arc carries the primary colour undiluted, which reads brighter than anything
+   * around it. Dimming the stroke settles it into the panel without touching the colour. */
+  --gauge-dial-opacity: 0.75;
   --camera-title-size: 1.06rem;
   --label-strip-size: 1.15rem;
   --transcript-size: 1.3rem;
