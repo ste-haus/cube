@@ -28,6 +28,7 @@
       <div class="gauge__dial">
         <svg viewBox={VIEWBOX} role="img" aria-label={gauge.name ?? gauge.entity_id}>
           <path
+            class="gauge__arc"
             d={ARC}
             fill="none"
             stroke={color}
@@ -65,6 +66,10 @@
     display: block;
     width: 100%;
     height: auto;
+  }
+
+  .gauge__arc {
+    stroke-opacity: var(--gauge-dial-opacity);
   }
 
   /* Sits in the bowl of the arc rather than under it. */
