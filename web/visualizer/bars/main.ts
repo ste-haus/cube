@@ -10,10 +10,20 @@
  * leave the overlay blank while it lingers. Ahead of it, the analyser's readings are given a faint
  * floor of noise that wanders from frame to frame: buried under any real sound, and all that
  * shows when there is none.
+ *
+ * Its own colours are magenta and grey. Straight after it, a second classic script repaints them
+ * in the palette every style shares, worked out from the page's `?color=` like the rest: the
+ * reference colour for loud bars and the resting colour for quiet ones.
  */
 
+import { tints } from "../shared/tint";
 import vendored from "./visualizer.js?raw";
 import "./style.css";
+
+const COLOR_PARAM = "color";
+// The vendored script's own threshold, in its scale of up to 255 × 2.5, above which a bar is loud.
+const LOUD_BUCKET = 165;
+const QUIET_BUCKET = 0;
 
 // The noise floor, in the analyser's byte scale of 0 to 255, and how far it moves toward a fresh
 // random level each frame, so it drifts rather than flickers.
@@ -36,6 +46,13 @@ AnalyserNode.prototype.getByteFrequencyData = function (this: AnalyserNode, arra
   }
 };
 
-const script = document.createElement("script");
-script.textContent = vendored;
-document.body.appendChild(script);
+const palette = tints(new URLSearchParams(window.location.search).get(COLOR_PARAM));
+const colors = { [LOUD_BUCKET]: palette.body, [QUIET_BUCKET]: palette.rest };
+
+// `CONFIG` is a top-level constant of the vendored script, so a later classic script sees it; the
+// binding is fixed but the object it holds is not.
+for (const source of [vendored, `CONFIG.colors = ${JSON.stringify(colors)};`]) {
+  const script = document.createElement("script");
+  script.textContent = source;
+  document.body.appendChild(script);
+}

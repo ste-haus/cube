@@ -11,6 +11,7 @@ const PAGES = {
   bars: "visualizer/bars/index.html",
   ridgeline: "visualizer/ridgeline/index.html",
   corona: "visualizer/corona/index.html",
+  halo: "visualizer/halo/index.html",
 };
 
 export default defineConfig({

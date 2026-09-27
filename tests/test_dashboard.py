@@ -634,6 +634,12 @@ def test_the_visualizer_may_be_a_corona():
     assert visualizer.style is VisualizerStyle.CORONA
 
 
+def test_the_visualizer_may_be_a_halo():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "halo"})
+
+    assert visualizer.style is VisualizerStyle.HALO
+
+
 def test_an_unknown_visualizer_style_is_refused():
     with pytest.raises(ValidationError, match="style"):
         Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "sparkles"})
@@ -688,3 +694,42 @@ def test_the_visualizer_demo_clip_cannot_escape_the_resources_directory(tmp_path
     drop_missing_demo_clip(dashboard, resources)
 
     assert dashboard.visualizer.demo is False
+
+
+REFERENCE_HEX = "#3d8bdc"
+SHORT_HEX = "#abc"
+REFERENCE_PRIMARY = "#123456"
+REFERENCE_SECONDARY = "#654321"
+
+
+def test_the_visualizer_keeps_its_own_palette_unless_given_a_reference_colour():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER})
+
+    assert visualizer.reference_color is None
+
+
+@pytest.mark.parametrize("value", ["default", "none", "None", "DEFAULT"])
+def test_default_or_none_keeps_the_visualizers_own_palette(value):
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "reference_color": value})
+
+    assert visualizer.reference_color is None
+
+
+@pytest.mark.parametrize("value", [REFERENCE_HEX, SHORT_HEX])
+def test_the_visualizer_takes_a_hex_reference_colour(value):
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "reference_color": value})
+
+    assert visualizer.reference_color == value
+
+
+@pytest.mark.parametrize(("name", "colour"), [("primary", REFERENCE_PRIMARY), ("secondary", REFERENCE_SECONDARY)])
+def test_the_visualizer_reference_colour_may_name_the_palette(name, colour):
+    config = visualizer_config(reference_color=name) | {"colors": {"primary": REFERENCE_PRIMARY, "secondary": REFERENCE_SECONDARY}}
+
+    assert Dashboard.model_validate(config).visualizer.reference_color == colour
+
+
+@pytest.mark.parametrize("value", ["blue", "#12345", "3d8bdc", "tertiary"])
+def test_anything_else_as_a_reference_colour_is_refused(value):
+    with pytest.raises(ValidationError, match="reference_color"):
+        Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "reference_color": value})

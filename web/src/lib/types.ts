@@ -167,13 +167,14 @@ export interface Toggle {
   visible_when: string | null;
 }
 
-export type VisualizerStyle = "bars" | "ridgeline" | "corona";
+export type VisualizerStyle = "bars" | "ridgeline" | "corona" | "halo";
 
 export interface Visualizer {
   content_marker: string;
   style: VisualizerStyle;
   demo: boolean;
   demo_clip: string | null;
+  reference_color: string | null;
 }
 
 /** A grid of cameras, one inner list per row, each row read left to right. */
