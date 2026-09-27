@@ -19,9 +19,9 @@
   const ENTITY_PLACEHOLDER = "{entity_id}";
 
   /**
-   * How each style comes and goes. Bars cover the panel and leave with the sound. The ridgeline
-   * lies along the bottom of the panel over everything else, arrives at once, and settles back to
-   * static for a moment after the sound stops before it fades away.
+   * How each style comes and goes. Both settle to a low noise for a moment after the sound stops
+   * and then fade, rather than vanishing with it. Bars cover the panel and ease in; the ridgeline
+   * lies along the bottom of the panel over everything else and arrives at once.
    */
   interface Timing {
     fadeInMs: number;
@@ -30,7 +30,7 @@
   }
 
   const TIMINGS: Record<VisualizerStyle, Timing> = {
-    bars: { fadeInMs: 1000, lingerMs: 0, fadeOutMs: 0 },
+    bars: { fadeInMs: 1000, lingerMs: 500, fadeOutMs: 800 },
     ridgeline: { fadeInMs: 150, lingerMs: 2000, fadeOutMs: 800 },
   };
 
