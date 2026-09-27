@@ -11,6 +11,9 @@ analyser without `Access-Control-Allow-Origin`, which Home Assistant does not se
 puts the audio on the same origin as the page drawing it, which removes the question rather
 than answering it, and keeps the signed media address Home Assistant published on this side.
 
+The visualizer demo's clip comes from the resources directory as well, and only while the demo is
+on.
+
 Only the cameras, the floorplans, and the speakers named in the dashboard config are reachable.
 """
 
@@ -19,10 +22,11 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from httpx import HTTPError
 
 from cube.api.dependencies import CurrentHub
+from cube.dashboard import demo_clip_path
 from cube.hass import protocol
 
 logger = logging.getLogger(__name__)
@@ -56,6 +60,8 @@ MISSING_FLOORPLAN_DETAIL = "No drawing for this floorplan in the resources direc
 UPSTREAM_DETAIL = "Home Assistant did not return the camera frame"
 
 NO_VISUALIZER_DETAIL = "No visualizer configured"
+NO_DEMO_CLIP_DETAIL = "The visualizer demo is off"
+DEMO_CLIP_PATH = "/visualizer/demo-clip"
 UNKNOWN_MEDIA_PLAYER_DETAIL = "Unknown media player"
 NO_ANNOUNCEMENT_DETAIL = "No announcement playing on this media player"
 ANNOUNCEMENT_UPSTREAM_DETAIL = "Home Assistant did not return the announcement audio"
@@ -137,6 +143,17 @@ async def floorplan(name: str, hub: CurrentHub) -> Response:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MISSING_FLOORPLAN_DETAIL)
 
     return _serve(path, SVG_CONTENT_TYPE, hub)
+
+
+@router.get(DEMO_CLIP_PATH)
+async def visualizer_demo_clip(hub: CurrentHub) -> FileResponse:
+    """The clip the front page's demo button plays through the overlay, while the demo is on."""
+
+    path = demo_clip_path(hub.dashboard, hub.settings.resources_path)
+    if path is None or not path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NO_DEMO_CLIP_DETAIL)
+
+    return FileResponse(path)
 
 
 @router.get("/floorplan-styles.css")

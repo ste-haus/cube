@@ -16,6 +16,7 @@ from cube.dashboard import (
     Visualizer,
     VisualizerStyle,
     drop_missing_custom_faces,
+    drop_missing_demo_clip,
     load_dashboard,
 )
 
@@ -630,3 +631,54 @@ def test_the_visualizer_may_be_a_ridgeline():
 def test_an_unknown_visualizer_style_is_refused():
     with pytest.raises(ValidationError, match="style"):
         Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "sparkles"})
+
+
+DEMO_CLIP = "sounds/demo.wav"
+
+
+def visualizer_config(**visualizer) -> dict:
+    return {**profiles(), "visualizer": {"content_marker": VISUALIZER_MARKER, **visualizer}}
+
+
+def test_the_visualizer_demo_is_off_unless_asked_for():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER})
+
+    assert visualizer.demo is False
+    assert visualizer.demo_clip is None
+
+
+def test_the_visualizer_demo_stays_on_when_its_clip_is_there(tmp_path):
+    (tmp_path / "sounds").mkdir()
+    (tmp_path / DEMO_CLIP).write_bytes(b"audio")
+    dashboard = Dashboard.model_validate(visualizer_config(demo=True, demo_clip=DEMO_CLIP))
+
+    drop_missing_demo_clip(dashboard, tmp_path)
+
+    assert dashboard.visualizer.demo is True
+
+
+def test_the_visualizer_demo_turns_off_without_its_clip(tmp_path):
+    dashboard = Dashboard.model_validate(visualizer_config(demo=True, demo_clip=DEMO_CLIP))
+
+    drop_missing_demo_clip(dashboard, tmp_path)
+
+    assert dashboard.visualizer.demo is False
+
+
+def test_the_visualizer_demo_turns_off_without_a_clip_named(tmp_path):
+    dashboard = Dashboard.model_validate(visualizer_config(demo=True))
+
+    drop_missing_demo_clip(dashboard, tmp_path)
+
+    assert dashboard.visualizer.demo is False
+
+
+def test_the_visualizer_demo_clip_cannot_escape_the_resources_directory(tmp_path):
+    resources = tmp_path / "resources"
+    resources.mkdir()
+    (tmp_path / "secret.wav").write_bytes(b"classified")
+    dashboard = Dashboard.model_validate(visualizer_config(demo=True, demo_clip="../secret.wav"))
+
+    drop_missing_demo_clip(dashboard, resources)
+
+    assert dashboard.visualizer.demo is False

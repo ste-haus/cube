@@ -369,3 +369,7 @@ transcript:
 visualizer:
   content_marker: chime_tts
   style: bars
+  # A button on the front page that plays a clip from the resources directory through the
+  # overlay, for seeing a style without an announcement. Off unless asked for.
+  demo: false
+  # demo_clip: sounds/demo.wav

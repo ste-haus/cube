@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
@@ -6,6 +8,8 @@ from cube.app import NONCE_PARAMETER, create_app
 from cube.dashboard import CUBE_FACES, DEFAULT_PROFILE_KEY
 from cube.hass import protocol
 from cube.hass.rest import MediaMetadata
+
+SAMPLE_CONFIG = Path("config.yaml.dist")
 
 FORBIDDEN = 403
 NOT_FOUND = 404
@@ -292,6 +296,47 @@ def test_floorplan_image_cannot_escape_the_resources_directory(settings, tmp_pat
 
     with TestClient(create_app(escaping)) as client:
         response = client.get("/api/floorplan/downstairs")
+
+    assert response.status_code == NOT_FOUND
+
+
+DEMO_CLIP = "sounds/demo.wav"
+DEMO_AUDIO = b"demo-audio"
+DEMO_CLIP_ROUTE = "/api/visualizer/demo-clip"
+DEMO_SWITCH_LINE = "  demo: false\n"
+
+
+def demo_settings(settings, tmp_path, demo: bool):
+    """The sample config with the visualizer demo switched as asked, pointing at a clip."""
+
+    config = tmp_path / "demo.yaml"
+    config.write_text(
+        SAMPLE_CONFIG.read_text().replace(
+            DEMO_SWITCH_LINE,
+            f"  demo: {str(demo).lower()}\n  demo_clip: {DEMO_CLIP}\n",
+        ),
+    )
+
+    return settings.model_copy(update={"dashboard_path": config})
+
+
+def test_the_demo_clip_is_served_while_the_demo_is_on(settings, resources, tmp_path):
+    (resources / "sounds").mkdir()
+    (resources / DEMO_CLIP).write_bytes(DEMO_AUDIO)
+
+    with TestClient(create_app(demo_settings(settings, tmp_path, demo=True))) as client:
+        response = client.get(DEMO_CLIP_ROUTE)
+
+    assert response.status_code == OK
+    assert response.content == DEMO_AUDIO
+
+
+def test_the_demo_clip_is_not_served_while_the_demo_is_off(settings, resources, tmp_path):
+    (resources / "sounds").mkdir()
+    (resources / DEMO_CLIP).write_bytes(DEMO_AUDIO)
+
+    with TestClient(create_app(demo_settings(settings, tmp_path, demo=False))) as client:
+        response = client.get(DEMO_CLIP_ROUTE)
 
     assert response.status_code == NOT_FOUND
 

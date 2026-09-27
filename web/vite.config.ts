@@ -8,7 +8,7 @@ const BACKEND_ORIGIN = "http://127.0.0.1:4096";
 // than coming from a CDN a wall panel may not reach.
 const PAGES = {
   index: "index.html",
-  visualizerRidgeline: "visualizer/ridgeline/index.html",
+  ridgeline: "visualizer/ridgeline/index.html",
 };
 
 export default defineConfig({

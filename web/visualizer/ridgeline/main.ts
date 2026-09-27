@@ -22,8 +22,6 @@ import {
   WebGLRenderer,
 } from "three";
 
-import { DEMO_CLIP } from "../visualizerDemo/clip";
-import { Voice } from "./demo";
 import { Field } from "./field";
 import { bands } from "./spectrum";
 import "./style.css";
@@ -32,11 +30,6 @@ import "./style.css";
 const SOURCE_PARAM = "src";
 const MUTE_PARAM = "mute";
 const LOOP_PARAM = "loop";
-// Plays a real speech clip made locally for the demos in place of `src`, for seeing the overlay
-// move without an announcement; the same clip the bars demo plays.
-// `synthetic` plays a made-up voice instead, which needs no clip and no click.
-const DEMO_PARAM = "demo";
-const SYNTHETIC_DEMO = "synthetic";
 // A browser that will not start audio on its own starts it on the first of these.
 const UNBLOCKING_EVENTS = ["pointerdown", "keydown"];
 const TRUTHY = ["true", "t", "1"];
@@ -97,8 +90,6 @@ const LOWEST_HZ = 150;
 const HIGHEST_HZ = 4000;
 const WARP = 1;
 const CONTRAST = 1.75;
-// The rate the demo pretends to sample at, since it has no audio context to ask.
-const DEMO_SAMPLE_RATE = 48000;
 // How quickly the back row follows the sound: rising fast enough to catch a syllable's onset,
 // falling slowly enough that it does not chatter.
 const ATTACK_SECONDS = 0.04;
@@ -378,28 +369,7 @@ type Hearing = (now: number, out: Float32Array) => void;
 
 function listen(): Hearing | null {
   const params = new URLSearchParams(window.location.search);
-  const demo = params.get(DEMO_PARAM);
-  const source = TRUTHY.includes(demo ?? "") ? DEMO_CLIP : params.get(SOURCE_PARAM);
-
-  const options = (sampleRate: number) => ({
-    sampleRate,
-    fftSize: FFT_SIZE,
-    lowestHz: LOWEST_HZ,
-    highestHz: HIGHEST_HZ,
-    warp: WARP,
-    contrast: CONTRAST,
-  });
-  const bins = new Uint8Array(FFT_SIZE / 2);
-
-  if (demo === SYNTHETIC_DEMO) {
-    const voice = new Voice(performance.now());
-    const demo = options(DEMO_SAMPLE_RATE);
-
-    return (now, out) => {
-      voice.hear(now, bins, DEMO_SAMPLE_RATE / FFT_SIZE);
-      bands(bins, demo, out);
-    };
-  }
+  const source = params.get(SOURCE_PARAM);
 
   if (!source) {
     return null;
@@ -440,7 +410,15 @@ function listen(): Hearing | null {
   UNBLOCKING_EVENTS.forEach(event => window.addEventListener(event, unblock));
   begin();
 
-  const heard = options(context.sampleRate);
+  const bins = new Uint8Array(analyser.frequencyBinCount);
+  const heard = {
+    sampleRate: context.sampleRate,
+    fftSize: FFT_SIZE,
+    lowestHz: LOWEST_HZ,
+    highestHz: HIGHEST_HZ,
+    warp: WARP,
+    contrast: CONTRAST,
+  };
 
   return (_, out) => {
     analyser.getByteFrequencyData(bins);

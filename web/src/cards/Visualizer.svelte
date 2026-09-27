@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ha } from "../lib/state.svelte";
   import type { Visualizer, VisualizerStyle } from "../lib/types";
-  import { clipLength, demoStyle, DEMO_CLIP } from "../lib/visualizerDemo";
+  import { clipLength, demoStyle, DEMO_CLIP } from "../../visualizer/demo/frontPage";
 
   const PLAYING = "playing";
   const SOURCE_PARAM = "src";
@@ -10,7 +10,7 @@
   const TRUE = "true";
 
   const VISUALIZER_PAGES: Record<VisualizerStyle, string> = {
-    bars: "/visualizer/index.html",
+    bars: "/visualizer/bars/index.html",
     ridgeline: "/visualizer/ridgeline/index.html",
   };
   // A backend older than the style setting sends none; it drew bars.
@@ -39,7 +39,7 @@
     mediaPlayer,
   }: { visualizer: Visualizer; mediaPlayer: string | null } = $props();
 
-  const demo = demoStyle();
+  const demo = $derived(demoStyle(visualizer));
   const style = $derived(demo ?? visualizer.style ?? DEFAULT_STYLE);
   const timing = $derived(TIMINGS[style]);
 
@@ -81,8 +81,9 @@
     return page.toString();
   });
 
-  const playing = $derived(demo ? demoPlaying : announcing);
-  const source = $derived(demo ? demoSource : announcement);
+  // The demo stands in for an announcement while it plays; real ones still come through.
+  const playing = $derived(demoPlaying || announcing);
+  const source = $derived(demoPlaying ? demoSource : announcement);
 
   // What the frame shows outlives the announcement by the style's linger and fade, so the last
   // source is held on to after the one that named it has gone.

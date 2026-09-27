@@ -172,6 +172,8 @@ export type VisualizerStyle = "bars" | "ridgeline";
 export interface Visualizer {
   content_marker: string;
   style: VisualizerStyle;
+  demo: boolean;
+  demo_clip: string | null;
 }
 
 /** A grid of cameras, one inner list per row, each row read left to right. */
