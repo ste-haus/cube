@@ -167,7 +167,7 @@ export interface Toggle {
   visible_when: string | null;
 }
 
-export type VisualizerStyle = "bars" | "ridgeline";
+export type VisualizerStyle = "bars" | "ridgeline" | "corona";
 
 export interface Visualizer {
   content_marker: string;

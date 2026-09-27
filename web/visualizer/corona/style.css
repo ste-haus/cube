@@ -1,0 +1,16 @@
+/*
+ * The page fills whatever frame the panel gives it, and the renderer sizes itself to match. Its
+ * black is not a background: the panel screens the page over itself, and black is what screening
+ * leaves untouched.
+ */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #000000;
+}
+
+canvas {
+  display: block;
+}

@@ -628,6 +628,12 @@ def test_the_visualizer_may_be_a_ridgeline():
     assert visualizer.style is VisualizerStyle.RIDGELINE
 
 
+def test_the_visualizer_may_be_a_corona():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "corona"})
+
+    assert visualizer.style is VisualizerStyle.CORONA
+
+
 def test_an_unknown_visualizer_style_is_refused():
     with pytest.raises(ValidationError, match="style"):
         Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "sparkles"})

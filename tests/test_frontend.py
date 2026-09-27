@@ -41,7 +41,7 @@ def frontend(tmp_path, settings: Settings) -> Settings:
     (directory / "assets").mkdir(parents=True)
     (directory / "index.html").write_text(INDEX_MARKUP)
 
-    for style in ("bars", "ridgeline"):
+    for style in ("bars", "ridgeline", "corona"):
         page = directory / "visualizer" / style
         page.mkdir(parents=True)
         (page / "index.html").write_text(VISUALIZER_MARKUP)

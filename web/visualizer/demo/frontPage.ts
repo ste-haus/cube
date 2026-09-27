@@ -8,7 +8,7 @@
 import type { Visualizer, VisualizerStyle } from "../../src/lib/types";
 
 const DEMO_PARAM = "visualizerDemo";
-const STYLES: VisualizerStyle[] = ["bars", "ridgeline"];
+const STYLES: VisualizerStyle[] = ["bars", "ridgeline", "corona"];
 const MILLISECONDS = 1000;
 
 /** Where the backend serves the configured clip, and only while the demo is on. */

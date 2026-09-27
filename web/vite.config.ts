@@ -10,6 +10,7 @@ const PAGES = {
   index: "index.html",
   bars: "visualizer/bars/index.html",
   ridgeline: "visualizer/ridgeline/index.html",
+  corona: "visualizer/corona/index.html",
 };
 
 export default defineConfig({
