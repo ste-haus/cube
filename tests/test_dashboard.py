@@ -13,11 +13,15 @@ from cube.dashboard import (
     Dashboard,
     ThresholdBand,
     ThresholdScale,
+    Visualizer,
+    VisualizerStyle,
     drop_missing_custom_faces,
+    drop_missing_demo_clip,
     load_dashboard,
 )
 
 SAMPLE_CONFIG = Path("config.yaml.dist")
+VISUALIZER_MARKER = "chime_tts"
 
 LOW_COLOR = "#999999"
 MID_COLOR = "#11fcf7"
@@ -610,3 +614,71 @@ def test_an_rtsp_url_wins_over_a_stream_name():
 def test_an_rtsp_url_on_a_polled_camera_is_refused_rather_than_ignored():
     with pytest.raises(ValidationError, match="set `stream_type: go2rtc`"):
         Camera(entity_id=FRONT_DOOR, rtsp=RTSP_URL)
+
+
+def test_the_visualizer_defaults_to_bars():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER})
+
+    assert visualizer.style is VisualizerStyle.BARS
+
+
+def test_the_visualizer_may_be_a_ridgeline():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "ridgeline"})
+
+    assert visualizer.style is VisualizerStyle.RIDGELINE
+
+
+def test_an_unknown_visualizer_style_is_refused():
+    with pytest.raises(ValidationError, match="style"):
+        Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "sparkles"})
+
+
+DEMO_CLIP = "sounds/demo.wav"
+
+
+def visualizer_config(**visualizer) -> dict:
+    return {**profiles(), "visualizer": {"content_marker": VISUALIZER_MARKER, **visualizer}}
+
+
+def test_the_visualizer_demo_is_off_unless_asked_for():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER})
+
+    assert visualizer.demo is False
+    assert visualizer.demo_clip is None
+
+
+def test_the_visualizer_demo_stays_on_when_its_clip_is_there(tmp_path):
+    (tmp_path / "sounds").mkdir()
+    (tmp_path / DEMO_CLIP).write_bytes(b"audio")
+    dashboard = Dashboard.model_validate(visualizer_config(demo=True, demo_clip=DEMO_CLIP))
+
+    drop_missing_demo_clip(dashboard, tmp_path)
+
+    assert dashboard.visualizer.demo is True
+
+
+def test_the_visualizer_demo_turns_off_without_its_clip(tmp_path):
+    dashboard = Dashboard.model_validate(visualizer_config(demo=True, demo_clip=DEMO_CLIP))
+
+    drop_missing_demo_clip(dashboard, tmp_path)
+
+    assert dashboard.visualizer.demo is False
+
+
+def test_the_visualizer_demo_turns_off_without_a_clip_named(tmp_path):
+    dashboard = Dashboard.model_validate(visualizer_config(demo=True))
+
+    drop_missing_demo_clip(dashboard, tmp_path)
+
+    assert dashboard.visualizer.demo is False
+
+
+def test_the_visualizer_demo_clip_cannot_escape_the_resources_directory(tmp_path):
+    resources = tmp_path / "resources"
+    resources.mkdir()
+    (tmp_path / "secret.wav").write_bytes(b"classified")
+    dashboard = Dashboard.model_validate(visualizer_config(demo=True, demo_clip="../secret.wav"))
+
+    drop_missing_demo_clip(dashboard, resources)
+
+    assert dashboard.visualizer.demo is False

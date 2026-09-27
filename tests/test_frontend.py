@@ -1,6 +1,7 @@
 """Serving the panel document itself: the nonce it stamps and the caching it refuses."""
 
 import re
+from http import HTTPStatus
 
 import pytest
 from fastapi.testclient import TestClient
@@ -40,10 +41,11 @@ def frontend(tmp_path, settings: Settings) -> Settings:
     (directory / "assets").mkdir(parents=True)
     (directory / "index.html").write_text(INDEX_MARKUP)
 
-    visualizer = directory / "visualizer"
-    visualizer.mkdir()
-    (visualizer / "index.html").write_text(VISUALIZER_MARKUP)
-    (visualizer / "style.css").write_text("body { background: #000; }")
+    for style in ("bars", "ridgeline"):
+        page = directory / "visualizer" / style
+        page.mkdir(parents=True)
+        (page / "index.html").write_text(VISUALIZER_MARKUP)
+        (page / "style.css").write_text("body { background: #000; }")
 
     return settings.model_copy(update={"frontend_path": directory})
 
@@ -67,11 +69,37 @@ def test_index_leaves_an_absolute_url_alone(frontend: Settings):
 
 def test_the_overlay_page_is_stamped_too(frontend: Settings):
     with TestClient(create_app(frontend)) as client:
-        markup = client.get("/visualizer/index.html").text
+        markup = client.get("/visualizer/bars/index.html").text
 
     assert NONCE_PATTERN.search(markup)
     assert f"style.css?{NONCE_PARAMETER}=" in markup
     assert f"visualizer.js?{NONCE_PARAMETER}=" in markup
+
+
+def test_every_style_of_overlay_page_is_stamped(frontend: Settings):
+    with TestClient(create_app(frontend)) as client:
+        markup = client.get("/visualizer/ridgeline/index.html").text
+
+    assert f"visualizer.js?{NONCE_PARAMETER}=" in markup
+
+
+def test_an_overlay_page_missing_from_the_bundle_is_not_found(frontend: Settings):
+    (frontend.frontend_path / "visualizer" / "ridgeline" / "index.html").unlink()
+
+    with TestClient(create_app(frontend)) as client:
+        response = client.get("/visualizer/ridgeline/")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_only_known_styles_of_overlay_are_reachable(frontend: Settings):
+    (frontend.frontend_path / "visualizer" / "sparkles").mkdir()
+    (frontend.frontend_path / "visualizer" / "sparkles" / "index.html").write_text(VISUALIZER_MARKUP)
+
+    with TestClient(create_app(frontend)) as client:
+        response = client.get("/visualizer/sparkles/")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_a_panel_asking_for_a_profile_carries_the_same_nonce(frontend: Settings):

@@ -11,7 +11,14 @@ from fastapi.staticfiles import StaticFiles
 from cube.api import router
 from cube.api.dependencies import HUB_ATTRIBUTE
 from cube.config import Settings, get_settings
-from cube.dashboard import FACE_DIRECTORY, drop_missing_custom_faces, is_safe_page_name, load_dashboard
+from cube.dashboard import (
+    FACE_DIRECTORY,
+    VisualizerStyle,
+    drop_missing_custom_faces,
+    drop_missing_demo_clip,
+    is_safe_page_name,
+    load_dashboard,
+)
 from cube.hub import Hub
 
 logger = logging.getLogger(__name__)
@@ -27,12 +34,15 @@ FRONTEND_ASSETS_MOUNT = "/assets"
 # come from this origin too.
 VISUALIZER_DIRECTORY = "visualizer"
 VISUALIZER_MOUNT = "/visualizer"
+# Each style's page is a directory of its own beneath the mount, named for the style.
+VISUALIZER_STYLES = frozenset(style.value for style in VisualizerStyle)
 
 # An installation's own faces, from the mounted resources directory. These are additive: the
 # built-in faces ship in the bundle, and anything here sits beside them without a rebuild, the
 # way an installation's `floorplan.css` is served over the bundled stylesheets.
 FACE_MOUNT = "/faces"
 UNKNOWN_FACE_DETAIL = "No such face"
+UNKNOWN_VISUALIZER_DETAIL = "No such visualizer"
 
 # Eight hex characters, drawn once per process and worn by every stylesheet and script the
 # panel loads. The build already content-hashes its assets, so this is not for them: it is for
@@ -74,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await hub.stop()
 
     drop_missing_custom_faces(dashboard, resolved.resources_path)
+    drop_missing_demo_clip(dashboard, resolved.resources_path)
 
     app = FastAPI(title=APP_TITLE, lifespan=lifespan)
     app.include_router(router)
@@ -99,12 +110,17 @@ def _mount_frontend(app: FastAPI, directory: Path) -> None:
     # log rather than a process that will not start.
     visualizer = directory / VISUALIZER_DIRECTORY
     if visualizer.is_dir():
-        # Registered ahead of the mount, which would otherwise serve the page unrewritten.
-        @app.get(VISUALIZER_MOUNT)
-        @app.get(f"{VISUALIZER_MOUNT}/")
-        @app.get(f"{VISUALIZER_MOUNT}/{FRONTEND_ENTRYPOINT}")
-        async def overlay() -> HTMLResponse:
-            return _document(visualizer / FRONTEND_ENTRYPOINT)
+        # Registered ahead of the mount, which would otherwise serve the page unrewritten. Only
+        # the styles the config knows are reachable, which keeps the name off the filesystem.
+        @app.get(f"{VISUALIZER_MOUNT}/{{style}}")
+        @app.get(f"{VISUALIZER_MOUNT}/{{style}}/")
+        @app.get(f"{VISUALIZER_MOUNT}/{{style}}/{FRONTEND_ENTRYPOINT}")
+        async def overlay(style: str) -> HTMLResponse:
+            page = visualizer / style / FRONTEND_ENTRYPOINT
+            if style not in VISUALIZER_STYLES or not page.is_file():
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=UNKNOWN_VISUALIZER_DETAIL)
+
+            return _document(page)
 
         app.mount(VISUALIZER_MOUNT, StaticFiles(directory=visualizer, html=True), name=VISUALIZER_DIRECTORY)
     else:

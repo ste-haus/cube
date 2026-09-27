@@ -388,7 +388,14 @@ A full-screen overlay while a media player is playing something matching.
 ```yaml
 visualizer:
   content_marker: chime_tts
+  style: bars
+  demo: false
+  demo_clip: sounds/demo.wav
 ```
+
+`style` picks which of the shipped pages draws the overlay. `bars`, the default, is a mirrored row of bars on a flat canvas. `ridgeline` is a plane of lines tilted away from the viewer, each standing up in peaks the way flames do along a Rubens tube and trailing a glow as it travels toward the front; at rest the lines carry only static. `ridgeline` is drawn over the panel rather than in place of it, anchored to the bottom, with the announcement's transcript above it; it arrives at once and fades away two seconds after the sound stops.
+
+`demo` puts a button on the front page that plays `demo_clip` through the overlay the way an announcement would, for seeing a style without one; it is off by default. `demo_clip` is an audio file in the resources directory, and if it is missing the demo turns itself off with a line in the log. While the demo is on, `?visualizerDemo=bars` or `?visualizerDemo=ridgeline` on the front page's address picks which style the button plays instead of `style`. Any spoken clip works; on a Mac, `say -o demo.aiff "…" && afconvert -f WAVE -d LEI16@48000 demo.aiff demo.wav` makes one.
 
 The overlay follows the media player named by the panel's profile, so each room reacts to its own speaker. Having the block at all is what turns it on; the page it draws with ships with the panel, so there is nothing to point it at.
 

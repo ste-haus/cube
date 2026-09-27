@@ -420,6 +420,15 @@ class Toggle(BaseModel):
     visible_when: str | None = None
 
 
+class VisualizerStyle(StrEnum):
+    """Which of the pages shipped with the panel draws the overlay."""
+
+    # Mirrored bars on a flat canvas.
+    BARS = "bars"
+    # Lines receding over a plane, each trailing a glow.
+    RIDGELINE = "ridgeline"
+
+
 class Visualizer(BaseModel):
     """A full-screen overlay shown while a media player is playing matching content.
 
@@ -428,6 +437,18 @@ class Visualizer(BaseModel):
     """
 
     content_marker: str = Field(description="Substring of media_content_id that triggers the overlay")
+    style: VisualizerStyle = Field(
+        default=VisualizerStyle.BARS,
+        description="Which shipped page draws the overlay",
+    )
+    demo: bool = Field(
+        default=False,
+        description="Put a button on the front page that plays demo_clip through the overlay",
+    )
+    demo_clip: str | None = Field(
+        default=None,
+        description="Audio file in the resources directory the demo plays",
+    )
 
 
 class Labels(BaseModel):
@@ -748,6 +769,7 @@ WEATHER_FACE_WITHOUT_WEATHER_MESSAGE = (
 )
 
 MISSING_FACE_PAGE_MESSAGE = "No page at %s for the %s face of profile %s; that face falls back to blank."
+MISSING_DEMO_CLIP_MESSAGE = "The visualizer demo is on but its clip is not at %s; the demo is turned off."
 
 
 class Dashboard(BaseModel):
@@ -1045,6 +1067,39 @@ def drop_missing_custom_faces(dashboard: Dashboard, resources_path: Path) -> Non
 
             logger.warning(MISSING_FACE_PAGE_MESSAGE, page, name, key)
             profile.faces[name] = Face(content=BLANK_FACE_CONTENT, label=face.page)
+
+
+def demo_clip_path(dashboard: Dashboard, resources_path: Path) -> Path | None:
+    """Where the visualizer demo's clip is, if the demo is on and the clip is inside resources."""
+
+    visualizer = dashboard.visualizer
+    if visualizer is None or not visualizer.demo or visualizer.demo_clip is None:
+        return None
+
+    path = resources_path / visualizer.demo_clip
+    if resources_path.resolve() not in path.resolve().parents:
+        return None
+
+    return path
+
+
+def drop_missing_demo_clip(dashboard: Dashboard, resources_path: Path) -> None:
+    """Turns the visualizer demo off when there is no clip for it to play.
+
+    The clip comes from the mounted resources directory, like a custom face, and a button that
+    plays nothing is worse than no button; the log says where it looked.
+    """
+
+    visualizer = dashboard.visualizer
+    if visualizer is None or not visualizer.demo:
+        return
+
+    path = demo_clip_path(dashboard, resources_path)
+    if path is not None and path.is_file():
+        return
+
+    logger.warning(MISSING_DEMO_CLIP_MESSAGE, resources_path / (visualizer.demo_clip or ""))
+    visualizer.demo = False
 
 
 def load_dashboard(path: Path) -> Dashboard:
