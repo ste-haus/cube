@@ -429,6 +429,16 @@ class VisualizerStyle(StrEnum):
     RIDGELINE = "ridgeline"
     # One line wrapped round into a glowing ring, turning slowly.
     CORONA = "corona"
+    # Twisting ribbons of fine strands wound into a ring, flecked with sparks.
+    HALO = "halo"
+
+
+# Written in place of a reference colour to keep the palette the pages ship with.
+DEFAULT_REFERENCE_COLORS = frozenset({"default", "none"})
+HEX_COLOR = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+INVALID_REFERENCE_COLOR_MESSAGE = (
+    "`reference_color` must be `default`, `none`, a palette name such as `primary`, or a hex colour; got {value!r}"
+)
 
 
 class Visualizer(BaseModel):
@@ -451,6 +461,26 @@ class Visualizer(BaseModel):
         default=None,
         description="Audio file in the resources directory the demo plays",
     )
+    reference_color: str | None = Field(
+        default=None,
+        description="The colour every other colour in the style's palette is worked out from",
+    )
+
+    @field_validator("reference_color", mode="before")
+    @classmethod
+    def read_reference_color(cls, value: Any) -> Any:
+        """Keeps the shipped palette for `default` or `none`, and refuses anything but a hex colour.
+
+        A palette name has already been swapped for its colour by the time this sees it.
+        """
+
+        if value is None or (isinstance(value, str) and value.lower() in DEFAULT_REFERENCE_COLORS):
+            return None
+
+        if not isinstance(value, str) or not HEX_COLOR.match(value):
+            raise ValueError(INVALID_REFERENCE_COLOR_MESSAGE.format(value=value))
+
+        return value
 
 
 class Labels(BaseModel):

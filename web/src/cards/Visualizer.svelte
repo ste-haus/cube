@@ -7,15 +7,17 @@
   const SOURCE_PARAM = "src";
   const MUTE_PARAM = "mute";
   const CONTENT_PARAM = "content";
+  const COLOR_PARAM = "color";
   const TRUE = "true";
 
   const VISUALIZER_PAGES: Record<VisualizerStyle, string> = {
     bars: "/visualizer/bars/index.html",
     ridgeline: "/visualizer/ridgeline/index.html",
     corona: "/visualizer/corona/index.html",
+    halo: "/visualizer/halo/index.html",
   };
   // The styles drawn over the panel rather than in place of it.
-  const OVER_THE_PANEL: ReadonlySet<VisualizerStyle> = new Set(["ridgeline", "corona"]);
+  const OVER_THE_PANEL: ReadonlySet<VisualizerStyle> = new Set(["ridgeline", "corona", "halo"]);
   // A backend older than the style setting sends none; it drew bars.
   const DEFAULT_STYLE: VisualizerStyle = "bars";
   const ANNOUNCEMENT_AUDIO_PATH = "/api/announcement/{entity_id}/audio";
@@ -24,7 +26,7 @@
   /**
    * How each style comes and goes. Each settles to a low noise for a moment after the sound stops
    * and then fades, rather than vanishing with it. Bars cover the panel and ease in; the ridgeline
-   * and the corona lie over the panel and arrive at once.
+   * the corona and the halo lie over the panel and arrive at once.
    */
   interface Timing {
     fadeInMs: number;
@@ -36,6 +38,7 @@
     bars: { fadeInMs: 1000, lingerMs: 500, fadeOutMs: 800 },
     ridgeline: { fadeInMs: 150, lingerMs: 2000, fadeOutMs: 800 },
     corona: { fadeInMs: 150, lingerMs: 2000, fadeOutMs: 800 },
+    halo: { fadeInMs: 150, lingerMs: 2000, fadeOutMs: 800 },
   };
 
   let {
@@ -69,7 +72,7 @@
     );
     audio.searchParams.set(CONTENT_PARAM, path);
 
-    const page = new URL(VISUALIZER_PAGES[style], window.location.origin);
+    const page = stylePage();
     page.searchParams.set(MUTE_PARAM, TRUE);
     page.searchParams.set(SOURCE_PARAM, audio.pathname + audio.search);
 
@@ -79,7 +82,7 @@
   // The demo plays its clip aloud, since there is no speaker in the room saying it.
   let demoPlaying = $state(false);
   const demoSource = $derived.by(() => {
-    const page = new URL(VISUALIZER_PAGES[style], window.location.origin);
+    const page = stylePage();
     page.searchParams.set(SOURCE_PARAM, DEMO_CLIP);
 
     return page.toString();
@@ -141,6 +144,16 @@
 
     demoPlaying = true;
     setTimeout(() => (demoPlaying = false), length);
+  }
+
+  /** The style's page, told the colour to build its palette from when the config names one. */
+  function stylePage(): URL {
+    const page = new URL(VISUALIZER_PAGES[style], window.location.origin);
+    if (visualizer.reference_color) {
+      page.searchParams.set(COLOR_PARAM, visualizer.reference_color);
+    }
+
+    return page;
   }
 
   /** The path Home Assistant published the announcement at, which is how the relay names it. */
