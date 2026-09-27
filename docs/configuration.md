@@ -388,7 +388,12 @@ A full-screen overlay while a media player is playing something matching.
 ```yaml
 visualizer:
   content_marker: chime_tts
+  style: bars
 ```
+
+`style` picks which of the shipped pages draws the overlay. `bars`, the default, is a mirrored row of bars on a flat canvas. `ridgeline` is a plane of lines tilted away from the viewer, each standing up in peaks the way flames do along a Rubens tube and trailing a glow as it travels toward the front; at rest the lines carry only static. `ridgeline` is drawn over the panel rather than in place of it, anchored to the bottom, with the announcement's transcript above it; it arrives at once and fades away two seconds after the sound stops.
+
+On the dev server, `/visualizer/demo/bars.html` and `/visualizer/demo/ridgeline.html` open the front page with a button that plays a local speech clip through that style, as an announcement would. The clip is made locally; see `web/src/visualizerDemo/clip.ts`.
 
 The overlay follows the media player named by the panel's profile, so each room reacts to its own speaker. Having the block at all is what turns it on; the page it draws with ships with the panel, so there is nothing to point it at.
 

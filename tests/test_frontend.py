@@ -1,6 +1,7 @@
 """Serving the panel document itself: the nonce it stamps and the caching it refuses."""
 
 import re
+from http import HTTPStatus
 
 import pytest
 from fastapi.testclient import TestClient
@@ -45,6 +46,10 @@ def frontend(tmp_path, settings: Settings) -> Settings:
     (visualizer / "index.html").write_text(VISUALIZER_MARKUP)
     (visualizer / "style.css").write_text("body { background: #000; }")
 
+    ridgeline = visualizer / "ridgeline"
+    ridgeline.mkdir()
+    (ridgeline / "index.html").write_text(VISUALIZER_MARKUP)
+
     return settings.model_copy(update={"frontend_path": directory})
 
 
@@ -72,6 +77,22 @@ def test_the_overlay_page_is_stamped_too(frontend: Settings):
     assert NONCE_PATTERN.search(markup)
     assert f"style.css?{NONCE_PARAMETER}=" in markup
     assert f"visualizer.js?{NONCE_PARAMETER}=" in markup
+
+
+def test_the_3d_overlay_page_is_stamped_too(frontend: Settings):
+    with TestClient(create_app(frontend)) as client:
+        markup = client.get("/visualizer/ridgeline/index.html").text
+
+    assert f"visualizer.js?{NONCE_PARAMETER}=" in markup
+
+
+def test_a_missing_3d_overlay_page_is_not_found(frontend: Settings):
+    (frontend.frontend_path / "visualizer" / "ridgeline" / "index.html").unlink()
+
+    with TestClient(create_app(frontend)) as client:
+        response = client.get("/visualizer/ridgeline/")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_a_panel_asking_for_a_profile_carries_the_same_nonce(frontend: Settings):

@@ -85,7 +85,8 @@
    */
   .transcript {
     position: absolute;
-    z-index: 1;
+    /* Over the announcement overlay as well as the panel: the words are what it is for. */
+    z-index: 4;
     right: 0;
     bottom: calc(var(--panel-padding) + var(--transcript-lift));
     left: 0;

@@ -420,6 +420,15 @@ class Toggle(BaseModel):
     visible_when: str | None = None
 
 
+class VisualizerStyle(StrEnum):
+    """Which of the pages shipped with the panel draws the overlay."""
+
+    # Mirrored bars on a flat canvas.
+    BARS = "bars"
+    # Lines receding over a plane, each trailing a glow.
+    RIDGELINE = "ridgeline"
+
+
 class Visualizer(BaseModel):
     """A full-screen overlay shown while a media player is playing matching content.
 
@@ -428,6 +437,10 @@ class Visualizer(BaseModel):
     """
 
     content_marker: str = Field(description="Substring of media_content_id that triggers the overlay")
+    style: VisualizerStyle = Field(
+        default=VisualizerStyle.BARS,
+        description="Which shipped page draws the overlay",
+    )
 
 
 class Labels(BaseModel):

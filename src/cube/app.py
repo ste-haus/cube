@@ -27,12 +27,16 @@ FRONTEND_ASSETS_MOUNT = "/assets"
 # come from this origin too.
 VISUALIZER_DIRECTORY = "visualizer"
 VISUALIZER_MOUNT = "/visualizer"
+# The bars page sits at the root of the mount, where it has always been; every other style gets a
+# directory of its own beneath it.
+VISUALIZER_RIDGELINE_DIRECTORY = "ridgeline"
 
 # An installation's own faces, from the mounted resources directory. These are additive: the
 # built-in faces ship in the bundle, and anything here sits beside them without a rebuild, the
 # way an installation's `floorplan.css` is served over the bundled stylesheets.
 FACE_MOUNT = "/faces"
 UNKNOWN_FACE_DETAIL = "No such face"
+UNKNOWN_VISUALIZER_DETAIL = "No such visualizer"
 
 # Eight hex characters, drawn once per process and worn by every stylesheet and script the
 # panel loads. The build already content-hashes its assets, so this is not for them: it is for
@@ -105,6 +109,16 @@ def _mount_frontend(app: FastAPI, directory: Path) -> None:
         @app.get(f"{VISUALIZER_MOUNT}/{FRONTEND_ENTRYPOINT}")
         async def overlay() -> HTMLResponse:
             return _document(visualizer / FRONTEND_ENTRYPOINT)
+
+        @app.get(f"{VISUALIZER_MOUNT}/{VISUALIZER_RIDGELINE_DIRECTORY}")
+        @app.get(f"{VISUALIZER_MOUNT}/{VISUALIZER_RIDGELINE_DIRECTORY}/")
+        @app.get(f"{VISUALIZER_MOUNT}/{VISUALIZER_RIDGELINE_DIRECTORY}/{FRONTEND_ENTRYPOINT}")
+        async def overlay_ridgeline() -> HTMLResponse:
+            page = visualizer / VISUALIZER_RIDGELINE_DIRECTORY / FRONTEND_ENTRYPOINT
+            if not page.is_file():
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=UNKNOWN_VISUALIZER_DETAIL)
+
+            return _document(page)
 
         app.mount(VISUALIZER_MOUNT, StaticFiles(directory=visualizer, html=True), name=VISUALIZER_DIRECTORY)
     else:

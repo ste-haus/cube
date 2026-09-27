@@ -365,5 +365,7 @@ transcript:
 # Full-screen overlay shown while the profile's media player is playing matching content.
 # Match on a path segment rather than a hostname: players hold onto addresses across a rename,
 # so a host that is right today is wrong for whatever is still queued tomorrow.
+# `style` is `bars` (the default) or `ridgeline`.
 visualizer:
   content_marker: chime_tts
+  style: bars

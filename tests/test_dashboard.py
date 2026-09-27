@@ -13,11 +13,14 @@ from cube.dashboard import (
     Dashboard,
     ThresholdBand,
     ThresholdScale,
+    Visualizer,
+    VisualizerStyle,
     drop_missing_custom_faces,
     load_dashboard,
 )
 
 SAMPLE_CONFIG = Path("config.yaml.dist")
+VISUALIZER_MARKER = "chime_tts"
 
 LOW_COLOR = "#999999"
 MID_COLOR = "#11fcf7"
@@ -610,3 +613,20 @@ def test_an_rtsp_url_wins_over_a_stream_name():
 def test_an_rtsp_url_on_a_polled_camera_is_refused_rather_than_ignored():
     with pytest.raises(ValidationError, match="set `stream_type: go2rtc`"):
         Camera(entity_id=FRONT_DOOR, rtsp=RTSP_URL)
+
+
+def test_the_visualizer_defaults_to_bars():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER})
+
+    assert visualizer.style is VisualizerStyle.BARS
+
+
+def test_the_visualizer_may_be_a_ridgeline():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "ridgeline"})
+
+    assert visualizer.style is VisualizerStyle.RIDGELINE
+
+
+def test_an_unknown_visualizer_style_is_refused():
+    with pytest.raises(ValidationError, match="style"):
+        Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "style": "sparkles"})
