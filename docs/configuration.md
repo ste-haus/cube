@@ -375,7 +375,10 @@ A line along the bottom that types itself out, for whatever was last spoken alou
 transcript:
   entity_id: input_text.last_announcement
   syllables_per_second: 4
+  content_marker: chime_tts
 ```
+
+It waits for the speaker named by the panel's profile rather than appearing the moment the text is written, since the text usually lands while the speech is still being rendered. It starts when that speaker starts playing something whose `media_content_id` contains `content_marker`, including when an announcement takes over from music without the speaker going idle; if the text arrives after the announcement has already started, it starts at once. Music starting, or already playing, does not count. `content_marker` falls back to the [`visualizer`](#visualizer)'s when it is left out, so a config with both usually names it once; with neither, anything the speaker starts playing counts. A speaker that has not started within 30 seconds is not coming, and the line is shown whole instead. Without a `media_player` on the profile it starts as soon as the text arrives. Whatever was written before the panel loaded is shown whole rather than typed out again.
 
 `syllables_per_second` is the pace, not the duration: a long announcement and a short one are read at the same speed rather than taking the same time. The default is about the rate of a voice reading aloud. Syllables rather than characters, so a long word takes longer than a short one without taking longer in proportion to how it is spelled; punctuation adds a pause on top where there is any, but nothing depends on there being. It affects only the animation, not what is shown.
 

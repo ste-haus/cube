@@ -2,11 +2,26 @@
   import { faceVisibility } from "../lib/cube.svelte";
   import { revealSchedule, revealedBy } from "../lib/format";
   import { ha } from "../lib/state.svelte";
+  import {
+    PENDING,
+    phaseOnArrival,
+    READING,
+    SAID,
+    startedAnnouncing,
+    type Phase,
+    type Playback,
+  } from "../lib/transcript";
   import type { Transcript } from "../lib/types";
 
   const MS_PER_SECOND = 1000;
+  const CONTENT_ATTRIBUTE = "media_content_id";
+  // Long enough for the slowest render to reach the speaker; past it, the speaker is not coming.
+  const PENDING_TIMEOUT_MS = 30000;
 
-  let { transcript }: { transcript: Transcript } = $props();
+  let {
+    transcript,
+    mediaPlayer,
+  }: { transcript: Transcript; mediaPlayer: string | null } = $props();
 
   const visibility = faceVisibility();
 
@@ -15,9 +30,65 @@
    * short one are read at the same pace instead of taking the same time. */
   const schedule = $derived(revealSchedule(text));
 
+  const playback: Playback = $derived({
+    state: ha.state(mediaPlayer),
+    content: ha.attribute<string>(mediaPlayer, CONTENT_ATTRIBUTE),
+  });
+
+  // Whatever the panel finds already written was said before it was looking.
+  let phase = $state<Phase>(SAID);
   let revealed = $state(0);
 
-  const shown = $derived(text.slice(0, revealed));
+  const shown = $derived(phase === SAID ? text : phase === READING ? text.slice(0, revealed) : "");
+
+  /*
+   * The last text and playback seen, held outside the reactive graph: what matters is how each
+   * reading differs from the one before, and only the effect below compares them. The text is
+   * not taken until the entity has arrived at all, so the snapshot a panel loads with is not
+   * mistaken for a new announcement.
+   */
+  let lastText: string | null = null;
+  let lastPlayback: Playback | null = null;
+
+  $effect(() => {
+    const current = text;
+    const now = playback;
+    const before = lastPlayback;
+    lastPlayback = now;
+
+    if (!(transcript.entity_id in ha.entities)) {
+      return;
+    }
+
+    if (lastText === null) {
+      lastText = current;
+
+      return;
+    }
+
+    if (current !== lastText) {
+      lastText = current;
+      phase = phaseOnArrival(mediaPlayer, now, transcript.content_marker);
+
+      return;
+    }
+
+    if (phase === PENDING && before && startedAnnouncing(before, now, transcript.content_marker)) {
+      phase = READING;
+    }
+  });
+
+  /* A speaker that never starts — the speech failed, or the speaker is off — still leaves the
+   * words on the wall, whole, rather than holding them for whatever it plays next. */
+  $effect(() => {
+    if (phase !== PENDING) {
+      return;
+    }
+
+    const timeout = setTimeout(() => (phase = SAID), PENDING_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  });
 
   /*
    * The reveal is counted out here rather than animated in CSS, because a line long enough to
@@ -29,12 +100,15 @@
    * cube comes back to it.
    */
   $effect(() => {
-    if (!text) {
+    if (phase !== READING) {
       return;
     }
 
+    // Read here rather than only in the frame callback, so a line replaced mid-reveal starts over.
+    const beatsOf = schedule;
+
     if (!visibility.showing) {
-      revealed = text.length;
+      phase = SAID;
 
       return;
     }
@@ -46,10 +120,12 @@
 
     const step = () => {
       const beats = ((performance.now() - started) / MS_PER_SECOND) * rate;
-      revealed = revealedBy(schedule, beats);
+      revealed = revealedBy(beatsOf, beats);
 
-      if (revealed < schedule.length) {
+      if (revealed < beatsOf.length) {
         frame = requestAnimationFrame(step);
+      } else {
+        phase = SAID;
       }
     };
 
@@ -60,7 +136,7 @@
   });
 </script>
 
-{#if text}
+{#if text && phase !== PENDING}
   <p class="transcript">
     <span class="transcript__frame">
       <span class="transcript__marker">&raquo;</span>
