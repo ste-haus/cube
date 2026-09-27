@@ -18,21 +18,15 @@ import {
   MeshBasicMaterial,
   PerspectiveCamera,
   Scene,
-  ShaderMaterial,
   WebGLRenderer,
 } from "three";
 
+import { glowMaterial } from "../shared/glow";
+import { listen } from "../shared/hearing";
+import { wander } from "../shared/noise";
+import { LINE_PEAK, LINE_REST, NOTHING } from "../shared/palette";
 import { Field } from "./field";
-import { bands } from "./spectrum";
 import "./style.css";
-
-// Query parameters, shared with the bars page.
-const SOURCE_PARAM = "src";
-const MUTE_PARAM = "mute";
-const LOOP_PARAM = "loop";
-// A browser that will not start audio on its own starts it on the first of these.
-const UNBLOCKING_EVENTS = ["pointerdown", "keydown"];
-const TRUTHY = ["true", "t", "1"];
 
 // The surface.
 const ROWS = 36;
@@ -70,30 +64,15 @@ const FLICKER = 0.1;
 // across the frames it takes to travel it.
 const SETTLE = 0.2;
 
-// The static at rest, which carries on underneath the sound. Each point wanders on two slow waves
-// at unrelated speeds, which reads as noise without the flicker of a fresh random value every
-// frame.
+// The static at rest, which carries on underneath the sound.
 const STATIC_HEIGHT = 0.02;
-const STATIC_SPEED = 5.3;
-const STATIC_SECOND_SPEED = 8.1;
-const STATIC_SECOND_PHASE = 2.7;
 
 // Hearing.
-const FFT_SIZE = 2048;
-const ANALYSER_SMOOTHING = 0.6;
-// The loudness range the analyser spreads its bytes across. The default ceiling of -30 dB is
-// reached by ordinary speech, which then pins most bands at full and leaves nothing to vary.
-const MIN_DECIBELS = -90;
-const MAX_DECIBELS = -22;
 const BAND_COUNT = 112;
 const LOWEST_HZ = 150;
 const HIGHEST_HZ = 4000;
 const WARP = 1;
 const CONTRAST = 1.75;
-// How quickly the back row follows the sound: rising fast enough to catch a syllable's onset,
-// falling slowly enough that it does not chatter.
-const ATTACK_SECONDS = 0.04;
-const RELEASE_SECONDS = 0.18;
 
 // Looking at it.
 const FIELD_OF_VIEW = 45;
@@ -111,20 +90,11 @@ const FADE_FAR = 7;
 // back into it before it leaves at the front, so neither end of the plane pops as rows advance.
 const SPAWN_ROWS = 3;
 const DESPAWN_ROWS = 1;
-// Screened over the panel, black adds nothing: a line faded all the way to it has gone.
-const NOTHING = new Color(0x000000);
 
-// The lines: dim blue at rest, white-blue where they stand tall.
-const LINE_REST = new Color(0x2c4a6e);
-const LINE_PEAK = new Color(0xdff0ff);
 // How tall a line has to stand, as a fraction of the peak, to reach its brightest.
 const BRIGHTNESS_SATURATION = 0.4;
 
-// The trail each line leaves behind it: white-blue at the line, blue as it falls off, gone before
-// the next line back.
-const TRAIL_CORE = new Color(0xdff0ff);
-const TRAIL_BODY = new Color(0x3d8bdc);
-// How far back the trail reaches, in rows, and how far it rises as it goes, as a fraction of the
+// The trail each line leaves behind it, gone before the next line back. How far back the trail reaches, in rows, and how far it rises as it goes, as a fraction of the
 // line's height: a tall peak leaves a tall wisp behind it, the way a flame is dragged by moving.
 const TRAIL_LENGTH = 3;
 const TRAIL_RISE = 1;
@@ -215,11 +185,11 @@ const lineIndex: number[] = [];
 const curtainPositions = new Float32Array(points * EDGES * XYZ);
 const curtainIndex: number[] = [];
 
-// A ribbon behind each line, from the line back toward the next one. `behind` runs from 0 at the
-// line to 1 at the far edge, and `glow` is how brightly the line above it stands.
+// A ribbon behind each line, from the line back toward the next one; see ../shared/glow.ts.
 const trailPositions = new Float32Array(points * EDGES * XYZ);
 const trailBehind = new Float32Array(points * EDGES);
 const trailGlow = new Float32Array(points * EDGES);
+const trailAcross = new Float32Array(points * EDGES);
 const trailIndex: number[] = [];
 
 for (let row = 0; row < ROWS; row++) {
@@ -234,6 +204,7 @@ for (let row = 0; row < ROWS; row++) {
     curtainPositions.set([x, 0, z, x, FLOOR, z], edge * XYZ);
     trailPositions.set([x, 0, z, x, 0, z - ROW_SPACING * TRAIL_LENGTH], edge * XYZ);
     trailBehind.set([0, 1], edge);
+    trailAcross.set([x, x], edge);
 
     if (column > 0) {
       lineIndex.push(point - 1, point);
@@ -278,76 +249,16 @@ const trailGeometry = new BufferGeometry();
 trailGeometry.setAttribute("position", new BufferAttribute(trailPositions, XYZ));
 trailGeometry.setAttribute("behind", new BufferAttribute(trailBehind, 1));
 trailGeometry.setAttribute("glow", new BufferAttribute(trailGlow, 1));
+trailGeometry.setAttribute("across", new BufferAttribute(trailAcross, 1));
 trailGeometry.setIndex(trailIndex);
 
-const trailMaterial = new ShaderMaterial({
-  uniforms: {
-    core: { value: TRAIL_CORE },
-    body: { value: TRAIL_BODY },
-    falloff: { value: TRAIL_FALLOFF },
-    streakDensity: { value: STREAK_DENSITY },
-    streakDrift: { value: STREAK_DRIFT },
-    streakDepth: { value: STREAK_DEPTH },
-    time: { value: 0 },
-    intensity: { value: TRAIL_INTENSITY },
-    fadeNear: { value: FADE_NEAR },
-    fadeFar: { value: FADE_FAR },
-  },
-  vertexShader: /* glsl */ `
-    attribute float behind;
-    attribute float glow;
-    uniform float fadeNear;
-    uniform float fadeFar;
-    varying float vBehind;
-    varying float vGlow;
-    varying float vFade;
-    varying float vAcross;
-
-    void main() {
-      vBehind = behind;
-      vGlow = glow;
-      vAcross = position.x;
-      vec4 view = modelViewMatrix * vec4(position, 1.0);
-      vFade = 1.0 - smoothstep(fadeNear, fadeFar, -view.z);
-      gl_Position = projectionMatrix * view;
-    }
-  `,
-  fragmentShader: /* glsl */ `
-    uniform vec3 core;
-    uniform vec3 body;
-    uniform float falloff;
-    uniform float intensity;
-    uniform float streakDensity;
-    uniform float streakDrift;
-    uniform float streakDepth;
-    uniform float time;
-    varying float vBehind;
-    varying float vGlow;
-    varying float vFade;
-    varying float vAcross;
-
-    // The second set of bands: narrower by the golden ratio so the two never line up, drifting
-    // the other way a little faster, and bending as it runs back so the streaks lean.
-    const float SECOND_WIDTH = 1.618;
-    const float SECOND_DRIFT = 1.3;
-    const float LEAN = 3.0;
-
-    void main() {
-      // Two sets of bands at unrelated widths, drifting against each other, so the streaks
-      // shift like flame rather than scrolling like a texture.
-      float first = sin(vAcross * streakDensity + time * streakDrift);
-      float second = sin(vAcross * streakDensity * SECOND_WIDTH - time * streakDrift * SECOND_DRIFT + vBehind * LEAN);
-      float streak = (2.0 + first + second) / 4.0;
-      float trail = pow(1.0 - vBehind, falloff) * mix(1.0, streak, streakDepth * vBehind);
-      vec3 colour = mix(body, core, trail * vGlow);
-
-      gl_FragColor = vec4(colour * trail * vGlow * intensity * vFade, 1.0);
-    }
-  `,
-  blending: AdditiveBlending,
-  transparent: true,
-  depthWrite: false,
-  side: DoubleSide,
+const trailMaterial = glowMaterial({
+  falloff: TRAIL_FALLOFF,
+  intensity: TRAIL_INTENSITY,
+  streakDensity: STREAK_DENSITY,
+  streakDrift: STREAK_DRIFT,
+  streakDepth: STREAK_DEPTH,
+  fade: { near: FADE_NEAR, far: FADE_FAR },
 });
 
 const trails = new Mesh(trailGeometry, trailMaterial);
@@ -363,83 +274,13 @@ function resize(): void {
 window.addEventListener("resize", resize);
 resize();
 
-// Hearing.
-/** Writes this moment's spectrum into the bands it is given, low bands first. */
-type Hearing = (now: number, out: Float32Array) => void;
-
-function listen(): Hearing | null {
-  const params = new URLSearchParams(window.location.search);
-  const source = params.get(SOURCE_PARAM);
-
-  if (!source) {
-    return null;
-  }
-
-  const context = new AudioContext();
-  const analyser = context.createAnalyser();
-  analyser.fftSize = FFT_SIZE;
-  analyser.smoothingTimeConstant = ANALYSER_SMOOTHING;
-  analyser.minDecibels = MIN_DECIBELS;
-  analyser.maxDecibels = MAX_DECIBELS;
-
-  const audio = new Audio();
-  audio.crossOrigin = "anonymous";
-  audio.src = source;
-  audio.loop = TRUTHY.includes(params.get(LOOP_PARAM) ?? "");
-
-  context.createMediaElementSource(audio).connect(analyser);
-
-  // The speaker in the room is the one saying it; the panel only needs to hear it.
-  if (!TRUTHY.includes(params.get(MUTE_PARAM) ?? "")) {
-    analyser.connect(context.destination);
-  }
-
-  // A wall panel is set up to let pages play on their own. A desktop browser is not, and holds the
-  // audio until the page is touched; trying again then costs a panel nothing.
-  const begin = () => {
-    context.resume();
-    audio.play().catch(error => console.warn("Announcement would not play", error));
-  };
-  const unblock = () => {
-    UNBLOCKING_EVENTS.forEach(event => window.removeEventListener(event, unblock));
-    if (audio.paused) {
-      begin();
-    }
-  };
-
-  UNBLOCKING_EVENTS.forEach(event => window.addEventListener(event, unblock));
-  begin();
-
-  const bins = new Uint8Array(analyser.frequencyBinCount);
-  const heard = {
-    sampleRate: context.sampleRate,
-    fftSize: FFT_SIZE,
-    lowestHz: LOWEST_HZ,
-    highestHz: HIGHEST_HZ,
-    warp: WARP,
-    contrast: CONTRAST,
-  };
-
-  return (_, out) => {
-    analyser.getByteFrequencyData(bins);
-    bands(bins, heard, out);
-  };
-}
-
-const hearing = listen();
-const heard = new Float32Array(BAND_COUNT);
-const half = new Float32Array(BAND_COUNT);
-
-/** Ease the bands toward what was just heard, quicker on the way up than on the way down. */
-function follow(elapsedSeconds: number): void {
-  const attack = 1 - Math.exp(-elapsedSeconds / ATTACK_SECONDS);
-  const release = 1 - Math.exp(-elapsedSeconds / RELEASE_SECONDS);
-
-  for (let band = 0; band < BAND_COUNT; band++) {
-    const rate = heard[band] > half[band] ? attack : release;
-    half[band] += (heard[band] - half[band]) * rate;
-  }
-}
+const ear = listen({
+  bandCount: BAND_COUNT,
+  lowestHz: LOWEST_HZ,
+  highestHz: HIGHEST_HZ,
+  warp: WARP,
+  contrast: CONTRAST,
+});
 
 // Drawing.
 const color = new Color();
@@ -449,10 +290,8 @@ let lastFrame = lastAdvance;
 function frame(now: number): void {
   requestAnimationFrame(frame);
 
-  if (hearing) {
-    hearing(now, heard);
-    follow((now - lastFrame) / MILLISECONDS);
-    field.listen(half);
+  if (ear) {
+    field.listen(ear.hear(now));
   }
 
   const interval = MILLISECONDS / ROWS_PER_SECOND;
@@ -480,12 +319,10 @@ function frame(now: number): void {
       const across = (column / (COLUMNS - 1)) * Math.PI * 2 * UNDULATION_WAVES;
       const undulation = 1 + UNDULATION_DEPTH * Math.sin(seconds * UNDULATION_SPEED + field.phase(row) + across);
 
-      const shimmer = field.shimmerAt(row, column);
-      const wander =
-        (Math.sin(seconds * STATIC_SPEED + shimmer) + Math.sin(seconds * STATIC_SECOND_SPEED + shimmer * STATIC_SECOND_PHASE)) / 2;
+      const drift = wander(seconds, field.shimmerAt(row, column));
 
-      const sound = field.at(row, column) * undulation * carried * (1 + FLICKER * wander) * PEAK_HEIGHT;
-      const height = (sound + STATIC_HEIGHT * wander) * emergence;
+      const sound = field.at(row, column) * undulation * carried * (1 + FLICKER * drift) * PEAK_HEIGHT;
+      const height = (sound + STATIC_HEIGHT * drift) * emergence;
       const brightness = Math.min(sound / (PEAK_HEIGHT * BRIGHTNESS_SATURATION), 1);
 
       const point = row * COLUMNS + column;

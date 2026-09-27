@@ -12,16 +12,19 @@
   const VISUALIZER_PAGES: Record<VisualizerStyle, string> = {
     bars: "/visualizer/bars/index.html",
     ridgeline: "/visualizer/ridgeline/index.html",
+    corona: "/visualizer/corona/index.html",
   };
+  // The styles drawn over the panel rather than in place of it.
+  const OVER_THE_PANEL: ReadonlySet<VisualizerStyle> = new Set(["ridgeline", "corona"]);
   // A backend older than the style setting sends none; it drew bars.
   const DEFAULT_STYLE: VisualizerStyle = "bars";
   const ANNOUNCEMENT_AUDIO_PATH = "/api/announcement/{entity_id}/audio";
   const ENTITY_PLACEHOLDER = "{entity_id}";
 
   /**
-   * How each style comes and goes. Both settle to a low noise for a moment after the sound stops
-   * and then fade, rather than vanishing with it. Bars cover the panel and ease in; the ridgeline
-   * lies along the bottom of the panel over everything else and arrives at once.
+   * How each style comes and goes. Each settles to a low noise for a moment after the sound stops
+   * and then fades, rather than vanishing with it. Bars cover the panel and ease in; the ridgeline
+   * and the corona lie over the panel and arrive at once.
    */
   interface Timing {
     fadeInMs: number;
@@ -32,6 +35,7 @@
   const TIMINGS: Record<VisualizerStyle, Timing> = {
     bars: { fadeInMs: 1000, lingerMs: 500, fadeOutMs: 800 },
     ridgeline: { fadeInMs: 150, lingerMs: 2000, fadeOutMs: 800 },
+    corona: { fadeInMs: 150, lingerMs: 2000, fadeOutMs: 800 },
   };
 
   let {
@@ -152,6 +156,7 @@
 {#if present && shownSource}
   <iframe
     class="visualizer visualizer--{style}"
+    class:visualizer--over={OVER_THE_PANEL.has(style)}
     class:visualizer--loaded={loaded}
     class:visualizer--leaving={leaving}
     style:--fade-in="{timing.fadeInMs}ms"
@@ -194,7 +199,7 @@
    * Drawn over the panel rather than in place of it. Screening adds the page's light and leaves
    * its black alone, so the panel shows through wherever nothing is lit, and stays in reach.
    */
-  .visualizer--ridgeline {
+  .visualizer--over {
     pointer-events: none;
     mix-blend-mode: screen;
   }

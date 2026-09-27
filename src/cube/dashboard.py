@@ -427,6 +427,8 @@ class VisualizerStyle(StrEnum):
     BARS = "bars"
     # Lines receding over a plane, each trailing a glow.
     RIDGELINE = "ridgeline"
+    # One line wrapped round into a glowing ring, turning slowly.
+    CORONA = "corona"
 
 
 class Visualizer(BaseModel):

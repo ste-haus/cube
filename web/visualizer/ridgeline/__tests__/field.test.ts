@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { Field, smoothNoise } from "../field";
-import { bands } from "../spectrum";
+import { bands } from "../../shared/spectrum";
+import { smoothNoise } from "../../shared/noise";
+import { Field } from "../field";
 
 const ROWS = 4;
 const COLUMNS = 9;
