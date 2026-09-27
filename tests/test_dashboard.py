@@ -733,3 +733,26 @@ def test_the_visualizer_reference_colour_may_name_the_palette(name, colour):
 def test_anything_else_as_a_reference_colour_is_refused(value):
     with pytest.raises(ValidationError, match="reference_color"):
         Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "reference_color": value})
+
+
+TRANSCRIPT_ENTITY = "input_text.last_announcement"
+TRANSCRIPT_MARKER = "tts_proxy"
+
+
+def test_the_transcript_takes_the_visualizers_marker_when_it_names_none():
+    dashboard = Dashboard.model_validate({**visualizer_config(), "transcript": {"entity_id": TRANSCRIPT_ENTITY}})
+
+    assert dashboard.transcript.content_marker == VISUALIZER_MARKER
+
+
+def test_the_transcripts_own_marker_wins_over_the_visualizers():
+    transcript = {"entity_id": TRANSCRIPT_ENTITY, "content_marker": TRANSCRIPT_MARKER}
+    dashboard = Dashboard.model_validate({**visualizer_config(), "transcript": transcript})
+
+    assert dashboard.transcript.content_marker == TRANSCRIPT_MARKER
+
+
+def test_the_transcript_has_no_marker_without_a_visualizer_to_take_one_from():
+    dashboard = Dashboard.model_validate({**profiles(), "transcript": {"entity_id": TRANSCRIPT_ENTITY}})
+
+    assert dashboard.transcript.content_marker is None

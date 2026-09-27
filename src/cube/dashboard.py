@@ -407,6 +407,10 @@ class Transcript(BaseModel):
         default=4.0,
         description="How fast the line types itself out, in the unit speech is measured in",
     )
+    content_marker: str | None = Field(
+        default=None,
+        description="Substring of media_content_id that marks the speaker as saying an announcement",
+    )
 
 
 class Toggle(BaseModel):
@@ -899,6 +903,19 @@ class Dashboard(BaseModel):
                     raise ValueError(RADAR_WITHOUT_ZONE_MESSAGE.format(profile=key, face=name))
 
         self._require_go2rtc()
+
+        return self
+
+    @model_validator(mode="after")
+    def inherit_transcript_marker(self) -> Self:
+        """Tells the transcript the visualizer's marker when it names none of its own.
+
+        Both are waiting for the same announcement, so one marker is usually all a config wants
+        to write down. Resolved here so the panel is sent one answer rather than working it out.
+        """
+
+        if self.transcript and self.transcript.content_marker is None and self.visualizer:
+            self.transcript.content_marker = self.visualizer.content_marker
 
         return self
 

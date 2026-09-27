@@ -156,6 +156,7 @@ export interface Go2rtc {
 export interface Transcript {
   entity_id: string;
   syllables_per_second: number;
+  content_marker: string | null;
 }
 
 export interface Toggle {

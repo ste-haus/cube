@@ -69,7 +69,7 @@
   </div>
 
   {#if config.transcript}
-    <Transcript transcript={config.transcript} />
+    <Transcript transcript={config.transcript} mediaPlayer={config.profile.media_player} />
   {/if}
 </div>
 
