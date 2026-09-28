@@ -431,7 +431,7 @@ class VisualizerStyle(StrEnum):
     BARS = "bars"
     # Lines receding over a plane, each trailing a glow.
     RIDGELINE = "ridgeline"
-    # One line wrapped round into a glowing ring, turning slowly.
+    # One line wrapped round into a glowing ring.
     CORONA = "corona"
     # Twisting ribbons of fine strands wound into a ring, flecked with sparks.
     HALO = "halo"
@@ -468,6 +468,10 @@ class Visualizer(BaseModel):
     reference_color: str | None = Field(
         default=None,
         description="The colour every other colour in the style's palette is worked out from",
+    )
+    rotate: bool = Field(
+        default=True,
+        description="Whether the ring styles, corona and halo, turn slowly clockwise",
     )
 
     @field_validator("reference_color", mode="before")

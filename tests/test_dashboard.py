@@ -729,6 +729,18 @@ def test_the_visualizer_reference_colour_may_name_the_palette(name, colour):
     assert Dashboard.model_validate(config).visualizer.reference_color == colour
 
 
+def test_the_visualizer_rings_turn_unless_told_not_to():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER})
+
+    assert visualizer.rotate is True
+
+
+def test_the_visualizer_rings_can_be_held_still():
+    visualizer = Visualizer.model_validate({"content_marker": VISUALIZER_MARKER, "rotate": False})
+
+    assert visualizer.rotate is False
+
+
 @pytest.mark.parametrize("value", ["blue", "#12345", "3d8bdc", "tertiary"])
 def test_anything_else_as_a_reference_colour_is_refused(value):
     with pytest.raises(ValidationError, match="reference_color"):

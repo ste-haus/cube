@@ -176,6 +176,7 @@ export interface Visualizer {
   demo: boolean;
   demo_clip: string | null;
   reference_color: string | null;
+  rotate: boolean;
 }
 
 /** A grid of cameras, one inner list per row, each row read left to right. */

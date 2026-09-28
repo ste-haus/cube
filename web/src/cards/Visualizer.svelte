@@ -8,7 +8,9 @@
   const MUTE_PARAM = "mute";
   const CONTENT_PARAM = "content";
   const COLOR_PARAM = "color";
+  const ROTATE_PARAM = "rotate";
   const TRUE = "true";
+  const FALSE = "false";
 
   const VISUALIZER_PAGES: Record<VisualizerStyle, string> = {
     bars: "/visualizer/bars/index.html",
@@ -146,11 +148,18 @@
     setTimeout(() => (demoPlaying = false), length);
   }
 
-  /** The style's page, told the colour to build its palette from when the config names one. */
+  /**
+   * The style's page, told the colour to build its palette from when the config names one, and
+   * to hold a ring still when the config says not to turn it. A backend older than the rotate
+   * setting sends none, and the rings turned.
+   */
   function stylePage(): URL {
     const page = new URL(VISUALIZER_PAGES[style], window.location.origin);
     if (visualizer.reference_color) {
       page.searchParams.set(COLOR_PARAM, visualizer.reference_color);
+    }
+    if (visualizer.rotate === false) {
+      page.searchParams.set(ROTATE_PARAM, FALSE);
     }
 
     return page;

@@ -393,6 +393,7 @@ visualizer:
   content_marker: chime_tts
   style: bars
   reference_color: default
+  rotate: true
   demo: false
   demo_clip: sounds/demo.wav
 ```
@@ -401,12 +402,14 @@ visualizer:
 
 - `bars`, the default, is a mirrored row of bars on a flat canvas, covering the panel. It idles on a faint noise for half a second after the sound stops, then fades.
 - `ridgeline` is a plane of lines tilted away from the viewer, each standing up in peaks the way flames do along a Rubens tube and trailing a glow as it travels toward the front; at rest the lines carry only static. It is anchored to the bottom of the panel.
-- `corona` is a single such line wrapped round into a ring so its ends meet, glowing outward and, more faintly, inward, with the place its ends meet turning clockwise once a minute. It sits over the middle of the panel.
-- `halo` is a few ribbons wound into a ring, each woven from fine strands like silk, twisting as they go round so they fold into bright creases, with sparks riding along them. The sound swells the ring, opens the ribbons and throws the sparks clear. It sits over the middle of the panel.
+- `corona` is a single such line wrapped round into a ring so its ends meet, glowing outward and, more faintly, inward, with the place its ends meet starting somewhere round the ring at random. It sits over the middle of the panel.
+- `halo` is a few ribbons wound into a ring, each woven from fine strands like silk, twisting as they go round so they fold into bright creases, with sparks riding along them. The sound swells the ring, opens the ribbons and throws the sparks clear. It starts turned somewhere round at random. It sits over the middle of the panel.
 
 `ridgeline`, `corona` and `halo` are drawn over the panel rather than in place of it, with the announcement's transcript above them; they arrive at once and fade away two seconds after the sound stops.
 
 `reference_color` is the colour each style's palette is worked out from: its lines, glow and sparks keep its hue and step toward dim and toward white from it. `default`, `none` or leaving it out keeps the shipped blue. `primary` and `secondary` take those colours from [`colors`](#colors), and a hex colour such as `"#8a5cf6"` is used as given. Anything else is refused when the config loads.
+
+`rotate` turns the ring styles, `corona` and `halo`, clockwise once a minute from wherever they start. It is on by default; `false` holds them still at their random starting angle. `bars` and `ridgeline` ignore it.
 
 `demo` puts a button on the front page that plays `demo_clip` through the overlay the way an announcement would, for seeing a style without one; it is off by default. `demo_clip` is an audio file in the resources directory, and if it is missing the demo turns itself off with a line in the log. While the demo is on, `?visualizerDemo=bars`, `ridgeline`, `corona` or `halo` on the front page's address picks which style the button plays instead of `style`. Any spoken clip works; on a Mac, `say -o demo.aiff "…" && afconvert -f WAVE -d LEI16@48000 demo.aiff demo.wav` makes one.
 
