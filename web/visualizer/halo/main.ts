@@ -7,7 +7,8 @@
  * The sound is laid round the ring, mirrored side to side and bent a little out of true, and
  * where it is loud the ring swells outward, the ribbons open wide and brighten, and the sparks are
  * thrown clear. How loud it is overall hurries the twisting along. At rest the ribbons lie narrow
- * and dim and only drift.
+ * and dim and only drift. The whole ring starts somewhere round at random and, unless told not
+ * to, turns slowly clockwise; see ../shared/turning.ts.
  *
  * Every strand is worked out on the graphics card from where along the ring it is, where across
  * its ribbon, and which ribbon, so a frame costs the page no more than handing over the sound.
@@ -18,6 +19,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   DataTexture,
+  Group,
   LinearFilter,
   LineSegments,
   OrthographicCamera,
@@ -34,6 +36,7 @@ import {
 import { listen } from "../shared/hearing";
 import { blur } from "../shared/noise";
 import { GLOW_BODY, LINE_PEAK, NOTHING } from "../shared/palette";
+import { turned } from "../shared/turning";
 import "./style.css";
 
 // The ring, in a view that runs from -1 to 1 top to bottom and as wide as the frame is.
@@ -384,11 +387,14 @@ document.body.appendChild(renderer.domElement);
 const scene = new Scene();
 const camera = new OrthographicCamera(-1, 1, VIEW_HALF_HEIGHT, -VIEW_HALF_HEIGHT, NEAR_PLANE, FAR_PLANE);
 
+const ring = new Group();
+scene.add(ring);
+
 const strands = new LineSegments(strandGeometry, strandMaterial);
 const sparks = new Points(sparkGeometry, sparkMaterial);
 for (const drawn of [strands, sparks]) {
   drawn.frustumCulled = false;
-  scene.add(drawn);
+  ring.add(drawn);
 }
 
 function resize(): void {
@@ -457,6 +463,7 @@ function frame(now: number): void {
   const level = ear ? layRound(ear.hear(now), seconds) : 0;
   flow += elapsed * (1 + FLOW_SOUND * level);
 
+  ring.rotation.z = turned(seconds);
   shared.time.value = seconds;
   shared.flow.value = flow;
   sparkMaterial.uniforms.pixelRatio.value = renderer.getPixelRatio();

@@ -1,8 +1,9 @@
 /**
  * The corona announcement overlay: a single line wrapped round into a ring, so its two ends meet,
  * standing up in peaks the way flames do along a Rubens tube and glowing like the flame it stands
- * for, out from the ring and, more faintly, in toward its centre. At rest the ring carries static. The place where its ends meet turns slowly
- * clockwise, whether or not anything is playing.
+ * for, out from the ring and, more faintly, in toward its centre. At rest the ring carries static.
+ * The place where its ends meet starts somewhere round the ring at random and, unless told not
+ * to, turns slowly clockwise, whether or not anything is playing; see ../shared/turning.ts.
  *
  * It is shaped like the ridgeline's listening row, from the same pieces, with less of the
  * smoothing, so it reads spikier.
@@ -31,14 +32,13 @@ import { listen } from "../shared/hearing";
 import { shimmer, smoothNoise, wander } from "../shared/noise";
 import { LINE_PEAK, LINE_REST, NOTHING } from "../shared/palette";
 import { RubensTube } from "../shared/rubens";
+import { turned } from "../shared/turning";
 import "./style.css";
 
 // The ring, in a view that runs from -1 to 1 top to bottom and as wide as the frame is.
 const POINTS = 360;
 const RING_RADIUS = 0.36;
 const PEAK_HEIGHT = 0.5;
-// Once round, clockwise, every this many seconds.
-const TURN_SECONDS = 60;
 
 // Shaped like the ridgeline's listening row, with less smoothing: one blur pass rather than three,
 // sharper crests, and static and flicker that bend twice as often along the line.
@@ -164,7 +164,7 @@ const camera = new OrthographicCamera(-1, 1, VIEW_HALF_HEIGHT, -VIEW_HALF_HEIGHT
 const ring = new Group();
 scene.add(ring);
 
-// Round from the top, clockwise, so the ends meet at the top before the ring starts to turn.
+// Round from the top, clockwise, so the ends meet at the top before the ring is turned.
 const directions = Array.from({ length: POINTS }, (_, point) => {
   const angle = (point / POINTS) * FULL_TURN;
 
@@ -282,8 +282,7 @@ function frame(now: number): void {
   const profile = ear ? tube.shape(ear.hear(now)) : silence;
   const seconds = now / MILLISECONDS;
 
-  // Clockwise is a negative turn about the axis the view looks down.
-  ring.rotation.z = -((seconds / TURN_SECONDS) % 1) * FULL_TURN;
+  ring.rotation.z = turned(seconds);
 
   for (let point = 0; point < POINTS; point++) {
     const distance = tube.distance(point);
