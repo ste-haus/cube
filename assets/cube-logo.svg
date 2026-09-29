@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 12 200 200" width="512" height="512" role="img" aria-label="Cube logo">
+  <style>
+    .s { stroke: #1f2937; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    @media (prefers-color-scheme: dark) { .s { stroke: #e5e7eb; } }
+  </style>
+  <defs><clipPath id="R"><polygon points="0,0 200,0 200,107.32 100,49.18 0,107.32"/></clipPath></defs>
+  <g class="s" stroke-width="6">
+    <line x1="57.01" y1="144.82" x2="100" y2="169.64"/>
+    <line x1="57.01" y1="144.82" x2="57.01" y2="95.18"/>
+    <line x1="100" y1="169.64" x2="100" y2="120"/>
+    <line x1="100" y1="169.64" x2="142.99" y2="144.82"/>
+    <line x1="57.01" y1="95.18" x2="100" y2="120"/>
+    <line x1="57.01" y1="95.18" x2="100" y2="70.36"/>
+    <line x1="100" y1="120" x2="142.99" y2="95.18"/>
+    <line x1="142.99" y1="144.82" x2="142.99" y2="95.18"/>
+    <line x1="100" y1="70.36" x2="142.99" y2="95.18"/>
+  </g>
+  <polyline class="s" stroke-width="6" points="45,81.16 100,49.18 155,81.16"/>
+  <line class="s" stroke-width="9" x1="57" y1="84.18" x2="57" y2="59.18" clip-path="url(#R)"/>
+</svg>
