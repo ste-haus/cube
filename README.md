@@ -18,6 +18,20 @@ Home Assistant's own dashboards are good, and a wall panel is an awkward fit for
 
 The panel presents itself as a cube. The dashboard is the front face; swiping, arrow keys, or the face map in the corner rotate to the other five.
 
+## Design
+
+cube borrows its look from a glass cockpit. Everything is drawn light on a black field (negative polarity, in display terms), the way an aircraft's flight displays are, because a wall panel has the same job: it sits in the corner of your eye, and it should read at a glance from across the room, in daylight or at 2am, without lighting the room up.
+
+Most of the other choices follow from that:
+
+- **Glanceable first.** A face should answer its question in a second or two. Large numerals, few words, and color that means something; grey is the resting state, and color is saved for what has changed or wants attention.
+- **Dark when nothing is wrong.** This is the "dark cockpit" idea: a normal house shows nothing alarming, so anything lit is worth looking at. The master warning and master caution lights on every face come straight from the annunciator panel; they stay dark until Home Assistant has something to say, and stay lit until it's cleared.
+- **Motion only when it means something.** A settled panel is still. A master light flashes when it comes on, then settles into a slow breathe; an announcement types out at about speaking pace; nothing glows for the sake of glowing.
+- **One job per face.** Rather than one long scrolling dashboard, the panel is a cube, and each face is given over to one thing: the house, the weather, the cameras. Turning to a face is deliberate, and a face that's turned away rests instead of streaming.
+- **Always know where you are.** The face map in the corner shows which way the cube is facing, and every face names itself up its left edge.
+
+<p align="center"><img src="assets/demo.gif" alt="cube demo: dragging to rotate between faces" width="720"></p>
+
 ## How it works
 
 ```

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360">
+  <style>
+    .ink { stroke: #d8d8d8; stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .osd { fill: #ffffff; font: 600 15px "Courier New", monospace; opacity: 0.85; }
+    .wave { transform-box: view-box; transform-origin: 352px 176px; animation: wave 0.55s ease-in-out infinite alternate; }
+    .bob { animation: bob 1.1s ease-in-out infinite alternate; }
+    @keyframes wave { from { transform: rotate(-35deg); } to { transform: rotate(25deg); } }
+    @keyframes bob { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+  </style>
+  <rect width="640" height="360" fill="#2a2c2e" />
+  <!-- Porch, siding, door and a light -->
+  <g stroke="#34373a" stroke-width="2">
+    <path d="M0 40 H640 M0 80 H640 M0 120 H640 M0 160 H640 M0 200 H640 M0 240 H640" />
+  </g>
+  <rect x="80" y="30" width="150" height="260" fill="#3a2a22" stroke="#1d1512" stroke-width="6" />
+  <rect x="100" y="55" width="110" height="90" fill="#2f2019" />
+  <rect x="100" y="165" width="110" height="100" fill="#2f2019" />
+  <circle cx="200" cy="170" r="7" fill="#b89b5e" />
+  <rect x="255" y="60" width="18" height="30" rx="4" fill="#e9d9a8" />
+  <ellipse cx="264" cy="75" rx="60" ry="45" fill="#e9d9a8" opacity="0.06" />
+  <rect x="0" y="290" width="640" height="70" fill="#3b3d3f" />
+  <rect x="60" y="300" width="190" height="30" fill="#4a3f33" />
+  <text x="155" y="321" text-anchor="middle" fill="#6b5d4b" font="700 16px Arial, sans-serif" font-family="Arial, sans-serif" font-size="16" font-weight="700">WELCOME</text>
+  <!-- A visitor -->
+  <g class="bob">
+    <circle class="ink" cx="340" cy="140" r="22" />
+    <path class="ink" d="M332 136 v2 M348 136 v2 M330 150 q10 8 20 0" stroke-width="3" />
+    <path class="ink" d="M340 162 V240 M340 240 L318 300 M340 240 L362 300 M340 180 L310 220" />
+    <g class="wave"><path class="ink" d="M340 180 L352 176 L372 128" /></g>
+  </g>
+  <!-- A package, left behind -->
+  <rect x="440" y="250" width="70" height="50" fill="#8a6a44" stroke="#5c452b" stroke-width="3" />
+  <path d="M440 268 H510 M475 250 V300" stroke="#c9b48a" stroke-width="3" />
+  <!-- Camera overlay -->
+  <text class="osd" x="16" y="28">FRONT DOOR</text>
+  <text class="osd" x="624" y="344" text-anchor="end">2026-09-29 14:20:17</text>
+</svg>

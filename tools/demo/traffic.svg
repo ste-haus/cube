@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <!-- Butler County, Kansas, roughly: -97.20..-96.72 by 37.66..38.10, Potwin at the marker. -->
+  <style>
+    .land { fill: #121316; }
+    .water { fill: #1a1d2c; }
+    .river { stroke: #1f2436; stroke-width: 3; fill: none; stroke-linecap: round; }
+    .section { stroke: #1c1d22; stroke-width: 1; fill: none; }
+    .street { stroke: #2c2d33; stroke-width: 1.2; fill: none; }
+    .road { stroke: #3d3f47; stroke-width: 1.6; fill: none; }
+    .route-casing { stroke: #22283a; stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .route { stroke: #6f7fa6; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .hwy-casing { stroke: #0c3d33; stroke-width: 10; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .hwy { stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .free { stroke: #1ee3a0; }
+    .slow { stroke: #f6a623; }
+    .jam { stroke: #e0413b; }
+    .town { fill: #c4c4c8; font: 500 12px Roboto, Helvetica, Arial, sans-serif; }
+    .town-big { fill: #e2e2e6; font: 500 13px Roboto, Helvetica, Arial, sans-serif; }
+    .place { fill: #8d8e96; font: 600 10px Roboto, Helvetica, Arial, sans-serif; letter-spacing: 1px; }
+    .shield-text { fill: #ffffff; font: 700 9px Roboto, Helvetica, Arial, sans-serif; }
+    .us-text { fill: #111111; font: 700 8px Roboto, Helvetica, Arial, sans-serif; }
+    .route-text { fill: #222222; font: 700 8px Roboto, Helvetica, Arial, sans-serif; }
+  </style>
+
+  <rect class="land" width="500" height="500" />
+
+  <!-- Section-line roads, a mile apart, the way the whole county is laid out -->
+  <g class="section">
+    <path d="M0 40 H500 M0 97 H500 M0 154 H500 M0 211 H500 M0 268 H500 M0 325 H500 M0 382 H500 M0 439 H500 M0 496 H500" />
+    <path d="M26 0 V500 M78 0 V500 M130 0 V500 M182 0 V500 M234 0 V500 M286 0 V500 M338 0 V500 M390 0 V500 M442 0 V500 M494 0 V500" />
+  </g>
+
+  <!-- El Dorado Lake, and the Whitewater and Walnut rivers -->
+  <path class="water" d="M405 215 C425 200 450 210 462 228 C478 248 470 262 488 272 C500 280 500 300 480 304 C460 308 448 290 430 292 C410 294 396 280 398 262 C399 246 392 228 405 215 Z" />
+  <path class="water" d="M430 180 C440 175 452 182 448 196 C444 206 432 204 428 196 Z" />
+  <path class="river" d="M40 0 C45 60 60 110 55 170 C50 230 80 300 90 380 C95 430 110 470 105 500" />
+  <path class="river" d="M400 280 C380 300 370 320 360 340 C345 380 300 420 260 470 C250 485 245 495 240 500" />
+
+  <!-- Town grids: El Dorado, Augusta, and the small ones -->
+  <g class="street">
+    <path d="M325 300 H390 M320 312 H392 M322 324 H390 M325 336 H385 M330 348 H378" />
+    <path d="M330 292 V352 M342 290 V356 M354 290 V358 M366 292 V356 M378 296 V350" />
+    <path d="M205 450 H255 M200 462 H258 M205 474 H252 M212 444 V485 M226 442 V488 M240 442 V488 M252 448 V482" />
+    <path d="M178 176 H198 M178 186 H198 M183 170 V192 M193 170 V192" />
+    <path d="M42 152 H64 M42 162 H64 M48 146 V168 M58 146 V168" />
+    <path d="M198 334 H220 M198 346 H220 M204 328 V352 M214 328 V352" />
+    <path d="M84 346 H106 M84 358 H106 M90 340 V364 M100 340 V364" />
+  </g>
+
+  <!-- County roads between the towns -->
+  <g class="road">
+    <path d="M73 57 V154" />
+    <path d="M323 20 C330 90 340 180 350 290" />
+    <path d="M208 341 C220 380 225 420 229 450" />
+    <path d="M0 250 C40 248 70 254 110 268" />
+  </g>
+
+  <!-- K-196: Whitewater, Potwin, El Dorado -->
+  <path class="route-casing" d="M0 150 L52 159 L187 182 C230 200 270 240 300 270 C320 290 335 305 350 315" />
+  <path class="route" d="M0 150 L52 159 L187 182 C230 200 270 240 300 270 C320 290 335 305 350 315" />
+
+  <!-- K-254: El Dorado west through Towanda and Benton, toward Wichita -->
+  <path class="route-casing" d="M340 322 L208 341 L94 352 L0 360" />
+  <path class="route" d="M340 322 L208 341 L94 352 L0 360" />
+
+  <!-- US-77: north to Florence, south to Augusta -->
+  <path class="route-casing" d="M360 0 C356 80 352 200 354 318 C340 380 290 420 232 462 L210 500" />
+  <path class="route" d="M360 0 C356 80 352 200 354 318 C340 380 290 420 232 462 L210 500" />
+
+  <!-- I-35, the Kansas Turnpike: clear from Wichita, slow past El Dorado, a mess at the service area -->
+  <path class="hwy-casing" d="M40 500 C110 460 180 420 250 395 C300 378 345 360 380 330 C410 305 420 270 432 240 C445 205 470 160 500 120" />
+  <path class="hwy free" d="M40 500 C110 460 180 420 250 395 C282 384 310 374 332 362" />
+  <path class="hwy slow" d="M332 362 C350 352 366 342 380 330" />
+  <path class="hwy jam" d="M380 330 C402 311 414 290 422 266" />
+  <path class="hwy slow" d="M422 266 C426 254 429 247 432 240" />
+  <path class="hwy free" d="M432 240 C445 205 470 160 500 120" />
+
+  <!-- Shields -->
+  <g transform="translate(150 427)">
+    <path d="M-9 -9 H9 V2 C9 7 4 10 0 12 C-4 10 -9 7 -9 2 Z" fill="#2c4fa3" stroke="#ffffff" stroke-width="1.2" />
+    <text class="shield-text" y="3" text-anchor="middle">35</text>
+  </g>
+  <g transform="translate(470 160)">
+    <path d="M-9 -9 H9 V2 C9 7 4 10 0 12 C-4 10 -9 7 -9 2 Z" fill="#2c4fa3" stroke="#ffffff" stroke-width="1.2" />
+    <text class="shield-text" y="3" text-anchor="middle">35</text>
+  </g>
+  <g transform="translate(357 120)">
+    <path d="M-9 -8 H9 C9 2 6 8 0 11 C-6 8 -9 2 -9 -8 Z" fill="#ffffff" stroke="#111111" stroke-width="1" />
+    <text class="us-text" y="3" text-anchor="middle">77</text>
+  </g>
+  <g transform="translate(120 170)">
+    <rect x="-12" y="-7" width="24" height="14" rx="7" fill="#ffffff" />
+    <text class="route-text" y="3" text-anchor="middle">196</text>
+  </g>
+  <g transform="translate(150 345)">
+    <rect x="-12" y="-7" width="24" height="14" rx="7" fill="#ffffff" />
+    <text class="route-text" y="3" text-anchor="middle">254</text>
+  </g>
+
+  <!-- Place names -->
+  <text class="town" x="187" y="164" text-anchor="middle">Potwin</text>
+  <text class="town" x="54" y="140" text-anchor="middle">Whitewater</text>
+  <text class="town" x="80" y="48">Elbing</text>
+  <text class="town" x="328" y="18">Burns</text>
+  <text class="town-big" x="318" y="288" text-anchor="end">El Dorado</text>
+  <text class="town" x="210" y="325" text-anchor="middle">Towanda</text>
+  <text class="town" x="94" y="335" text-anchor="middle">Benton</text>
+  <text class="town" x="266" y="470">Augusta</text>
+  <text class="place" x="412" y="322">EL DORADO</text>
+  <text class="place" x="440" y="334">LAKE</text>
+
+  <!-- Home marker -->
+  <g transform="translate(187 196)">
+    <circle r="15" fill="none" stroke="#11fcf7" stroke-width="3.5" stroke-dasharray="31 64" transform="rotate(150)" />
+    <circle r="15" fill="none" stroke="#bd00bd" stroke-width="3.5" stroke-dasharray="31 64" transform="rotate(270)" />
+    <circle r="15" fill="none" stroke="#f3e7c6" stroke-width="3.5" stroke-dasharray="31 64" transform="rotate(30)" />
+    <path d="M0 7 C-4 1 -5 -2 -5 -4 A5 5 0 0 1 5 -4 C5 -2 4 1 0 7 Z" fill="#ffffff" />
+    <circle cy="-4" r="1.8" fill="#121316" />
+  </g>
+</svg>
