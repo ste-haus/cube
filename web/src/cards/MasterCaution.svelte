@@ -71,6 +71,9 @@
   const buttons: Partial<Record<AlertTier, HTMLElement>> = {};
   let closing = $state(false);
   let closeTimer: number | null = null;
+  // Whether a press began on the glass. A touchscreen sends the tap that opened the list a click
+  // of its own, aimed at wherever the tap landed, and by then the glass is what is there.
+  let armed = false;
   let now = $state(new Date());
 
   const listed = $derived(masters.find((master) => master.tier === listing && master.look !== "hidden") ?? null);
@@ -138,6 +141,16 @@
     listing = tier;
   }
 
+  /** A tap on the glass, but only one that started there. */
+  function dismiss() {
+    if (!armed) {
+      return;
+    }
+
+    armed = false;
+    close();
+  }
+
   /** Folds the window back into its master, and only then lets it go. */
   function close() {
     if (closing) {
@@ -161,6 +174,7 @@
     }
 
     closing = false;
+    armed = false;
     listing = null;
   }
 
@@ -241,7 +255,8 @@
     style:--mcw-pause="{HOLD_MS}{MILLISECONDS}"
     style:--mcw-flash="{FLASH_MS}{MILLISECONDS}"
     style:--mcw-breathe="{BREATHE_MS}{MILLISECONDS}"
-    onclick={close}
+    onpointerdown={() => (armed = true)}
+    onclick={dismiss}
   >
     <div class="mcw-list__window" bind:this={windowElement}>
       {#each CORNERS as corner (corner)}
