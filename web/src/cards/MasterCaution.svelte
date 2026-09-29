@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { clearMaster } from "../lib/api";
+  import { fireEvent } from "../lib/api";
   import { alertTime, elapsedLabel, masterLook, readAlerts, tierSince } from "../lib/mcw";
   import { ha } from "../lib/state.svelte";
   import type { AlertTier, Labels, Mcw } from "../lib/types";
@@ -10,14 +10,15 @@
    * Mounted beside the cube rather than on a face, so it stays put while the cube turns and is
    * the same on every side. A master that is lit wants attention; one that is dark has only
    * cleared alerts, and is still there to be asked what they are; one with no alerts at all is
-   * not there. Tapping a master lists its tier's alerts. Holding a lit one clears it, which is
-   * Home Assistant's to record, so it goes dark on every panel at once, and only when the state
-   * stream says it has.
+   * not there. Tapping a master lists its tier's alerts. Holding a lit one fires the clear event
+   * with its tier. The clear is Home Assistant's to record, so the master goes dark on every panel
+   * at once, and only when the state stream says it has.
    */
 
   let { mcw, labels }: { mcw: Mcw; labels: Labels } = $props();
 
   const ALERTS_ATTRIBUTE = "alerts";
+  const TIER_FIELD = "tier";
   const MILLISECONDS_PER_SECOND = 1000;
   const PRIMARY_BUTTON = 0;
   const WORD_BREAK = " ";
@@ -118,7 +119,7 @@
       holding = null;
 
       if (lit) {
-        void clearMaster(tier);
+        void fireEvent(mcw.clear_event, { [TIER_FIELD]: tier });
       }
     }, mcw.hold_seconds * MILLISECONDS_PER_SECOND);
   }

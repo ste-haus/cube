@@ -862,6 +862,8 @@ class Dashboard(BaseModel):
     transcript: Transcript | None = None
     visualizer: Visualizer | None = None
     mcw: Mcw | None = None
+    # Events a panel may fire, through pyscript. Anything else a panel asks for is refused.
+    events: list[str] = Field(default_factory=list)
 
     toggleable_domains: list[str] = Field(default_factory=lambda: list(DEFAULT_TOGGLEABLE_DOMAINS))
     # Counts that drive the agenda's scroll animation, rather than anything rendered directly.
@@ -1124,6 +1126,24 @@ class Dashboard(BaseModel):
                 entities.update(floorplan.groups.get(group, []))
 
         return frozenset(entities)
+
+    @property
+    def allowed_events(self) -> frozenset[str]:
+        """Every event a panel may fire.
+
+        The ones `events` names, and any a section of the config fires itself, so turning that
+        section on is all it takes: `mcw` clears its masters with one.
+        """
+
+        events = set(self.events)
+
+        if self.mcw:
+            events.add(self.mcw.clear_event)
+
+        return frozenset(events)
+
+    def may_fire(self, event_type: str) -> bool:
+        return event_type in self.allowed_events
 
     def may_toggle(self, entity_id: str) -> bool:
         domain, _, _ = entity_id.partition(".")

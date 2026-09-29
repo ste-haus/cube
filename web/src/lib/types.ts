@@ -286,6 +286,7 @@ export interface DashboardConfig {
   transcript: Transcript | null;
   visualizer: Visualizer | null;
   mcw: Mcw | null;
+  events: string[];
   item_count_entities: string[];
 }
 

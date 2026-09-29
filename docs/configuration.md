@@ -404,7 +404,7 @@ A master has three looks. While it is `on` it is lit and flashing. While it is o
 
 Tapping a master opens its tier's alerts, each with the local time it triggered and the zone; cleared ones are dimmed but stay listed. Tapping anywhere closes the list, and it closes itself if its alerts all go.
 
-Holding a lit master for `hold_seconds` clears it: the panel fires `clear_event` with `event_data: {tier: warning}` or `{tier: caution}` through `pyscript.fire_event`, so it needs [pyscript](https://github.com/custom-components/pyscript) and a service of that name taking `event_type` and `event_data`. Home Assistant only fires an event over its websocket for an administrator's token, and this keeps cube's token from needing to be one. Home Assistant records the clear, so the master goes dark on every panel at once, when the state stream says it has rather than when the finger lifts. The panel names only the tier; the event is fixed by this config.
+Holding a lit master for `hold_seconds` clears it: the panel fires `clear_event` with `event_data: {tier: warning}` or `{tier: caution}`, the way it fires any [event](#what-the-panel-may-fire). Turning `mcw` on is enough to allow `clear_event`; it does not need listing under `events` as well. Home Assistant records the clear, so the master goes dark on every panel at once, when the state stream says it has rather than when the finger lifts.
 
 `warning_color` and `caution_color` may name a colour from [`colors`](#colors). The two captions are `master_warning` and `master_caution` under [`labels`](#labels).
 
@@ -466,6 +466,17 @@ toggleable_domains: [light, switch, group, input_boolean]
 ```
 
 A tap is refused unless the entity is one the panel actually draws as a control — a light or a fan on the floorplan, or a configured toggle — **and** its domain is in this list. Everything else is read-only no matter what is sent.
+
+### What the panel may fire
+
+```yaml
+events:
+  - DOORBELL_SILENCE
+```
+
+A panel fires a Home Assistant event by posting its type and data to `/api/event`, and cube fires it through `pyscript.fire_event`. That needs [pyscript](https://github.com/custom-components/pyscript) and a service of that name taking `event_type` and `event_data`: Home Assistant only fires an event over its websocket for an administrator's token, and this keeps cube's token from needing to be one.
+
+An event is refused unless `events` lists it, or a section of the config fires it itself, as [`mcw`](#mcw) does with its `clear_event`. The data is passed on as sent, so an allowed event should be one whose listeners are safe to hand whatever a panel sends them; which events may be fired is the line cube holds. `events` is empty unless set.
 
 ## Applying changes
 
