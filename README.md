@@ -117,11 +117,13 @@ Two stylesheets ship with the panel: `web/src/styles/floorplan.css` holds the ge
 
 Lights additionally take their `brightness` as opacity and their `rgb_color` as fill.
 
-Only `lights` and `fans` are tappable. A toggle is refused unless the entity appears in one of those groups **and** its domain is listed in `toggleable_domains`:
+Only `lights` and `fans` are tappable. A toggle is refused unless the entity is one some panel draws as a control (a light or fan on the floorplan, a configured toggle, or a control on a [guest face](docs/panels.md#the-guest-face)) **and** its domain is listed in `toggleable_domains`. Setting a value, such as a light's brightness, a cover's position, or the time an alarm goes off, is held to the same rule, with the domain one of `light`, `cover`, or `input_datetime`:
 
 ```
-POST /api/toggle  {"entity_id": "light.kitchen"}   → 204
-POST /api/toggle  {"entity_id": "sensor.front_door"} → 403
+POST /api/toggle  {"entity_id": "light.kitchen"}                   → 204
+POST /api/toggle  {"entity_id": "sensor.front_door"}               → 403
+POST /api/set     {"entity_id": "light.kitchen", "value": 40}      → 204
+POST /api/set     {"entity_id": "sensor.front_door", "value": 40}  → 403
 ```
 
 ## What it asks Home Assistant for
@@ -130,7 +132,7 @@ One websocket connection, and four REST paths. Nothing else is ever requested.
 
 | Transport | Path | When | Notes |
 |---|---|---|---|
-| websocket | `/api/websocket` | continuously | `auth`, then one `subscribe_entities` over the allowlist, plus `call_service` per toggle |
+| websocket | `/api/websocket` | continuously | `auth`, then one `subscribe_entities` over the allowlist, plus `call_service` per toggle or value set |
 | REST | `/api/calendars/{entity_id}` | one call per configured calendar, every 5 minutes, per panel | merged, filtered, and sorted by the proxy |
 | REST | `/api/camera_proxy/{entity_id}` | once per camera refresh, per panel, and only for cameras on the face being looked at | a still; this is what the panel actually uses |
 | REST | `/api/camera_proxy_stream/{entity_id}` | never, as shipped | MJPEG relay, available but unused by the current panel |

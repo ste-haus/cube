@@ -14,6 +14,8 @@
   let { toggles }: { toggles: Toggle[] } = $props();
 
   const MILLISECONDS_PER_SECOND = 1000;
+  // A chip lit, unless it names its own colour; its label lights with its icon.
+  const PRIMARY = "var(--color-primary)";
   const PRIMARY_BUTTON = 0;
 
   const visible = $derived(toggles.filter((item) => !item.visible_when || ha.isOn(item.visible_when)));
@@ -55,6 +57,7 @@
 <div class="toggles">
   {#each visible as item (item.entity_id)}
     {@const on = ha.isOn(item.entity_id)}
+    {@const lit = item.active_color ?? PRIMARY}
     <button
       type="button"
       class="toggle"
@@ -68,8 +71,8 @@
       onpointercancel={abandon}
       oncontextmenu={(event) => event.preventDefault()}
     >
-      <Icon name={item.icon} color={on ? item.active_color : item.inactive_color} />
-      <span class="toggle__label">{item.label}</span>
+      <Icon name={item.icon} color={on ? lit : item.inactive_color} />
+      <span class="toggle__label" style:color={on ? lit : null}>{item.label}</span>
     </button>
   {/each}
 </div>
@@ -85,7 +88,6 @@
     --toggle-glint-time: 1.1s;
     --toggle-glint-strength: 0.28;
     --toggle-fill-strength: 0.18;
-    --toggle-fade: 400ms;
 
     position: relative;
     display: inline-flex;
@@ -98,7 +100,7 @@
     background-color: var(--color-faint);
     color: var(--color-foreground);
     font: inherit;
-    font-size: 0.85rem;
+    font-size: var(--toggle-size);
     cursor: pointer;
     -webkit-touch-callout: none;
     user-select: none;
@@ -108,11 +110,12 @@
   .toggle :global(i),
   .toggle :global(svg) {
     position: relative;
-    transition: color var(--toggle-fade) ease;
+    transition: color var(--colour-fade) ease;
   }
 
   .toggle__label {
     position: relative;
+    transition: color var(--colour-fade) ease;
   }
 
   /* The hold filling the chip from the left, so it is plain how long is left to go. */

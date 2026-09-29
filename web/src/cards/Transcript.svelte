@@ -170,6 +170,9 @@
     right: 0;
     bottom: calc(var(--panel-padding) + var(--transcript-lift));
     left: 0;
+    /* A band the width of the panel, over whatever sits along its foot; it is only words, so taps
+     * go through it to the controls underneath. */
+    pointer-events: none;
     display: flex;
     justify-content: center;
     margin: 0;

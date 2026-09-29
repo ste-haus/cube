@@ -163,7 +163,8 @@ export interface Toggle {
   entity_id: string;
   label: string;
   icon: string;
-  active_color: string;
+  /** Unset, the primary colour. */
+  active_color: string | null;
   inactive_color: string;
   visible_when: string | null;
   hold_seconds: number | null;
@@ -220,6 +221,50 @@ export interface WeatherFaceOptions {
   tiles: WeatherTile[];
 }
 
+export type WifiSecurity = "WPA" | "WEP" | "nopass";
+
+/** A network a guest can join, read from the entities holding its name and password. */
+export interface Wifi {
+  ssid_entity_id: string;
+  password_entity_id: string;
+  security: WifiSecurity;
+  hidden: boolean;
+  /** A page drawing the code, with `{data}` and `{size}` where the network and its size go. */
+  qr_url: string | null;
+}
+
+/** The room's light, drawn large: a bulb that switches it inside an arc that dims it. */
+export interface Light {
+  entity_id: string;
+  icon: string;
+  off_icon: string;
+  /** What the middle of its colour wheel sets it to, as a CIE xy point. */
+  default_xy: [number, number];
+}
+
+/** A light or a cover, dragged along to set it and tapped to switch it. */
+export interface Slider {
+  entity_id: string;
+  label: string;
+  icon: string;
+}
+
+/** A switch that arms the alarm, and the `input_datetime` holding when it goes off. */
+export interface Alarm {
+  enabled_entity_id: string;
+  time_entity_id: string;
+  minute_step: number;
+}
+
+/** A guest room's face: the network, the room's controls, and the alarm, each optional. */
+export interface GuestFaceOptions {
+  wifi: Wifi | null;
+  light: Light | null;
+  sliders: Slider[];
+  toggles: Toggle[];
+  alarm: Alarm | null;
+}
+
 export interface Face {
   content: string;
   label: string;
@@ -242,6 +287,11 @@ export interface Labels {
   sunrise: string;
   sunset: string;
   now: string;
+  wifi: string;
+  wifi_network: string;
+  wifi_password: string;
+  alarm: string;
+  light_colour: string;
   master_warning: string;
   master_caution: string;
   alert_cleared: string;

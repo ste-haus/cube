@@ -84,6 +84,7 @@ A custom face does not share the state store the built-in faces read from. It ta
 | `GET /api/state` | Every entity the config names, and whether Home Assistant is connected |
 | `WS /api/stream` | An `init` message with that same snapshot, then `update` messages as states change |
 | `POST /api/toggle` | `{"entity_id": "..."}`, for an entity the config allows and whose domain is toggleable |
+| `POST /api/set` | `{"entity_id": "...", "value": ...}`: a percentage for a light or a cover, `HH:MM` for an `input_datetime`, for a control the config draws |
 | `GET /api/icons` | Your own icon set, as a map of name to SVG path |
 | `GET /api/floorplan/<level>` | A floorplan drawing |
 | `GET /api/agenda` | The calendar events the agenda is built from |

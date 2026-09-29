@@ -17,6 +17,11 @@ OK = 200
 
 UNCONTROLLABLE_ENTITY = "sensor.example_bin"
 UNKNOWN_CAMERA = "camera.not_configured"
+# Matches `profiles.example-guest.faces.front.options` in the sample config.
+SAMPLE_GUEST_LIGHT = "light.example_guest_room"
+SAMPLE_GUEST_BLINDS = "cover.example_guest_blinds"
+SAMPLE_GUEST_FAN = "switch.example_guest_fan"
+SAMPLE_ALARM_TIME = "input_datetime.example_guest_alarm"
 # Matches a tile of `profiles.example-cameras.faces.left` in the sample config, which no
 # `camera:` block names.
 FACE_CAMERA = "camera.example_back_yard"
@@ -392,3 +397,105 @@ def test_stream_opens_with_a_snapshot(settings):
     assert message["type"] == "init"
     assert message["connected"] is False
     assert message["states"] == {}
+
+
+SET_ROUTE = "/api/set"
+NO_CONTENT = 204
+UNPROCESSABLE = 422
+
+
+def recording_calls(calls: list[tuple]):
+    async def call_service(*arguments):
+        calls.append(arguments)
+
+    return call_service
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "value", "expected"),
+    [
+        (SAMPLE_GUEST_LIGHT, 40, ("light", "turn_on", SAMPLE_GUEST_LIGHT, {"brightness_pct": 40})),
+        (SAMPLE_GUEST_BLINDS, 75, ("cover", "set_cover_position", SAMPLE_GUEST_BLINDS, {"position": 75})),
+        (SAMPLE_ALARM_TIME, "06:45", ("input_datetime", "set_datetime", SAMPLE_ALARM_TIME, {"time": "06:45"})),
+        (
+            SAMPLE_GUEST_LIGHT,
+            {"hue": 210, "saturation": 100},
+            ("light", "turn_on", SAMPLE_GUEST_LIGHT, {"hs_color": [210, 100]}),
+        ),
+        (
+            SAMPLE_GUEST_LIGHT,
+            {"x": 0.469, "y": 0.403},
+            ("light", "turn_on", SAMPLE_GUEST_LIGHT, {"xy_color": [0.469, 0.403]}),
+        ),
+    ],
+)
+def test_a_control_is_set_through_its_domains_service(settings, entity_id, value, expected):
+    calls: list[tuple] = []
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.call_service = recording_calls(calls)
+
+        response = client.post(SET_ROUTE, json={"entity_id": entity_id, "value": value})
+
+    assert response.status_code == NO_CONTENT
+    assert calls == [expected]
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "value"),
+    [
+        (SAMPLE_GUEST_LIGHT, 101),
+        (SAMPLE_GUEST_BLINDS, "half"),
+        (SAMPLE_ALARM_TIME, "25:00"),
+        (SAMPLE_ALARM_TIME, 7),
+        # A colour for something that has none.
+        (SAMPLE_GUEST_BLINDS, {"hue": 210, "saturation": 100}),
+    ],
+)
+def test_a_value_the_control_cannot_take_is_refused(settings, entity_id, value):
+    calls: list[tuple] = []
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.call_service = recording_calls(calls)
+
+        response = client.post(SET_ROUTE, json={"entity_id": entity_id, "value": value})
+
+    assert response.status_code == UNPROCESSABLE
+    assert calls == []
+
+
+def test_setting_an_entity_that_is_only_shown_is_refused(settings):
+    calls: list[tuple] = []
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.call_service = recording_calls(calls)
+
+        response = client.post(SET_ROUTE, json={"entity_id": UNCONTROLLABLE_ENTITY, "value": 50})
+
+    assert response.status_code == FORBIDDEN
+    assert calls == []
+
+
+def test_a_guest_faces_switch_may_be_toggled(settings):
+    calls: list[tuple] = []
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.call_service = recording_calls(calls)
+
+        response = client.post("/api/toggle", json={"entity_id": SAMPLE_GUEST_FAN})
+
+    assert response.status_code == NO_CONTENT
+    assert calls == [("homeassistant", "toggle", SAMPLE_GUEST_FAN, None)]
+
+
+@pytest.mark.parametrize("colour", [{"hue": 361, "saturation": 100}, {"hue": 10, "saturation": 101}, {"hue": 10}])
+def test_a_colour_off_the_wheel_is_refused(settings, colour):
+    calls: list[tuple] = []
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.client.call_service = recording_calls(calls)
+
+        response = client.post(SET_ROUTE, json={"entity_id": SAMPLE_GUEST_LIGHT, "value": colour})
+
+    assert response.status_code == UNPROCESSABLE
+    assert calls == []

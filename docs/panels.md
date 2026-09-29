@@ -109,6 +109,7 @@ Cycles, a parent that does not exist, and a `floorplan` that was never declared 
 | `camera-grid` | A grid of cameras, laid out as the config writes it |
 | `camera-hero` | One camera at size, with the rest in a column beside it |
 | `weather` | The conditions, the wind, and how it feels, today's range, the sun and moon against the horizon, the forecast, and a radar and cameras |
+| `guest` | For a guest room: the clock, how to join the network, the room's light and blinds, the weather, today's range and the forecast, and an alarm clock |
 | `custom` | A page you supply yourself, served from the resources directory |
 | `blank` | Nothing but its own label |
 
@@ -167,6 +168,64 @@ Credits sit in a footer along the radar's foot that fades up when a pointer is o
 Otherwise a tile is a camera, written exactly as on a camera face, or a **frame**: another page, drawn edge to edge with no border, title, or scrollbars. `url` must be http or https. The frame itself draws nothing but the page; its `title` names it to anything reading the panel, and on the weather face it is the caption over the frame.
 
 A frame is loaded only while its face is being looked at and unloaded when the cube turns away, so a page that animates for as long as it is open costs nothing on a face nobody is looking at; coming back reloads it. It takes no touches unless it has `interactive: true`, so a swipe across it turns the cube rather than panning whatever the page is showing. The page has to allow being framed by the panel's origin, which is the page's decision rather than cube's.
+
+### The guest face
+
+A guest room's front: what a guest needs, and none of the household's notices, calendars, or floorplan. It is laid out on the dashboard's grid, so the header, the clock, and the weather sit exactly where they do on the dashboard, and a guest moving between rooms finds them in the same place.
+
+- **Left:** the clock, then the network, centred in the column: its name and password written out, and under them a code a phone's camera scans to join. The alarm clock is under the code. The code is drawn by a page you name in `qr_url`, framed and asked for at the size it is shown at. Both come from the entities, so changing the password in Home Assistant changes every panel with the next state update.
+- **Middle:** the room. Its light, large, then a bar for each cover or further light, filled in grey as far as it is open or bright, with the fill's leading edge in the primary colour, then chips for anything that only switches.
+- **Right:** the weather now and the forecast in words, as on the dashboard, then today's temperature range and the forecast.
+
+The announcement and its overlay work as on the dashboard.
+
+```yaml
+gb:
+  faces:
+    front:
+      content: guest
+      label_strip: false
+      options:
+        wifi:
+          ssid_entity_id: sensor.guest_wifi_ssid
+          password_entity_id: input_text.guest_wifi_password
+          hidden: true
+          qr_url: https://qr.example/?data={data}&size={size}
+        light:
+          entity_id: light.guest_bedroom
+        sliders:
+          - entity_id: cover.guest_blinds
+            label: Blinds
+            icon: mdi:blinds-horizontal
+        toggles:
+          - entity_id: switch.guest_fan
+            label: Window fan
+            icon: mdi:fan
+        alarm:
+          enabled_entity_id: input_boolean.guest_alarm
+          time_entity_id: input_datetime.guest_alarm
+          minute_step: 15
+```
+
+Every option is optional, and a card with nothing to draw is left out.
+
+| Option | Holds |
+|---|---|
+| `wifi` | `ssid_entity_id` and `password_entity_id`, whose states are the name and password; `security`, one of `WPA` (the default), `WEP`, or `nopass`; `hidden`, for a network that does not broadcast its name, which the code has to say for a phone to find it; and `qr_url`, the page that draws the code, with `{data}` where the network goes and `{size}` where the side of the code goes, in pixels. With no `qr_url` the name and password are shown alone |
+| `light` | The room's light: `entity_id`; the `icon` and `off_icon` the bulb is drawn with, `mdi:lightbulb` and `mdi:lightbulb-off` unless you say otherwise; and `default_xy`, the CIE xy point the middle of its colour wheel sets, `[0.469, 0.403]` (the `full` light profile) unless you say otherwise. It must be a light |
+| `sliders` | Covers and further lights, as bars, each with a `label` and an `icon`. Anything else is refused when the config loads |
+| `toggles` | Chips, written as in the [`toggles`](configuration.md#toggles) section |
+| `alarm` | `enabled_entity_id`, a switch or `input_boolean` that arms it; `time_entity_id`, an `input_datetime` holding the time; and `minute_step`, how far one press moves the minutes, 15 unless you say otherwise |
+
+The room's light is a bulb inside an arc, open at the bottom like a dimmer's dial. A tap on the bulb switches the light. A press on the arc sets the brightness to that point, and a drag round it follows the finger; the arc runs from nothing at its lower left, clockwise, to full at its lower right. A drag that starts on the bulb rather than the arc turns the cube, as it would anywhere else. The bulb takes the light's own colour while it is on, the warm on-amber for a light that reports none, and is as bright as the light is.
+
+Holding the bulb, on a light that can be coloured, swells it for a moment and then opens a window out of it with a colour wheel: every hue round a ring, red at the top, and the light's default colour in the middle, the warm white of Home Assistant's `full` light profile unless `default_xy` says otherwise. The band across the window's top is the colour showing. Drag the marker round the ring, and while it is held it throws a wide, breathing glow of its colour so the colour shows round the finger; let go and the light takes that hue, at full saturation, and the window closes. Tap the middle and the light takes its default, and the window closes. A tap on the glass around the wheel closes it without changing anything. On a light with no colour, only brightness or colour temperature, a hold does nothing. The window's heading is `labels.light_colour`.
+
+A tap anywhere on a bar switches it, and a drag along it sets it, to the percent. A drag that starts out more up or down than along is left to turn the cube, and one that starts out along belongs to the bar, so dragging across a bar never turns the face away. While the finger is down a white mark shows where it will land; once it is let go, the mark stays with a glint across the bar until Home Assistant says where the light or cover went. The fill's primary edge breathes from the start of a drag and settles a couple of seconds after it is let go. The fill only ever shows what Home Assistant reports.
+
+The alarm's bell arms and disarms it. Disarmed, the bell is all there is, grey, since a time that will not go off is not worth reading. Armed, the bell turns the primary colour and the time is to its right, with a wheel above and below the hours and the minutes. Arming slides the bell from the middle over to the left and writes the time in beside it; disarming erases the time back into the bell and slides the bell back to the middle. The minutes go round the hour without carrying into it, the way a clock's setting wheels do. Pressing moves the time on the panel at once, and it is sent to Home Assistant a moment after the last press, so a run of presses is one change rather than a round trip each. Once sent, the time breathes until Home Assistant has it. Going off is Home Assistant's business: the face only sets the switch and the time, so an automation watching them does the rest.
+
+Everything a guest face draws is added to the allowlists, so there is nothing to list twice. See [what the panel may switch](configuration.md#what-the-panel-may-switch).
 
 ### The label strip
 
