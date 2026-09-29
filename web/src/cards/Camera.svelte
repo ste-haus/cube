@@ -2,15 +2,32 @@
   import { cameraSnapshotUrl } from "../lib/api";
   import { faceVisibility } from "../lib/cube.svelte";
   import { go2rtcServer, playStream } from "../lib/go2rtc";
+  import { containedBox, ratioOf, type Box } from "../lib/picture";
   import type { Camera, StreamType } from "../lib/types";
+  import CameraWindow from "./CameraWindow.svelte";
 
   const MS_PER_SECOND = 1000;
   const GO2RTC: StreamType = "go2rtc";
+  // Further than this between press and release is a swipe across the tile, not a tap on it.
+  const TAP_SLOP_PX = 10;
 
-  let { camera }: { camera: Camera } = $props();
+  /** `expanded` is the camera drawn inside its own window: no title, and nothing to tap. */
+  let { camera, expanded = false }: { camera: Camera; expanded?: boolean } = $props();
 
   const visibility = faceVisibility();
   const server = go2rtcServer();
+
+  /*
+   * Tapped, the tile opens a window with the same camera in it, big. While the window is open
+   * the tile stops fetching, so the panel pulls one picture of the camera and not two, and
+   * hides, so the window's brackets read as lifting it off the wall.
+   */
+  let opened = $state<{ from: Box; ratio: number } | null>(null);
+  let away = $state(false);
+  let image = $state<HTMLImageElement | null>(null);
+  let pressedAt: { x: number; y: number } | null = null;
+
+  const watching = $derived(visibility.showing && opened === null);
 
   /* Live when it says so and there is a go2rtc to reach; anything else is polled, so a camera
    * that cannot stream shows stills rather than nothing. */
@@ -20,6 +37,7 @@
   let tick = $state(requested);
   let pending: number | null = null;
   let video = $state<HTMLVideoElement | null>(null);
+  const frame = $derived(live ? video : image);
 
   function cancel(): void {
     if (pending !== null) {
@@ -42,7 +60,7 @@
   function arrived(): void {
     cancel();
 
-    if (live || !visibility.showing) {
+    if (live || !watching) {
       return;
     }
 
@@ -60,7 +78,7 @@
    * still is exactly as old as the panel has been turned away.
    */
   $effect(() => {
-    if (live || !visibility.showing) {
+    if (live || !watching) {
       cancel();
 
       return;
@@ -78,7 +96,7 @@
    * while the stream reconnects and waits for its first keyframe.
    */
   $effect(() => {
-    if (!live || !visibility.showing || video === null || server.url === null || camera.stream === null) {
+    if (!live || !watching || video === null || server.url === null || camera.stream === null) {
       return;
     }
 
@@ -86,10 +104,40 @@
 
     return playStream(video, server.url, camera.stream);
   });
+
+  function press(event: PointerEvent): void {
+    pressedAt = { x: event.clientX, y: event.clientY };
+  }
+
+  function open(event: MouseEvent): void {
+    const moved = pressedAt ? Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) : 0;
+    pressedAt = null;
+
+    if (expanded || opened !== null || frame === null || moved > TAP_SLOP_PX) {
+      return;
+    }
+
+    const natural =
+      frame instanceof HTMLVideoElement
+        ? { width: frame.videoWidth, height: frame.videoHeight }
+        : { width: frame.naturalWidth, height: frame.naturalHeight };
+
+    opened = {
+      from: containedBox(frame.getBoundingClientRect(), natural, getComputedStyle(frame).objectPosition),
+      ratio: ratioOf(natural),
+    };
+    away = true;
+  }
+
+  function closed(): void {
+    opened = null;
+    away = false;
+  }
 </script>
 
-<section class="camera">
-  {#if camera.title}
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+<section class="camera" class:camera--expandable={!expanded} class:camera--away={away} onpointerdown={press} onclick={open}>
+  {#if camera.title && !expanded}
     <h2 class="panel-title panel-title--right">{camera.title}</h2>
   {/if}
   {#if live}
@@ -105,6 +153,7 @@
   {:else}
     <img
       class="camera__frame"
+      bind:this={image}
       src={cameraSnapshotUrl(camera.entity_id, tick)}
       alt={camera.title ?? "Camera"}
       onload={arrived}
@@ -112,6 +161,10 @@
     />
   {/if}
 </section>
+
+{#if opened}
+  <CameraWindow {camera} from={opened.from} ratio={opened.ratio} onlanding={() => (away = false)} onclose={closed} />
+{/if}
 
 <style>
   .camera {
@@ -125,6 +178,14 @@
    * which is what clipping a map does to the part you were looking at. Where the slack goes is
    * the caller's business: against the top in a column of cards, centred on a face that is
    * nothing but frames. */
+  .camera--expandable .camera__frame {
+    cursor: zoom-in;
+  }
+
+  .camera--away .camera__frame {
+    visibility: hidden;
+  }
+
   .camera__frame {
     display: block;
     width: 100%;

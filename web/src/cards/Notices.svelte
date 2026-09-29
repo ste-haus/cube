@@ -3,6 +3,7 @@
   import { STATE_ON, ha } from "../lib/state.svelte";
   import { agenda as store } from "../lib/agenda.svelte";
   import type { Calendar, Notice } from "../lib/types";
+  import { wipeIn, wipeOut } from "../lib/wipe";
 
   let {
     notices,
@@ -68,14 +69,20 @@
   <h2 class="panel-title">{title}</h2>
   <ul class="notices__list">
     {#each visible as { notice, message, icon, color, pulsing } (notice.entity_id)}
-      <li class="notices__item" class:notices__item--pulsing={pulsing} style:color>
+      <li class="notices__item" class:notices__item--pulsing={pulsing} style:color in:wipeIn out:wipeOut>
         <Icon name={icon} />
         <span>{message}</span>
       </li>
     {/each}
 
     {#each calendarNotices as notice (notice.key)}
-      <li class="notices__item" class:notices__item--past={notice.past} style:color={notice.past ? null : notice.color}>
+      <li
+        class="notices__item"
+        class:notices__item--past={notice.past}
+        style:color={notice.past ? null : notice.color}
+        in:wipeIn
+        out:wipeOut
+      >
         <Icon name={notice.icon} />
         <span>{notice.message}</span>
       </li>

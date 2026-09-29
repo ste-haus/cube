@@ -48,11 +48,14 @@ export async function fetchForecast(): Promise<{ days: ForecastDay[]; hours: For
 }
 
 export async function toggle(entityId: string): Promise<void> {
-  await fetch(`${API_ROOT}/toggle`, {
+  const response = await fetch(`${API_ROOT}/toggle`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ entity_id: entityId }),
   });
+  if (!response.ok) {
+    throw new Error(`Could not toggle ${entityId}: ${response.status}`);
+  }
 }
 
 /** Fires a Home Assistant event, if the config allows this dashboard to fire it. */

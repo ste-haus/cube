@@ -64,6 +64,12 @@
   --camera-wall-padding: 0.5rem;
   --camera-tile-gap: 0.5rem;
   --camera-hero-side-width: 24%;
+  /* A camera opened into its own window: as wide as it may run, how tall its picture may be
+   * before the width gives way to it, and the band across its top. */
+  --camera-window-width: 80vw;
+  --camera-window-picture-height: 78vh;
+  --camera-window-title-size: 1.3rem;
+  --camera-window-clock-size: 1.1rem;
   /* The strip naming a face up its left edge. Wide enough for the type and its rule, and no
    * wider — every millimetre of it is taken off the face it is labelling. */
   --label-strip-width: 2.2rem;
@@ -81,6 +87,10 @@
   --transcript-radius: calc(var(--transcript-size) * 0.28);
   --transcript-row-height: calc(var(--transcript-size) * var(--transcript-line-height));
   --transcript-frame-height: calc(var(--transcript-row-height) + 2 * var(--transcript-padding-block));
+  /* The corners marking the announcement off: dimmer than its words, so they frame it rather
+   * than competing with it. */
+  --transcript-bracket-color: var(--color-dim);
+  --transcript-bracket-size: calc(var(--transcript-size) * 0.55);
   /*
    * Where a one-row announcement's middle falls above the bottom edge of the panel. The face
    * map is hung off this, so the dots and the line they sit beside share a horizon.

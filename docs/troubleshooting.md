@@ -99,6 +99,8 @@ docker compose logs | grep "Rejected toggle"
 
 That means the entity is not in a group the panel treats as a control, or its domain is not in `toggleable_domains`.
 
+If the brackets lock on to a floorplan control, or a chip's glint runs, and then give up after about ten seconds with nothing changed, the proxy accepted the toggle but Home Assistant never reported a new state. Look in Home Assistant's own log for the service call.
+
 ## The camera is blank
 
 Confirm Home Assistant will produce a still for it:

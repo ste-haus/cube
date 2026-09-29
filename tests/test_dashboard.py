@@ -13,6 +13,7 @@ from cube.dashboard import (
     Dashboard,
     ThresholdBand,
     ThresholdScale,
+    Toggle,
     Visualizer,
     VisualizerStyle,
     drop_missing_custom_faces,
@@ -28,6 +29,8 @@ MID_COLOR = "#11fcf7"
 HIGH_COLOR = "#ff0000"
 
 SPEAKER = "media_player.a_speaker"
+
+CHIP = {"entity_id": "cover.garage_door", "label": "Garage", "icon": "mdi:garage"}
 
 
 @pytest.fixture
@@ -770,3 +773,13 @@ def test_the_transcript_has_no_marker_without_a_visualizer_to_take_one_from():
     dashboard = Dashboard.model_validate({**profiles(), "transcript": {"entity_id": TRANSCRIPT_ENTITY}})
 
     assert dashboard.transcript.content_marker is None
+
+
+def test_a_toggle_switches_on_a_tap_unless_it_asks_to_be_held():
+    assert Toggle(**CHIP).hold_seconds is None
+    assert Toggle(**CHIP, hold_seconds=1.5).hold_seconds == 1.5
+
+
+def test_a_toggle_cannot_be_held_for_no_time_at_all():
+    with pytest.raises(ValidationError, match="greater than 0"):
+        Toggle(**CHIP, hold_seconds=0)
