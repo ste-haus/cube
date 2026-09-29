@@ -8,6 +8,9 @@ import type { TransitionConfig } from "svelte/transition";
  * Arriving, it opens a row's worth of room first and then wipes in, so what is below it moves
  * out of the way before anything is drawn over it. Leaving, it wipes out first and then closes
  * the room it left, so the rows below slide up rather than jumping.
+ *
+ * Something that comes out of a control rather than taking a row of its own wipes with
+ * `wipeFromStart`: written in away from the control, and erased back into it.
  */
 
 export const WIPE_MS = 520;
@@ -81,5 +84,18 @@ export function wipeOut(node: HTMLElement, { duration = WIPE_MS } = {}): Transit
 
       return `${sized(row, WHOLE - closed)}; clip-path: inset(0 0 0 ${struck * PERCENT}%);`;
     },
+  };
+}
+
+/**
+ * Written in left to right, and on the way out erased right to left, back towards where it came
+ * from: for something that comes out of a control and goes back into it. Svelte plays an outro as
+ * the intro run backwards, so the one wipe serves both ways.
+ */
+export function wipeFromStart(_node: HTMLElement, { duration = WIPE_MS, delay = 0 } = {}): TransitionConfig {
+  return {
+    duration,
+    delay,
+    css: (progress) => `clip-path: inset(0 ${(WHOLE - cubicInOut(progress)) * PERCENT}% 0 0);`,
   };
 }

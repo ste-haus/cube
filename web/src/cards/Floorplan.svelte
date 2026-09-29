@@ -356,7 +356,7 @@
     --bracket-weight: 2px;
     --bracket-color: var(--color-foreground);
     --reticle-lock: 180ms;
-    --reticle-breathe: 1.2s;
+    --reticle-breathe: var(--waiting-breathe);
     --reticle-reach: 14px;
 
     position: absolute;
@@ -398,7 +398,7 @@
 
   @keyframes reticle-breathe {
     50% {
-      opacity: 0.4;
+      opacity: var(--waiting-opacity);
     }
   }
 

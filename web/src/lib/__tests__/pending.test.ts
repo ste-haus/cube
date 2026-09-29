@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PENDING_TIMEOUT_MS, PendingToggles } from "../pending.svelte";
+import { PENDING_TIMEOUT_MS, PendingRequests } from "../pending.svelte";
 import { ha } from "../state.svelte";
 import type { EntityState } from "../types";
 
@@ -25,9 +25,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("PendingToggles", () => {
+describe("PendingRequests", () => {
   it("waits from the tap until the stream sends the entity again", () => {
-    const toggles = new PendingToggles(() => Promise.resolve());
+    const toggles = new PendingRequests(() => Promise.resolve());
 
     expect(toggles.send(LIGHT)).toBe(true);
     expect(toggles.isPending(LIGHT)).toBe(true);
@@ -39,7 +39,7 @@ describe("PendingToggles", () => {
 
   it("does not send a second toggle while the first is waiting", () => {
     const request = vi.fn(() => Promise.resolve());
-    const toggles = new PendingToggles(request);
+    const toggles = new PendingRequests(request);
 
     toggles.send(LIGHT);
 
@@ -49,7 +49,7 @@ describe("PendingToggles", () => {
 
   it("sends again once the first has been answered", () => {
     const request = vi.fn(() => Promise.resolve());
-    const toggles = new PendingToggles(request);
+    const toggles = new PendingRequests(request);
 
     toggles.send(LIGHT);
     answer(LIGHT, "on");
@@ -59,7 +59,7 @@ describe("PendingToggles", () => {
   });
 
   it("is not held up by some other entity changing", () => {
-    const toggles = new PendingToggles(() => Promise.resolve());
+    const toggles = new PendingRequests(() => Promise.resolve());
 
     toggles.send(LIGHT);
     answer(OTHER, "on");
@@ -68,7 +68,7 @@ describe("PendingToggles", () => {
   });
 
   it("gives up on an answer that never comes", () => {
-    const toggles = new PendingToggles(() => Promise.resolve());
+    const toggles = new PendingRequests(() => Promise.resolve());
 
     toggles.send(LIGHT);
     vi.advanceTimersByTime(PENDING_TIMEOUT_MS);
@@ -77,7 +77,7 @@ describe("PendingToggles", () => {
   });
 
   it("gives up at once on a toggle the proxy refused", async () => {
-    const toggles = new PendingToggles(() => Promise.reject(new Error("refused")));
+    const toggles = new PendingRequests(() => Promise.reject(new Error("refused")));
 
     toggles.send(LIGHT);
     await vi.runAllTimersAsync();
@@ -86,7 +86,7 @@ describe("PendingToggles", () => {
   });
 
   it("waits on an entity the stream has not sent yet", () => {
-    const toggles = new PendingToggles(() => Promise.resolve());
+    const toggles = new PendingRequests(() => Promise.resolve());
     const unseen = "light.unseen";
 
     toggles.send(unseen);
@@ -94,5 +94,53 @@ describe("PendingToggles", () => {
 
     answer(unseen, "on");
     expect(toggles.isPending(unseen)).toBe(false);
+  });
+});
+
+describe("PendingRequests setting a value", () => {
+  const BRIGHTNESS = 40;
+  const BRIGHTER = 80;
+
+  it("waits on the value it asked for, and names it", () => {
+    const request = vi.fn(() => Promise.resolve());
+    const requests = new PendingRequests(() => Promise.resolve(), request);
+
+    expect(requests.set(LIGHT, BRIGHTNESS)).toBe(true);
+    expect(request).toHaveBeenCalledWith(LIGHT, BRIGHTNESS);
+    expect(requests.requested(LIGHT)).toBe(BRIGHTNESS);
+
+    answer(LIGHT, "on");
+
+    expect(requests.requested(LIGHT)).toBeNull();
+  });
+
+  it("lets a later value replace one still waiting", () => {
+    const request = vi.fn(() => Promise.resolve());
+    const requests = new PendingRequests(() => Promise.resolve(), request);
+
+    requests.set(LIGHT, BRIGHTNESS);
+
+    expect(requests.set(LIGHT, BRIGHTER)).toBe(true);
+    expect(requests.requested(LIGHT)).toBe(BRIGHTER);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves a toggle still waiting to finish first", () => {
+    const request = vi.fn(() => Promise.resolve());
+    const requests = new PendingRequests(() => Promise.resolve(), request);
+
+    requests.send(LIGHT);
+
+    expect(requests.set(LIGHT, BRIGHTNESS)).toBe(false);
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("names no value for a toggle", () => {
+    const requests = new PendingRequests(() => Promise.resolve(), () => Promise.resolve());
+
+    requests.send(LIGHT);
+
+    expect(requests.isPending(LIGHT)).toBe(true);
+    expect(requests.requested(LIGHT)).toBeNull();
   });
 });

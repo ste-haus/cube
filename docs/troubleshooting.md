@@ -91,13 +91,13 @@ Both `hidden_prefixes` and a calendar's `blocklist` drop events before they reac
 
 ## A tap does nothing
 
-Only lights and fans on the floorplan, and configured toggles, are switchable. Everything else is read-only. If one of those is not responding, the log says so:
+Only lights and fans on the floorplan, configured toggles, and the controls on a guest face are switchable. Everything else is read-only. If one of those is not responding, the log says so:
 
 ```bash
-docker compose logs | grep "Rejected toggle"
+docker compose logs | grep "Rejected toggle\|Rejected setting"
 ```
 
-That means the entity is not in a group the panel treats as a control, or its domain is not in `toggleable_domains`.
+That means the entity is not one any panel draws as a control, or its domain is not one that can be switched (`toggleable_domains`) or set (`light`, `cover`, `input_datetime`).
 
 If the brackets lock on to a floorplan control, or a chip's glint runs, and then give up after about ten seconds with nothing changed, the proxy accepted the toggle but Home Assistant never reported a new state. Look in Home Assistant's own log for the service call.
 

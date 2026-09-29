@@ -361,12 +361,12 @@ toggles:
 |---|---|---|
 | `label` | — | Text on the chip |
 | `icon` | — | Its glyph |
-| `active_color` | `amber` | Icon colour while the entity is `on` |
-| `inactive_color` | `white` | Icon colour while it is off |
+| `active_color` | the primary colour | The chip's icon and label while the entity is `on`: a palette name such as `secondary`, or a hex colour |
+| `inactive_color` | `#999999` | The icon while it is off, the panel's resting grey unless you say otherwise |
 | `visible_when` | — | Hide the chip unless this entity is `on` |
 | `hold_seconds` | — | Hold the chip this long to switch it, rather than tapping it |
 
-`visible_when` lets a seasonal control disappear out of season. `hold_seconds` is for a control that should not go off from a brush of the hand, a garage door say: the chip fills from the left while it is held, and letting go or sliding off before it is full does nothing.
+A colour the panel cannot draw is refused when the config loads, naming the chip, rather than leaving a chip that looks the same on as off. `visible_when` lets a seasonal control disappear out of season. `hold_seconds` is for a control that should not go off from a brush of the hand, a garage door say: the chip fills from the left while it is held, and letting go or sliding off before it is full does nothing.
 
 Either way, a glint crosses the chip from the moment it is switched until Home Assistant reports the change. Tapping it again in the meantime does nothing, so a slow round trip cannot turn into a double toggle.
 
@@ -448,7 +448,7 @@ The audio is relayed through the panel rather than read from Home Assistant dire
 
 ### labels
 
-Section headings, the horizon's two captions, where the hourly forecast starts, the two master lights, and the tag on a cleared alert, in case yours should not read as they do here.
+Section headings, the horizon's two captions, where the hourly forecast starts, the guest face's network and alarm cards, the two master lights, and the tag on a cleared alert, in case yours should not read as they do here.
 
 ```yaml
 labels:
@@ -457,6 +457,11 @@ labels:
   sunrise: Sunrise
   sunset: Sunset
   now: Now
+  wifi: Guest WiFi
+  wifi_network: SSID
+  wifi_password: Password
+  alarm: Alarm Clock
+  light_colour: Colour
   master_warning: Master Warning
   master_caution: Master Caution
   alert_cleared: ACK
@@ -465,10 +470,12 @@ labels:
 ### What the panel may switch
 
 ```yaml
-toggleable_domains: [light, switch, group, input_boolean]
+toggleable_domains: [light, switch, group, input_boolean, cover]
 ```
 
-A tap is refused unless the entity is one the panel actually draws as a control — a light or a fan on the floorplan, or a configured toggle — **and** its domain is in this list. Everything else is read-only no matter what is sent.
+A tap is refused unless the entity is one some panel actually draws as a control — a light or a fan on the floorplan, a configured toggle, or a control on a [guest face](panels.md#the-guest-face) — **and** its domain is in this list. Everything else is read-only no matter what is sent.
+
+Setting a value rather than switching is held to the same rule, with a fixed set of domains in place of this list: a `light`'s brightness, a `cover`'s position, and the time an `input_datetime` holds. The allowlist is the whole house's rather than one panel's, so a floorplan light can be dimmed as well as switched, even from a panel whose own floorplan does not draw it.
 
 ### What the panel may fire
 

@@ -42,6 +42,17 @@
   --rotation-depth: -200px;
   --rotation-fade: 0.3;
   --floorplan-slide-duration: 420ms;
+  /* A handle or an edge being set glows in its own colour, swelling and fading at this pace. */
+  --glow-breathe: 1.4s;
+  --glow-size: 1.2rem;
+  /* A handle or an edge taken hold of grows by this much, over this long. */
+  --held-grow: 1.4;
+  --held-grow-time: 150ms;
+  /* An icon easing between its resting grey and its lit colour, rather than snapping. */
+  --colour-fade: 400ms;
+  /* Asked Home Assistant, waiting on the answer: the breathe every control shows while it waits. */
+  --waiting-breathe: 1.2s;
+  --waiting-opacity: 0.4;
 
   --panel-gap: 1.6vh;
   --panel-padding: 0.5vw;
@@ -111,6 +122,8 @@
 
   /* Type scale, matched to the dashboard this replaces. */
   --title-size: 1.68rem;
+  /* Between a section heading's rule and what it heads. */
+  --title-gap: calc(var(--title-size) * 0.85);
   --clock-time-size: 5.53rem;
   --clock-date-size: 1.85rem;
   --indicator-size: 1.72rem;
@@ -135,6 +148,56 @@
   --rail-gap: 2.8vh;
   /* The weather face's right column, spaced wider than the dashboard's so its forecast is shorter. */
   --weather-rail-gap: 5vh;
+
+  /* The guest face: the room's bars, the network, and the alarm. */
+  --slider-height: 5.5rem;
+  --slider-gap: 1.2rem;
+  --slider-radius: 1rem;
+  --slider-label-size: 1.6rem;
+  --slider-icon-size: 2.4rem;
+  /* The fill's grey, mixed thin so the edge in front of it reads as the level. */
+  --slider-fill-strength: 35%;
+  /* The fill's leading edge, the level in the primary colour, and the mark a drag leaves. */
+  --slider-edge-width: 0.25rem;
+  --slider-glow-spread: 0.2rem;
+  /* How far a held edge stands out of its bar, as a share of the bar's height. */
+  --slider-held-stretch: 1.3;
+  --slider-settle: 300ms;
+  /* A chip, which the guest face sizes up to sit with its bars. */
+  --toggle-size: 0.85rem;
+  --guest-toggle-size: 1.4rem;
+  --wifi-detail-size: 1.8rem;
+  --wifi-code-size: 26rem;
+  --wifi-code-opacity: 0.75;
+  --alarm-time-size: 5rem;
+  --alarm-bell-size: 7rem;
+  --alarm-wheel-size: 2.2rem;
+  --alarm-gap: 3rem;
+  /* The room's light: the dial, the bulb in it, the arc round it, and the reading at its foot. */
+  --light-dial-size: 30rem;
+  --light-dial-icon-size: 13rem;
+  --light-dial-value-lift: 1.5rem;
+  /* The bulb lit, for a light that gives no colour of its own. */
+  --light-on-color: #f5c242;
+  /* How faint the bulb gets for a light at its dimmest. */
+  --light-dial-dim-floor: 0.3;
+  --dial-stroke: 1.2;
+  --dial-handle-radius: 2.4px;
+  /* The handle's glow while it is being set, in the dial's own 100-unit square. */
+  --dial-glow-size: 3.5px;
+  /* The room light's colour window: the wheel, the white in its middle, and the marker. */
+  --hue-window-padding: 2.5rem;
+  --hue-wheel-size: 26rem;
+  --hue-ring-feather: 0.5%;
+  --hue-default-inset: 22%;
+  --hue-chosen-weight: 0.25rem;
+  --hue-marker-size: 2.6rem;
+  /* The glow a held marker throws, breathing between the share of it at rest and all of it. */
+  --hue-halo-size: 3.5rem;
+  --hue-halo-spread: 0.6rem;
+  --hue-halo-rest: 0.6;
+  /* The forecast, held shorter than on the weather face. */
+  --guest-forecast-height: 30vh;
 
   /* The weather face. */
   --range-end-size: 2.2rem;
@@ -320,9 +383,37 @@ body {
   }
 }
 
+/*
+ * The guest face is laid out on the dashboard's grid, so the clock, the header, and the weather sit
+ * where they do on the dashboard. The room's controls take the middle, standing in the middle of
+ * it, and the forecast takes whatever the right column has left between the weather and the alarm.
+ */
+.guest-face__center {
+  --toggle-size: var(--guest-toggle-size);
+  justify-content: center;
+  gap: var(--rail-gap);
+}
+
+/* The alarm stands as far under the code as the network stands under its own heading's rule, so
+ * the left column's spacing reads as one rhythm. */
+.guest-face .alarm {
+  margin-top: calc(var(--title-gap) - var(--panel-gap));
+}
+
+/* The range bar fills whatever holds it, so it is held to its own height here. */
+.guest-face__range {
+  flex: 0 0 auto;
+}
+
+.guest-face__right > .forecast-card {
+  flex: 0 0 var(--guest-forecast-height);
+  min-height: 0;
+  height: auto;
+}
+
 /* Section headings, uppercased over a rule, as on the dashboard this replaces. */
 .panel-title {
-  margin: 0 0 0.85em 0;
+  margin: 0 0 var(--title-gap) 0;
   padding-bottom: 0.45em;
   border-bottom: 1px solid var(--color-faint);
   color: var(--color-foreground);

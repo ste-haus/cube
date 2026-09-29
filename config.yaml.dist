@@ -79,6 +79,51 @@ profiles:
     inherits: example-bedroom
     media_player: media_player.example_office_speaker
 
+  # A guest room's panel. `guest` puts the house's header, the clock, the network and how to join it,
+  # the room's own controls, the weather, and an alarm clock on one face. Every option is optional,
+  # and a card with nothing to draw is left out.
+  #
+  # `light` is the room's light, drawn large: tap the bulb to switch it, and press or drag the arc
+  # round it to dim it. `sliders` are more lights and covers, as bars: dragged along to set the
+  # brightness or the position, and tapped to switch. `toggles` are chips, written as in the `toggles:` section below. `alarm` is a switch
+  # that arms it and an `input_datetime` holding the time, stepped `minute_step` minutes at a time;
+  # what happens when it goes off is Home Assistant's to decide.
+  example-guest:
+    name: Example Guest Room
+    floorplan: upstairs
+    media_player: media_player.example_guest_speaker
+    faces:
+      front:
+        content: guest
+        label_strip: false
+        options:
+          wifi:
+            ssid_entity_id: sensor.example_guest_ssid
+            password_entity_id: input_text.example_guest_password
+            hidden: true
+            # A page that draws the code: `{data}` is replaced with the network, and `{size}` with
+            # the side of the code in pixels.
+            qr_url: https://qr.example/?data={data}&size={size}
+          light:
+            entity_id: light.example_guest_room
+            # What the middle of its colour wheel sets, as a CIE xy point; this is the "full" profile.
+            default_xy: [0.469, 0.403]
+          sliders:
+            - entity_id: cover.example_guest_blinds
+              label: Blinds
+              icon: mdi:blinds-horizontal
+          toggles:
+            - entity_id: input_boolean.example_guest_underlight
+              label: Underlight
+              icon: mdi:bed
+            - entity_id: switch.example_guest_fan
+              label: Window fan
+              icon: mdi:fan
+          alarm:
+            enabled_entity_id: input_boolean.example_guest_alarm
+            time_entity_id: input_datetime.example_guest_alarm
+            minute_step: 15
+
   # The two camera faces. `options` is read by the renderer named in `content`, and a camera is
   # either a bare entity id or the same block the `camera:` section below takes.
   #
@@ -138,6 +183,12 @@ labels:
   sunrise: Sunrise
   sunset: Sunset
   now: Now
+  # The guest face's network and alarm cards.
+  wifi: Guest WiFi
+  wifi_network: SSID
+  wifi_password: Password
+  alarm: Alarm Clock
+  light_colour: Colour
 
 clock:
   date_format: "%A, %B %o, %Y"

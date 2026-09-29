@@ -413,20 +413,45 @@ class Transcript(BaseModel):
     )
 
 
+# A chip at rest, in the panel's muted grey. Lit, it takes the primary colour unless it names its
+# own, which the panel resolves, since a palette name is swapped for its colour before defaults apply.
+DEFAULT_TOGGLE_INACTIVE_COLOR = "#999999"
+INVALID_TOGGLE_COLOR_MESSAGE = (
+    "Chip `{entity_id}` has {field} {value!r}; a chip's colours must be a palette name such as `primary`, "
+    "or a hex colour"
+)
+
+
 class Toggle(BaseModel):
     """A chip that toggles an entity, optionally gated behind another entity being `on`."""
 
     entity_id: str
     label: str
     icon: str
-    active_color: str = "amber"
-    inactive_color: str = "white"
+    active_color: str | None = Field(default=None, description="The chip lit; the primary colour when unset")
+    inactive_color: str = DEFAULT_TOGGLE_INACTIVE_COLOR
     visible_when: str | None = None
     hold_seconds: float | None = Field(
         default=None,
         gt=0,
         description="How long the chip is held down to switch it; unset, a tap does",
     )
+
+    @model_validator(mode="after")
+    def require_drawable_colors(self) -> Self:
+        """Refuses a colour the panel cannot draw, rather than leaving the chip looking the same on and off.
+
+        A palette name has already been swapped for its colour by the time this sees it.
+        """
+
+        for field in ("active_color", "inactive_color"):
+            value = getattr(self, field)
+            if value is not None and not HEX_COLOR.match(value):
+                raise ValueError(
+                    INVALID_TOGGLE_COLOR_MESSAGE.format(entity_id=self.entity_id, field=field, value=value)
+                )
+
+        return self
 
 
 class VisualizerStyle(StrEnum):
@@ -531,6 +556,11 @@ class Labels(BaseModel):
     sunrise: str = "Sunrise"
     sunset: str = "Sunset"
     now: str = Field(default="Now", description="Where the hourly forecast starts")
+    wifi: str = Field(default="Guest WiFi", description="The guest face's network card")
+    wifi_network: str = Field(default="SSID", description="What the network's name is labelled")
+    wifi_password: str = Field(default="Password", description="What the network's password is labelled")
+    alarm: str = Field(default="Alarm Clock", description="The guest face's alarm card")
+    light_colour: str = Field(default="Colour", description="The window the room light's colour is picked in")
     master_warning: str = "Master Warning"
     master_caution: str = "Master Caution"
     alert_cleared: str = Field(default="ACK", description="Tag on an alert that has been cleared")
@@ -542,6 +572,7 @@ CUSTOM_FACE_CONTENT = "custom"
 CAMERA_GRID_FACE_CONTENT = "camera-grid"
 CAMERA_HERO_FACE_CONTENT = "camera-hero"
 WEATHER_FACE_CONTENT = "weather"
+GUEST_FACE_CONTENT = "guest"
 
 FACE_DIRECTORY = "faces"
 FACE_ENTRYPOINT = "index.html"
@@ -570,7 +601,31 @@ CameraEntry = Annotated[Camera, BeforeValidator(as_camera)]
 CameraRow = Annotated[list[CameraEntry], Field(min_length=1)]
 
 
-class CameraFaceOptions(BaseModel):
+class FaceOptions(BaseModel):
+    """Options a face's renderer reads, and what they put on a panel.
+
+    Each renderer's options say which entities its cards read and which they act on, so the
+    allowlists grow with the faces a config puts up rather than being listed a second time.
+    """
+
+    @property
+    def cameras(self) -> list[Camera]:
+        return []
+
+    @property
+    def entities(self) -> list[str]:
+        """Everything the face reads, controls included."""
+
+        return []
+
+    @property
+    def controls(self) -> list[str]:
+        """Everything the face draws as something to press or drag."""
+
+        return []
+
+
+class CameraFaceOptions(FaceOptions):
     """Options for a face that draws cameras.
 
     The cameras are enumerated rather than left to the renderer, because the snapshot endpoint
@@ -734,12 +789,154 @@ class WeatherFaceOptions(CameraFaceOptions):
         return [tile.radar for tile in self.tiles if isinstance(tile, RadarTile)]
 
 
+WIFI_SECURITY_TYPES = ("WPA", "WEP", "nopass")
+
+
+QR_DATA_PLACEHOLDER = "{data}"
+QR_URL_WITHOUT_DATA_MESSAGE = f"`qr_url` has nowhere to put the network: it needs `{QR_DATA_PLACEHOLDER}` in it."
+
+
+class Wifi(BaseModel):
+    """A network a guest can join: its name and password as text, and as a code a phone scans.
+
+    Both come from entities rather than the config, so changing the password in Home Assistant is
+    all it takes for every panel to show the new one. The code is drawn by a page of the
+    installation's choosing, framed: `qr_url` is its address with `{data}` where the network goes
+    and, optionally, `{size}` where the side of the code goes, in pixels.
+    """
+
+    ssid_entity_id: str
+    password_entity_id: str
+    security: str = Field(default=WIFI_SECURITY_TYPES[0], pattern=f"^({'|'.join(WIFI_SECURITY_TYPES)})$")
+    hidden: bool = Field(default=False, description="Whether the network hides its name, which the code has to say")
+    qr_url: str | None = Field(default=None, description="A page drawing the code, with `{data}` and `{size}` in it")
+
+    @model_validator(mode="after")
+    def require_framed_code(self) -> Self:
+        if self.qr_url is None:
+            return self
+
+        if not self.qr_url.startswith(FRAME_SCHEMES):
+            raise ValueError(UNFRAMEABLE_URL_MESSAGE.format(url=self.qr_url))
+
+        if QR_DATA_PLACEHOLDER not in self.qr_url:
+            raise ValueError(QR_URL_WITHOUT_DATA_MESSAGE)
+
+        return self
+
+
+# What a slider can be dragged to set, by domain.
+LIGHT_DOMAIN = "light"
+COVER_DOMAIN = "cover"
+SLIDER_DOMAINS = (LIGHT_DOMAIN, COVER_DOMAIN)
+UNSLIDABLE_ENTITY_MESSAGE = "Slider `{entity_id}` is not a light or a cover, so there is nothing to drag it to."
+
+
+class Slider(BaseModel):
+    """A bar dragged along to set a light's brightness or a cover's position, and tapped to switch it."""
+
+    entity_id: str
+    label: str
+    icon: str
+
+    @model_validator(mode="after")
+    def require_slidable_domain(self) -> Self:
+        domain, _, _ = self.entity_id.partition(".")
+        if domain not in SLIDER_DOMAINS:
+            raise ValueError(UNSLIDABLE_ENTITY_MESSAGE.format(entity_id=self.entity_id))
+
+        return self
+
+
+DEFAULT_LIGHT_ICON = "mdi:lightbulb"
+DEFAULT_LIGHT_OFF_ICON = "mdi:lightbulb-off"
+# What the middle of a light's colour wheel sets it to, as a CIE xy point: the warm white of the
+# "full" light profile.
+DEFAULT_LIGHT_XY = (0.469, 0.403)
+XY_POINT_LENGTH = 2
+UNDIALABLE_ENTITY_MESSAGE = "The room's light `{entity_id}` is not a light."
+
+
+class Light(BaseModel):
+    """The room's light, drawn large: a bulb that switches it inside an arc that dims it."""
+
+    entity_id: str
+    icon: str = DEFAULT_LIGHT_ICON
+    off_icon: str = DEFAULT_LIGHT_OFF_ICON
+    default_xy: list[Annotated[float, Field(ge=0, le=1)]] = Field(
+        default_factory=lambda: list(DEFAULT_LIGHT_XY),
+        min_length=XY_POINT_LENGTH,
+        max_length=XY_POINT_LENGTH,
+        description="What the middle of its colour wheel sets it to, as a CIE xy point",
+    )
+
+    @model_validator(mode="after")
+    def require_light(self) -> Self:
+        if domain_of(self.entity_id) != LIGHT_DOMAIN:
+            raise ValueError(UNDIALABLE_ENTITY_MESSAGE.format(entity_id=self.entity_id))
+
+        return self
+
+
+DEFAULT_ALARM_MINUTE_STEP = 15
+MINUTES_PER_HOUR = 60
+
+
+class Alarm(BaseModel):
+    """An alarm clock: a switch that arms it, and the time it goes off at.
+
+    What happens when it goes off is Home Assistant's business. The panel only sets the two.
+    """
+
+    enabled_entity_id: str
+    time_entity_id: str
+    minute_step: int = Field(
+        default=DEFAULT_ALARM_MINUTE_STEP,
+        ge=1,
+        le=MINUTES_PER_HOUR,
+        description="How far one press of the minutes moves them",
+    )
+
+
+class GuestFaceOptions(FaceOptions):
+    """What a guest room's panel needs: the network, the room, the time, and when to wake."""
+
+    wifi: Wifi | None = None
+    light: Light | None = None
+    sliders: list[Slider] = Field(default_factory=list)
+    toggles: list[Toggle] = Field(default_factory=list)
+    alarm: Alarm | None = None
+
+    @property
+    def entities(self) -> list[str]:
+        entities = [*self.controls]
+
+        if self.wifi:
+            entities += [self.wifi.ssid_entity_id, self.wifi.password_entity_id]
+
+        entities += [toggle.visible_when for toggle in self.toggles if toggle.visible_when]
+
+        return entities
+
+    @property
+    def controls(self) -> list[str]:
+        controls = [self.light.entity_id] if self.light else []
+        controls += [slider.entity_id for slider in self.sliders]
+        controls += [toggle.entity_id for toggle in self.toggles]
+
+        if self.alarm:
+            controls += [self.alarm.enabled_entity_id, self.alarm.time_entity_id]
+
+        return controls
+
+
 # The renderers that read `options` as something more than a passthrough, and the shape each
 # one reads it as. A content name absent from here takes its options untouched.
-FACE_OPTIONS: dict[str, type[CameraFaceOptions]] = {
+FACE_OPTIONS: dict[str, type[FaceOptions]] = {
     CAMERA_GRID_FACE_CONTENT: CameraGridOptions,
     CAMERA_HERO_FACE_CONTENT: CameraHeroOptions,
     WEATHER_FACE_CONTENT: WeatherFaceOptions,
+    GUEST_FACE_CONTENT: GuestFaceOptions,
 }
 
 
@@ -761,9 +958,9 @@ class Face(BaseModel):
     page: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
 
-    _options: CameraFaceOptions | None = PrivateAttr(default=None)
+    _options: FaceOptions | None = PrivateAttr(default=None)
 
-    def bind(self, model: type[CameraFaceOptions]) -> None:
+    def bind(self, model: type[FaceOptions]) -> None:
         """Reads this face's options as its renderer's own type, and normalises them in place.
 
         The normalisation is what lets a camera be written as a bare entity id: it is a whole
@@ -788,6 +985,18 @@ class Face(BaseModel):
 
         return self._options.radars if isinstance(self._options, WeatherFaceOptions) else []
 
+    @property
+    def entities(self) -> list[str]:
+        """The entities this face's own cards read, beyond the sections every face shares."""
+
+        return self._options.entities if self._options else []
+
+    @property
+    def controls(self) -> list[str]:
+        """The entities this face draws as controls."""
+
+        return self._options.controls if self._options else []
+
 
 class Profile(BaseModel):
     """A panel's identity.
@@ -810,7 +1019,11 @@ class Profile(BaseModel):
 
 # Domains the panel may toggle. Anything outside this set is read-only, so a panel cannot
 # reach past the controls it actually renders.
-DEFAULT_TOGGLEABLE_DOMAINS = ["light", "switch", "group", "input_boolean"]
+DEFAULT_TOGGLEABLE_DOMAINS = ["light", "switch", "group", "input_boolean", "cover"]
+
+# Domains the panel may set a value on, and nothing else: a light's brightness, a cover's
+# position, and the time of day an `input_datetime` holds.
+SETTABLE_DOMAINS = frozenset({"light", "cover", "input_datetime"})
 
 CUBE_FACES = ("front", "back", "left", "right", "up", "down")
 
@@ -1113,15 +1326,20 @@ class Dashboard(BaseModel):
         if self.mcw:
             entities.update(self.mcw.entity_for(tier) for tier in AlertTier)
 
+        for profile in self.profiles.values():
+            for face in profile.faces.values():
+                entities.update(face.entities)
+
         return frozenset(entities)
 
     @property
-    def toggleable_entities(self) -> frozenset[str]:
-        """Entities a panel is allowed to act on.
+    def control_entities(self) -> frozenset[str]:
+        """Every entity some panel draws as a control.
 
-        Toggles are explicit, floorplan controls are inferred from the groups whose whole
-        purpose is to be tapped. Membership here is necessary but not sufficient: the domain
-        has to be allowed too.
+        Toggles and face controls are explicit, floorplan controls are inferred from the groups
+        whose whole purpose is to be tapped. It is one set for the whole house rather than one per
+        panel, like every other allowlist here. Membership is necessary but not sufficient: what a
+        panel may do to one still depends on its domain.
         """
 
         entities = {toggle.entity_id for toggle in self.toggles}
@@ -1130,7 +1348,23 @@ class Dashboard(BaseModel):
             for group in CONTROLLABLE_FLOORPLAN_GROUPS:
                 entities.update(floorplan.groups.get(group, []))
 
+        for profile in self.profiles.values():
+            for face in profile.faces.values():
+                entities.update(face.controls)
+
         return frozenset(entities)
+
+    @property
+    def toggleable_entities(self) -> frozenset[str]:
+        """The controls a panel may switch."""
+
+        return frozenset(entity for entity in self.control_entities if domain_of(entity) in self.toggleable_domains)
+
+    @property
+    def settable_entities(self) -> frozenset[str]:
+        """The controls a panel may set a value on."""
+
+        return frozenset(entity for entity in self.control_entities if domain_of(entity) in SETTABLE_DOMAINS)
 
     @property
     def allowed_events(self) -> frozenset[str]:
@@ -1151,9 +1385,16 @@ class Dashboard(BaseModel):
         return event_type in self.allowed_events
 
     def may_toggle(self, entity_id: str) -> bool:
-        domain, _, _ = entity_id.partition(".")
+        return entity_id in self.toggleable_entities
 
-        return domain in self.toggleable_domains and entity_id in self.toggleable_entities
+    def may_set(self, entity_id: str) -> bool:
+        return entity_id in self.settable_entities
+
+
+def domain_of(entity_id: str) -> str:
+    domain, _, _ = entity_id.partition(".")
+
+    return domain
 
 
 # Floorplan groups whose elements are controls rather than read-outs.

@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from cube.dashboard import (
     CUBE_FACES,
+    DEFAULT_ALARM_MINUTE_STEP,
     DEFAULT_FORECAST_DAYS,
     DEFAULT_PROFILE_KEY,
     DEFAULT_WIND_GUST_THRESHOLD,
@@ -780,6 +781,187 @@ def test_a_toggle_switches_on_a_tap_unless_it_asks_to_be_held():
     assert Toggle(**CHIP, hold_seconds=1.5).hold_seconds == 1.5
 
 
+def test_a_chip_is_the_primary_colour_when_on_and_grey_when_off_unless_told_otherwise():
+    chip = Toggle(**CHIP)
+
+    # Unset is the primary colour, which the panel resolves.
+    assert (chip.active_color, chip.inactive_color) == (None, "#999999")
+
+
+def test_a_chip_colour_may_name_the_palette():
+    dashboard = Dashboard.model_validate(
+        profiles() | {"colors": {"primary": "#123456"}, "toggles": [CHIP | {"active_color": "primary"}]}
+    )
+
+    assert dashboard.toggles[0].active_color == "#123456"
+
+
+def test_a_chip_colour_the_panel_cannot_draw_is_refused():
+    with pytest.raises(ValidationError, match="must be a palette name"):
+        Toggle(**CHIP, active_color="amber")
+
+
 def test_a_toggle_cannot_be_held_for_no_time_at_all():
     with pytest.raises(ValidationError, match="greater than 0"):
         Toggle(**CHIP, hold_seconds=0)
+
+
+GUEST_LIGHT = "light.guest_room"
+GUEST_BLINDS = "cover.guest_blinds"
+GUEST_FAN = "switch.guest_fan"
+ALARM_SWITCH = "input_boolean.guest_alarm"
+ALARM_TIME = "input_datetime.guest_alarm"
+WIFI_SSID = "sensor.guest_ssid"
+WIFI_PASSWORD = "input_text.guest_password"
+SEASON = "input_boolean.season"
+
+
+def guest_face(**options) -> dict:
+    return profiles(gb={"faces": {"front": {"content": "guest", "options": options}}})
+
+
+def guest_room() -> Dashboard:
+    return Dashboard.model_validate(
+        guest_face(
+            wifi={"ssid_entity_id": WIFI_SSID, "password_entity_id": WIFI_PASSWORD, "hidden": True},
+            sliders=[
+                {"entity_id": GUEST_LIGHT, "label": "Light", "icon": "mdi:ceiling-light"},
+                {"entity_id": GUEST_BLINDS, "label": "Blinds", "icon": "mdi:blinds"},
+            ],
+            toggles=[{"entity_id": GUEST_FAN, "label": "Fan", "icon": "mdi:fan", "visible_when": SEASON}],
+            alarm={"enabled_entity_id": ALARM_SWITCH, "time_entity_id": ALARM_TIME},
+        )
+    )
+
+
+def test_everything_a_guest_face_draws_is_subscribed():
+    allowed = guest_room().allowed_entities
+
+    assert {GUEST_LIGHT, GUEST_BLINDS, GUEST_FAN, SEASON, ALARM_SWITCH, ALARM_TIME, WIFI_SSID, WIFI_PASSWORD} <= allowed
+
+
+def test_a_guest_face_switches_its_controls_and_nothing_it_only_shows():
+    dashboard = guest_room()
+
+    for entity_id in (GUEST_LIGHT, GUEST_BLINDS, GUEST_FAN, ALARM_SWITCH):
+        assert dashboard.may_toggle(entity_id)
+
+    for entity_id in (WIFI_PASSWORD, SEASON, ALARM_TIME):
+        assert not dashboard.may_toggle(entity_id)
+
+
+def test_a_guest_face_sets_a_light_a_cover_and_the_alarm_time():
+    dashboard = guest_room()
+
+    for entity_id in (GUEST_LIGHT, GUEST_BLINDS, ALARM_TIME):
+        assert dashboard.may_set(entity_id)
+
+    for entity_id in (GUEST_FAN, ALARM_SWITCH, WIFI_SSID):
+        assert not dashboard.may_set(entity_id)
+
+
+def test_a_floorplan_light_may_be_set_as_well_as_switched(dashboard):
+    light = dashboard.floorplans["downstairs"].groups["lights"][0]
+
+    assert dashboard.may_set(light)
+
+
+def test_an_entity_only_shown_is_never_settable(dashboard):
+    for notice in dashboard.notices:
+        assert not dashboard.may_set(notice.entity_id)
+
+    assert not dashboard.may_set("light.not_in_the_config")
+
+
+def test_a_slider_must_be_a_light_or_a_cover():
+    with pytest.raises(ValidationError, match="not a light or a cover"):
+        Dashboard.model_validate(guest_face(sliders=[{"entity_id": GUEST_FAN, "label": "Fan", "icon": "mdi:fan"}]))
+
+
+def test_the_alarm_moves_a_quarter_hour_at_a_time_unless_told_otherwise():
+    dashboard = Dashboard.model_validate(
+        guest_face(alarm={"enabled_entity_id": ALARM_SWITCH, "time_entity_id": ALARM_TIME})
+    )
+
+    assert dashboard.profiles["gb"].faces["front"].options["alarm"]["minute_step"] == DEFAULT_ALARM_MINUTE_STEP
+
+
+def test_the_alarm_cannot_step_more_than_an_hour():
+    with pytest.raises(ValidationError, match="less than or equal to 60"):
+        Dashboard.model_validate(
+            guest_face(alarm={"enabled_entity_id": ALARM_SWITCH, "time_entity_id": ALARM_TIME, "minute_step": 90})
+        )
+
+
+def test_a_network_is_wpa_and_shows_its_name_unless_told_otherwise():
+    dashboard = Dashboard.model_validate(
+        guest_face(wifi={"ssid_entity_id": WIFI_SSID, "password_entity_id": WIFI_PASSWORD})
+    )
+
+    wifi = dashboard.profiles["gb"].faces["front"].options["wifi"]
+
+    assert wifi["security"] == "WPA"
+    assert wifi["hidden"] is False
+
+
+def test_a_network_security_nobody_knows_is_refused():
+    with pytest.raises(ValidationError, match="security"):
+        Dashboard.model_validate(
+            guest_face(wifi={"ssid_entity_id": WIFI_SSID, "password_entity_id": WIFI_PASSWORD, "security": "WPA9"})
+        )
+
+
+def test_a_guest_face_with_no_options_draws_only_the_shared_cards():
+    dashboard = Dashboard.model_validate(guest_face())
+
+    assert dashboard.profiles["gb"].faces["front"].controls == []
+
+
+QR_URL = "https://qr.example/?data={data}&size={size}"
+
+
+def test_the_rooms_light_is_switched_and_dimmed():
+    dashboard = Dashboard.model_validate(guest_face(light={"entity_id": GUEST_LIGHT}))
+
+    assert dashboard.may_toggle(GUEST_LIGHT)
+    assert dashboard.may_set(GUEST_LIGHT)
+    assert GUEST_LIGHT in dashboard.allowed_entities
+
+
+def test_the_rooms_light_defaults_to_the_full_profiles_warm_white():
+    dashboard = Dashboard.model_validate(guest_face(light={"entity_id": GUEST_LIGHT}))
+
+    assert dashboard.profiles["gb"].faces["front"].options["light"]["default_xy"] == [0.469, 0.403]
+
+
+@pytest.mark.parametrize("xy", [[0.5], [0.5, 0.4, 0.3], [1.2, 0.4]])
+def test_the_rooms_default_colour_must_be_a_point_on_the_chart(xy):
+    with pytest.raises(ValidationError, match="default_xy"):
+        Dashboard.model_validate(guest_face(light={"entity_id": GUEST_LIGHT, "default_xy": xy}))
+
+
+def test_the_rooms_light_must_be_a_light():
+    with pytest.raises(ValidationError, match="is not a light"):
+        Dashboard.model_validate(guest_face(light={"entity_id": GUEST_BLINDS}))
+
+
+def test_a_network_may_name_a_page_to_draw_its_code():
+    wifi = {"ssid_entity_id": WIFI_SSID, "password_entity_id": WIFI_PASSWORD, "qr_url": QR_URL}
+
+    dashboard = Dashboard.model_validate(guest_face(wifi=wifi))
+
+    assert dashboard.profiles["gb"].faces["front"].options["wifi"]["qr_url"] == QR_URL
+
+
+def test_a_code_page_needs_somewhere_to_put_the_network():
+    wifi = {"ssid_entity_id": WIFI_SSID, "password_entity_id": WIFI_PASSWORD, "qr_url": "https://qr.example/"}
+
+    with pytest.raises(ValidationError, match="nowhere to put the network"):
+        Dashboard.model_validate(guest_face(wifi=wifi))
+
+
+def test_a_code_page_must_be_a_web_address():
+    wifi = {"ssid_entity_id": WIFI_SSID, "password_entity_id": WIFI_PASSWORD, "qr_url": "file:///qr?data={data}"}
+
+    with pytest.raises(ValidationError, match="not an http or https address"):
+        Dashboard.model_validate(guest_face(wifi=wifi))

@@ -1,3 +1,4 @@
+import type { HueSaturation, XyPoint } from "./hue";
 import type { AgendaEvent, DashboardConfig, ForecastDay, ForecastHour } from "./types";
 
 const API_ROOT = "/api";
@@ -55,6 +56,18 @@ export async function toggle(entityId: string): Promise<void> {
   });
   if (!response.ok) {
     throw new Error(`Could not toggle ${entityId}: ${response.status}`);
+  }
+}
+
+/** Sets a light's brightness or colour, a cover's position, or the time an `input_datetime` holds. */
+export async function setValue(entityId: string, value: number | string | HueSaturation | XyPoint): Promise<void> {
+  const response = await fetch(`${API_ROOT}/set`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ entity_id: entityId, value }),
+  });
+  if (!response.ok) {
+    throw new Error(`Could not set ${entityId}: ${response.status}`);
   }
 }
 

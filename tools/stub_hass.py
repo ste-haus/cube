@@ -9,6 +9,7 @@ wiring between entity, SVG element, and stylesheet class can be seen without a r
 
 import argparse
 import asyncio
+import colorsys
 import random
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -17,7 +18,7 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 
-from cube.dashboard import AlertTier, Dashboard, load_dashboard
+from cube.dashboard import GUEST_FACE_CONTENT, AlertTier, Dashboard, Wifi, load_dashboard
 from cube.hass import protocol
 
 DEFAULT_HOST = "127.0.0.1"
@@ -29,6 +30,38 @@ CHURN_ENTITY_COUNT = 3
 
 ON = "on"
 OFF = "off"
+OPEN = "open"
+CLOSED = "closed"
+FULLY_OPEN = 100
+FULLY_CLOSED = 0
+BRIGHTNESS_MAX = 255
+PERCENT = 100
+
+# The services cube sets a value through, and the field each carries it in.
+LIGHT_TURN_ON = ("light", "turn_on")
+COVER_SET_POSITION = ("cover", "set_cover_position")
+DATETIME_SET = ("input_datetime", "set_datetime")
+BRIGHTNESS_PCT_FIELD = "brightness_pct"
+HS_COLOR_FIELD = "hs_color"
+XY_COLOR_FIELD = "xy_color"
+# Home Assistant's own way from a CIE xy point to red, green, and blue: the matrix, and sRGB's gamma.
+XY_TO_RGB = ((1.656492, -0.354851, -0.255038), (-0.707196, 1.655397, 0.036152), (0.051713, -0.121364, 1.011530))
+GAMMA_KNEE = 0.0031308
+GAMMA_LINEAR = 12.92
+GAMMA_OFFSET = 0.055
+GAMMA_EXPONENT = 1 / 2.4
+HS_COLOR_ATTRIBUTE = "hs_color"
+RGB_COLOR_ATTRIBUTE = "rgb_color"
+SUPPORTED_COLOR_MODES_ATTRIBUTE = "supported_color_modes"
+# Every light the stub serves can be coloured, and starts a warm white.
+SAMPLE_COLOR_MODES = ["hs"]
+SAMPLE_HS_COLOR = [35.0, 30.0]
+HUE_TURN = 360
+RGB_MAX = 255
+POSITION_FIELD = "position"
+TIME_FIELD = "time"
+POSITION_ATTRIBUTE = "current_position"
+BRIGHTNESS_ATTRIBUTE = "brightness"
 
 # Plausible readings, so the panel has something to lay out.
 NUMERIC_RANGE = (0, 100)
@@ -67,6 +100,10 @@ MINUTES_PER_DEGREE = 4
 SECONDS_PER_MINUTE = 60
 SAMPLE_SUMMARY = "Grey, with a decent chance of more grey later on."
 SAMPLE_TRANSCRIPT = "this is a sample announcement"
+SAMPLE_ALARM_TIME = "07:00:00"
+SAMPLE_WIFI_SSID = "Example Guest"
+SAMPLE_WIFI_PASSWORD = "correct-horse-battery-staple"
+SAMPLE_COVER_POSITION = 50
 
 # A day with a shape to it: a busy morning, a long empty afternoon, something late on. The
 # gap is what makes the timeline's break worth looking at.
@@ -163,10 +200,25 @@ def _initial_state(dashboard: Dashboard, entity_id: str) -> dict[str, Any]:
     if dashboard.mcw and entity_id == dashboard.mcw.caution_entity_id:
         return sample_master(SAMPLE_CAUTIONS)
 
+    for wifi in guest_wifis(dashboard):
+        if entity_id == wifi.ssid_entity_id:
+            return {protocol.STATE: SAMPLE_WIFI_SSID, protocol.ATTRIBUTES: {}}
+        if entity_id == wifi.password_entity_id:
+            return {protocol.STATE: SAMPLE_WIFI_PASSWORD, protocol.ATTRIBUTES: {}}
+
+    if domain == "cover":
+        return {protocol.STATE: OPEN, protocol.ATTRIBUTES: {POSITION_ATTRIBUTE: SAMPLE_COVER_POSITION}}
+
+    if domain == "input_datetime":
+        return {protocol.STATE: SAMPLE_ALARM_TIME, protocol.ATTRIBUTES: {}}
+
     if domain in ("light", "switch", "group", "input_boolean", "binary_sensor"):
         state = random.choice([ON, OFF])
-        if domain == "light" and state == ON:
-            attributes["brightness"] = random.randint(*BRIGHTNESS_RANGE)
+        if domain == "light":
+            attributes[SUPPORTED_COLOR_MODES_ATTRIBUTE] = SAMPLE_COLOR_MODES
+            if state == ON:
+                attributes["brightness"] = random.randint(*BRIGHTNESS_RANGE)
+                set_colour(attributes, SAMPLE_HS_COLOR)
 
         return {protocol.STATE: state, protocol.ATTRIBUTES: attributes}
 
@@ -237,6 +289,87 @@ def _initial_state(dashboard: Dashboard, entity_id: str) -> dict[str, Any]:
             return {protocol.STATE: str(random.randint(*TEMPERATURE_RANGE)), protocol.ATTRIBUTES: attributes}
 
     return {protocol.STATE: str(random.randint(*NUMERIC_RANGE)), protocol.ATTRIBUTES: {}}
+
+
+def guest_wifis(dashboard: Dashboard) -> list[Wifi]:
+    """Every network a guest face shows, so its name and password read as a name and a password."""
+
+    wifis = []
+
+    for profile in dashboard.profiles.values():
+        for face in profile.faces.values():
+            wifi = face.options.get("wifi") if face.content == GUEST_FACE_CONTENT else None
+            if wifi:
+                wifis.append(Wifi.model_validate(wifi))
+
+    return wifis
+
+
+def set_colour(attributes: dict[str, Any], hs_color: list[float]) -> None:
+    """Gives a light its hue and saturation, and the red, green, and blue Home Assistant works out from them."""
+
+    hue, saturation = hs_color
+    red, green, blue = colorsys.hsv_to_rgb(hue / HUE_TURN, saturation / PERCENT, 1)
+
+    attributes[HS_COLOR_ATTRIBUTE] = hs_color
+    attributes[RGB_COLOR_ATTRIBUTE] = [round(channel * RGB_MAX) for channel in (red, green, blue)]
+
+
+def xy_to_hs(xy: list[float]) -> list[float]:
+    """The hue and saturation Home Assistant reports for a light set to a CIE xy point."""
+
+    x, y = xy
+    luminance = 1.0
+    tristimulus = ((luminance / y) * x, luminance, (luminance / y) * (1 - x - y))
+
+    def gamma(value: float) -> float:
+        linear = (
+            GAMMA_LINEAR * value if value <= GAMMA_KNEE else (1 + GAMMA_OFFSET) * value**GAMMA_EXPONENT - GAMMA_OFFSET
+        )
+
+        return max(0.0, linear)
+
+    rgb = [gamma(sum(weight * part for weight, part in zip(row, tristimulus, strict=True))) for row in XY_TO_RGB]
+    brightest = max(rgb)
+    hue, saturation, _ = colorsys.rgb_to_hsv(*(channel / brightest for channel in rgb))
+
+    return [hue * HUE_TURN, saturation * PERCENT]
+
+
+def apply_service(state: dict[str, Any], domain: str, service: str, data: dict[str, Any]) -> None:
+    """What Home Assistant would do to an entity for the services cube calls."""
+
+    attributes = state[protocol.ATTRIBUTES]
+
+    if (domain, service) == LIGHT_TURN_ON and (HS_COLOR_FIELD in data or XY_COLOR_FIELD in data):
+        state[protocol.STATE] = ON
+        attributes[BRIGHTNESS_ATTRIBUTE] = attributes.get(BRIGHTNESS_ATTRIBUTE) or BRIGHTNESS_MAX
+        hs_color = data[HS_COLOR_FIELD] if HS_COLOR_FIELD in data else xy_to_hs(data[XY_COLOR_FIELD])
+        set_colour(attributes, hs_color)
+    elif (domain, service) == LIGHT_TURN_ON:
+        percent = data.get(BRIGHTNESS_PCT_FIELD, PERCENT)
+        state[protocol.STATE] = ON if percent > 0 else OFF
+        attributes[BRIGHTNESS_ATTRIBUTE] = round(percent * BRIGHTNESS_MAX / PERCENT) if percent > 0 else None
+        if percent > 0 and RGB_COLOR_ATTRIBUTE not in attributes:
+            set_colour(attributes, SAMPLE_HS_COLOR)
+    elif (domain, service) == COVER_SET_POSITION:
+        position = data[POSITION_FIELD]
+        state[protocol.STATE] = OPEN if position > FULLY_CLOSED else CLOSED
+        attributes[POSITION_ATTRIBUTE] = position
+    elif (domain, service) == DATETIME_SET:
+        # Home Assistant keeps the seconds, whether or not it was sent any.
+        state[protocol.STATE] = data[TIME_FIELD] if data[TIME_FIELD].count(":") == 2 else f"{data[TIME_FIELD]}:00"
+    elif state[protocol.STATE] in (OPEN, CLOSED):
+        opening = state[protocol.STATE] == CLOSED
+        state[protocol.STATE] = OPEN if opening else CLOSED
+        attributes[POSITION_ATTRIBUTE] = FULLY_OPEN if opening else FULLY_CLOSED
+    else:
+        state[protocol.STATE] = OFF if state[protocol.STATE] == ON else ON
+
+        # A colour light switched on shines in some colour, as a real one reports it.
+        colour_light = SUPPORTED_COLOR_MODES_ATTRIBUTE in attributes
+        if colour_light and state[protocol.STATE] == ON and RGB_COLOR_ATTRIBUTE not in attributes:
+            set_colour(attributes, SAMPLE_HS_COLOR)
 
 
 def sample_longitude() -> float:
@@ -350,7 +483,19 @@ def create_stub(dashboard: Dashboard) -> FastAPI:
     async def churn() -> None:
         """Flips a few entities on a timer, so the panel is visibly live."""
 
-        toggleable = sorted(dashboard.toggleable_entities)
+        # Only what is simply on or off, and not a face's own controls: a guest's light or alarm
+        # switching itself while being set reads as a fault, not as a live panel.
+        face_controls = {
+            entity
+            for profile in dashboard.profiles.values()
+            for face in profile.faces.values()
+            for entity in face.controls
+        }
+        toggleable = sorted(
+            entity
+            for entity in dashboard.toggleable_entities - face_controls
+            if states[entity][protocol.STATE] in (ON, OFF)
+        )
         if not toggleable:
             return
 
@@ -391,7 +536,11 @@ def create_stub(dashboard: Dashboard) -> FastAPI:
         message_id = message.get(protocol.ID, 0)
         message_type = message.get(protocol.TYPE)
 
-        if message_type == protocol.SUBSCRIBE_ENTITIES:
+        # cube checks the connection is alive with Home Assistant's ping, and drops it when
+        # nothing answers.
+        if message_type == protocol.PING:
+            await socket.send_json({protocol.ID: message_id, protocol.TYPE: protocol.PONG})
+        elif message_type == protocol.SUBSCRIBE_ENTITIES:
             subscriptions[socket] = message_id
             requested = message.get(protocol.ENTITY_IDS, [])
 
@@ -435,8 +584,12 @@ def create_stub(dashboard: Dashboard) -> FastAPI:
         elif message_type == protocol.CALL_SERVICE:
             entity_id = message.get("target", {}).get("entity_id")
             if entity_id in states:
-                current = states[entity_id][protocol.STATE]
-                states[entity_id][protocol.STATE] = OFF if current == ON else ON
+                apply_service(
+                    states[entity_id],
+                    message.get("domain"),
+                    message.get("service"),
+                    message.get(protocol.SERVICE_DATA) or {},
+                )
                 await broadcast([entity_id])
 
             await socket.send_json({protocol.ID: message_id, protocol.TYPE: protocol.RESULT, protocol.SUCCESS: True})
