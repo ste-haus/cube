@@ -5,6 +5,7 @@ import "@mdi/font/css/materialdesignicons.css";
 import "./styles/fonts.css";
 import "./styles/app.css";
 import "./styles/rotation.css";
+import "./styles/brackets.css";
 import "./styles/floorplan.css";
 import "./styles/floorplan-rooms.css";
 

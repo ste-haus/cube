@@ -364,8 +364,11 @@ toggles:
 | `active_color` | `amber` | Icon colour while the entity is `on` |
 | `inactive_color` | `white` | Icon colour while it is off |
 | `visible_when` | — | Hide the chip unless this entity is `on` |
+| `hold_seconds` | — | Hold the chip this long to switch it, rather than tapping it |
 
-`visible_when` lets a seasonal control disappear out of season.
+`visible_when` lets a seasonal control disappear out of season. `hold_seconds` is for a control that should not go off from a brush of the hand, a garage door say: the chip fills from the left while it is held, and letting go or sliding off before it is full does nothing.
+
+Either way, a glint crosses the chip from the moment it is switched until Home Assistant reports the change. Tapping it again in the meantime does nothing, so a slow round trip cannot turn into a double toggle.
 
 ### transcript
 

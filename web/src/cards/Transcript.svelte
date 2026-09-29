@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { fade } from "svelte/transition";
   import { faceVisibility } from "../lib/cube.svelte";
   import { revealSchedule, revealedBy } from "../lib/format";
   import { ha } from "../lib/state.svelte";
@@ -17,6 +18,9 @@
   const CONTENT_ATTRIBUTE = "media_content_id";
   // Long enough for the slowest render to reach the speaker; past it, the speaker is not coming.
   const PENDING_TIMEOUT_MS = 30000;
+  // Gone quickly once it is done with, rather than cut off mid-frame.
+  const LEAVE_MS = 250;
+  const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
 
   let {
     transcript,
@@ -137,21 +141,21 @@
 </script>
 
 {#if text && phase !== PENDING}
-  <p class="transcript">
+  <p class="transcript" class:transcript--said={phase === SAID} out:fade={{ duration: LEAVE_MS }}>
     <span class="transcript__frame">
-      <span class="transcript__marker">&raquo;</span>
+      {#each CORNERS as corner (corner)}
+        <span class="bracket bracket--{corner} transcript__bracket" aria-hidden="true"></span>
+      {/each}
       <span class="transcript__line">{shown}</span>
-      <span class="transcript__marker">&laquo;</span>
     </span>
   </p>
 {/if}
 
 <style>
   /*
-   * The line and the two marks that bracket it are centred as a group, and the line is only as
-   * wide as what has been revealed — so the marks close in around a part-read announcement
-   * rather than standing off at the width it will eventually reach. They sit on the middle of
-   * the line however many rows it has grown to, rather than on its first.
+   * The line is centred, and only as wide as what has been revealed, so the frame and the
+   * corners on it close in around a part-read announcement rather than standing off at the
+   * width it will eventually reach.
    */
   /*
    * Laid over the panel rather than laid out in it. An announcement is a moment: it is there
@@ -183,11 +187,15 @@
    * laying a band across the whole panel.
    */
   .transcript__frame {
+    --bracket-size: var(--transcript-bracket-size);
+    --bracket-weight: 2px;
+    --bracket-inset: -5px;
+    --bracket-color: var(--transcript-bracket-color);
+    --transcript-breathe: 3s;
+
+    position: relative;
     display: flex;
     align-items: center;
-    /* The marks stand a character off the words rather than the words carrying spaces of their
-     * own, so the gap holds while the line between them grows. */
-    gap: 1ch;
     padding: var(--transcript-padding-block) var(--transcript-padding-inline);
     border-radius: var(--transcript-radius);
     /* Flat first, for anything that cannot mix a colour; the mix below carries the panel's own
@@ -196,9 +204,15 @@
     background-color: color-mix(in srgb, var(--color-background) 82%, transparent);
   }
 
-  .transcript__marker {
-    flex: none;
-    animation: pulse 2s infinite;
+  /* Still while the line is being read out, and breathing once all of it is there. */
+  .transcript--said .transcript__bracket {
+    animation: transcript-breathe var(--transcript-breathe) ease-in-out infinite;
+  }
+
+  @keyframes transcript-breathe {
+    50% {
+      opacity: 0.35;
+    }
   }
 
   /*

@@ -422,6 +422,11 @@ class Toggle(BaseModel):
     active_color: str = "amber"
     inactive_color: str = "white"
     visible_when: str | None = None
+    hold_seconds: float | None = Field(
+        default=None,
+        gt=0,
+        description="How long the chip is held down to switch it; unset, a tap does",
+    )
 
 
 class VisualizerStyle(StrEnum):

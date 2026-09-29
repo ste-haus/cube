@@ -1,0 +1,43 @@
+/*
+ * Corner brackets: four right angles marking the corners of whatever they sit in.
+ *
+ * Global rather than scoped, so every card that frames something draws the same mark and only
+ * says where it goes and how it moves. The parent is positioned; the brackets hang off its
+ * corners, and each card tunes them through the custom properties below.
+ */
+
+.bracket {
+  position: absolute;
+  width: var(--bracket-size, 1.1rem);
+  height: var(--bracket-size, 1.1rem);
+  border: 0 solid var(--bracket-color, var(--color-foreground));
+  pointer-events: none;
+}
+
+.bracket--top-left {
+  top: var(--bracket-inset, 0);
+  left: var(--bracket-inset, 0);
+  border-top-width: var(--bracket-weight, 2px);
+  border-left-width: var(--bracket-weight, 2px);
+}
+
+.bracket--top-right {
+  top: var(--bracket-inset, 0);
+  right: var(--bracket-inset, 0);
+  border-top-width: var(--bracket-weight, 2px);
+  border-right-width: var(--bracket-weight, 2px);
+}
+
+.bracket--bottom-left {
+  bottom: var(--bracket-inset, 0);
+  left: var(--bracket-inset, 0);
+  border-bottom-width: var(--bracket-weight, 2px);
+  border-left-width: var(--bracket-weight, 2px);
+}
+
+.bracket--bottom-right {
+  right: var(--bracket-inset, 0);
+  bottom: var(--bracket-inset, 0);
+  border-right-width: var(--bracket-weight, 2px);
+  border-bottom-width: var(--bracket-weight, 2px);
+}

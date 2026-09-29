@@ -166,6 +166,7 @@ export interface Toggle {
   active_color: string;
   inactive_color: string;
   visible_when: string | null;
+  hold_seconds: number | null;
 }
 
 export type VisualizerStyle = "bars" | "ridgeline" | "corona" | "halo";

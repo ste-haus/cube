@@ -70,6 +70,8 @@ Which level a panel opens on, and returns to a minute after anyone touches it, i
 
 Only `lights` and `fans`. Tapping one toggles it, provided its domain is in `toggleable_domains`. Everything else is a read-out and ignores taps.
 
+A tapped control is marked with four corner brackets until Home Assistant reports the change, and tapping it again in the meantime does nothing, so a slow round trip cannot switch it twice. The brackets let go when the new state arrives, or after ten seconds if it never does.
+
 ## Styling
 
 Two stylesheets ship with the panel and cover the general case: one holds the class contract above, the other the rules naming particular rooms and fixtures.

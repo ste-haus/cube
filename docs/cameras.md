@@ -34,6 +34,10 @@ camera.driveway                   # the whole thing, when there is nothing to ad
 
 A polled camera asks for its next still only once the last has arrived, so one slower to answer than its interval sets its own pace rather than queuing requests behind it. Sixty seconds suits what most still cameras are — a traffic image, a file something rewrites every so often — and a camera worth watching as it happens is worth streaming instead.
 
+## Tapping a camera
+
+Any camera, on the dashboard or on a camera face, opens into a window of its own when tapped: the same picture, as large as the panel allows, with its title and the time across the top. Tap anywhere to put it back. While the window is open the tile it came from stops fetching, so the panel pulls one picture of the camera rather than two, and turning the cube closes it.
+
 ## camera-grid
 
 One inner list per row, read left to right, which is what the config already looks like:

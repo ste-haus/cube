@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { floorplanStylesUrl, floorplanUrl, toggle } from "../lib/api";
+  import { floorplanStylesUrl, floorplanUrl } from "../lib/api";
   import { swipeable, type Direction } from "../lib/cube.svelte";
   import { nextLevel } from "../lib/levels";
   import { Lapsing, PANE_RESET_MS } from "../lib/panes.svelte";
+  import { pending } from "../lib/pending.svelte";
   import { keepTrying } from "../lib/retry";
   import { ha } from "../lib/state.svelte";
   import type { Floorplan } from "../lib/types";
@@ -51,6 +52,13 @@
 
   const BRIGHTNESS_MAX = 255;
 
+  // The reticle a tapped control is marked with until Home Assistant answers: how far it stands
+  // off the control, and how long it takes to let go once the answer is in.
+  const RETICLE_PADDING_PX = 7;
+  const RELEASE_MS = 260;
+  const MILLISECONDS = "ms";
+  const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
+
   let {
     floorplans,
     initial,
@@ -66,6 +74,30 @@
 
   const currentLevel = $derived(level.chosen ?? defaultLevel);
   const index = $derived(Math.max(levels.indexOf(currentLevel), 0));
+
+  /*
+   * The control last tapped, marked on the pane it is drawn on, so it slides away with its
+   * storey rather than staying over whichever one is swiped in. Counted, so a second tap
+   * starts the lock-on over rather than inheriting the first one's.
+   */
+  let reticle = $state<{
+    entityId: string;
+    level: string;
+    serial: number;
+    box: { left: number; top: number; width: number; height: number };
+  } | null>(null);
+  let taps = 0;
+  const held = $derived(reticle !== null && pending.isPending(reticle.entityId));
+
+  $effect(() => {
+    if (reticle === null || held) {
+      return;
+    }
+
+    const release = window.setTimeout(() => (reticle = null), RELEASE_MS);
+
+    return () => window.clearTimeout(release);
+  });
 
   // The stylesheet lives with the SVG in Home Assistant and applies to inlined markup, so it
   // is linked once into the document rather than scoped to this component.
@@ -187,11 +219,36 @@
     // entity is on the group, not on whichever piece the finger landed.
     for (let element = event.target as Element | null; element; element = element.parentElement) {
       if (controllable.has(element.id)) {
-        toggle(element.id);
+        if (pending.send(element.id)) {
+          mark(element, element.id);
+        }
 
         return;
       }
     }
+  }
+
+  /** Puts the reticle round a control, measured against the pane it is drawn on. */
+  function mark(element: Element, entityId: string): void {
+    const pane = panes[currentLevel];
+    if (!pane) {
+      return;
+    }
+
+    const within = pane.getBoundingClientRect();
+    const box = element.getBoundingClientRect();
+
+    reticle = {
+      entityId,
+      level: currentLevel,
+      serial: ++taps,
+      box: {
+        left: box.left - within.left - RETICLE_PADDING_PX,
+        top: box.top - within.top - RETICLE_PADDING_PX,
+        width: box.width + 2 * RETICLE_PADDING_PX,
+        height: box.height + 2 * RETICLE_PADDING_PX,
+      },
+    };
   }
 
   function step(direction: Direction): void {
@@ -214,6 +271,25 @@
       {#each levels as name (name)}
         <div class="floorplan__canvas" bind:this={panes[name]}>
           {@html markup[name] ?? ""}
+
+          {#if reticle?.level === name}
+            {#key reticle.serial}
+              <div
+                class="floorplan__reticle"
+                class:floorplan__reticle--releasing={!held}
+                style:left="{reticle.box.left}px"
+                style:top="{reticle.box.top}px"
+                style:width="{reticle.box.width}px"
+                style:height="{reticle.box.height}px"
+                style:--floorplan-release="{RELEASE_MS}{MILLISECONDS}"
+                aria-hidden="true"
+              >
+                {#each CORNERS as corner (corner)}
+                  <span class="bracket bracket--{corner} floorplan__bracket floorplan__bracket--{corner}"></span>
+                {/each}
+              </div>
+            {/key}
+          {/if}
         </div>
       {/each}
     </div>
@@ -257,6 +333,7 @@
   }
 
   .floorplan__canvas {
+    position: relative;
     flex: 0 0 100%;
     min-height: 0;
     display: flex;
@@ -267,6 +344,69 @@
   .floorplan__canvas :global(svg) {
     width: 100%;
     height: 100%;
+  }
+
+  /*
+   * A tapped control is locked on to until Home Assistant answers: four corners close in on it
+   * from outside, breathe while the toggle is on its way, and spring back out once the stream
+   * says it has landed.
+   */
+  .floorplan__reticle {
+    --bracket-size: 0.8rem;
+    --bracket-weight: 2px;
+    --bracket-color: var(--color-foreground);
+    --reticle-lock: 180ms;
+    --reticle-breathe: 1.2s;
+    --reticle-reach: 14px;
+
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .floorplan__bracket {
+    animation:
+      reticle-lock var(--reticle-lock) cubic-bezier(0.2, 0.8, 0.3, 1) both,
+      reticle-breathe var(--reticle-breathe) ease-in-out var(--reticle-lock) infinite;
+  }
+
+  .floorplan__reticle--releasing .floorplan__bracket {
+    animation: reticle-release var(--floorplan-release) ease-in forwards;
+  }
+
+  .floorplan__bracket--top-left {
+    --reticle-out: translate(calc(-1 * var(--reticle-reach)), calc(-1 * var(--reticle-reach)));
+  }
+
+  .floorplan__bracket--top-right {
+    --reticle-out: translate(var(--reticle-reach), calc(-1 * var(--reticle-reach)));
+  }
+
+  .floorplan__bracket--bottom-left {
+    --reticle-out: translate(calc(-1 * var(--reticle-reach)), var(--reticle-reach));
+  }
+
+  .floorplan__bracket--bottom-right {
+    --reticle-out: translate(var(--reticle-reach), var(--reticle-reach));
+  }
+
+  @keyframes reticle-lock {
+    from {
+      opacity: 0;
+      transform: var(--reticle-out);
+    }
+  }
+
+  @keyframes reticle-breathe {
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  @keyframes reticle-release {
+    to {
+      opacity: 0;
+      transform: var(--reticle-out);
+    }
   }
 
   .floorplan__levels {
