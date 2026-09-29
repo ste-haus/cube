@@ -66,6 +66,7 @@ def test_added_state_keeps_a_distinct_last_changed():
 
 WEATHER_ENTITY_ID = "weather.example"
 DAILY = {"type": "daily"}
+EVENT_DATA = {"event_type": "EXAMPLE", "event_data": {}}
 
 
 def test_a_service_call_asks_for_no_answer_unless_told_to():
@@ -75,6 +76,13 @@ def test_a_service_call_asks_for_no_answer_unless_told_to():
 
     assert protocol.RETURN_RESPONSE not in message
     assert protocol.SERVICE_DATA not in message
+
+
+def test_a_service_call_on_nothing_in_particular_has_no_target():
+    message = protocol.call_service(1, "pyscript", "fire_event", None, EVENT_DATA)
+
+    assert "target" not in message
+    assert message[protocol.SERVICE_DATA] == EVENT_DATA
 
 
 def test_a_service_call_can_ask_for_its_answer():

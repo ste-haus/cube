@@ -384,6 +384,30 @@ It waits for the speaker named by the panel's profile rather than appearing the 
 
 Nearly every announcement fits on one line. One that does not wraps once it reaches two thirds of the panel's width, to at most three lines, and anything past that ends in an ellipsis — a line long enough to need a fourth is long enough that a wall is the wrong place to read it. However many lines it runs to, it grows upward over the panel rather than shortening it.
 
+### mcw
+
+Master warning and master caution lights, side by side at the top centre of every face, warning on the left.
+
+```yaml
+mcw:
+  warning_entity_id: binary_sensor.master_warning
+  caution_entity_id: binary_sensor.master_caution
+  clear_event: MCW_CLEAR
+  hold_seconds: 1
+  warning_color: "#ff3030"
+  caution_color: "#ffb000"
+```
+
+Every key has a default, so `mcw: {}` turns it on. Each master is a Home Assistant binary sensor that is `on` while its tier has an alert nobody has cleared, with an `alerts` attribute listing every active alert in that tier, cleared or not, newest first. Each alert is a mapping of `entity_id`, `message`, `triggered` (an ISO 8601 time) and `cleared`. The panel draws from the masters alone, so a new alert needs no change here.
+
+A master has three looks. While it is `on` it is lit and flashing. While it is off with alerts still listed, it sits dimmed in its place, for asking what they are. With no alerts at all it is not there, and cannot be pressed.
+
+Tapping a master opens its tier's alerts, each with the local time it triggered and the zone; cleared ones are dimmed but stay listed. Tapping anywhere closes the list, and it closes itself if its alerts all go.
+
+Holding a lit master for `hold_seconds` clears it: the panel fires `clear_event` with `event_data: {tier: warning}` or `{tier: caution}`, the way it fires any [event](#what-the-panel-may-fire). Turning `mcw` on is enough to allow `clear_event`; it does not need listing under `events` as well. Home Assistant records the clear, so the master goes dark on every panel at once, when the state stream says it has rather than when the finger lifts.
+
+`warning_color` and `caution_color` may name a colour from [`colors`](#colors). The two captions are `master_warning` and `master_caution` under [`labels`](#labels).
+
 ### visualizer
 
 A full-screen overlay while a media player is playing something matching.
@@ -421,7 +445,7 @@ The audio is relayed through the panel rather than read from Home Assistant dire
 
 ### labels
 
-Section headings, the horizon's two captions, and where the hourly forecast starts, in case yours should not read as they do here.
+Section headings, the horizon's two captions, where the hourly forecast starts, the two master lights, and the tag on a cleared alert, in case yours should not read as they do here.
 
 ```yaml
 labels:
@@ -430,6 +454,9 @@ labels:
   sunrise: Sunrise
   sunset: Sunset
   now: Now
+  master_warning: Master Warning
+  master_caution: Master Caution
+  alert_cleared: ACK
 ```
 
 ### What the panel may switch
@@ -439,6 +466,17 @@ toggleable_domains: [light, switch, group, input_boolean]
 ```
 
 A tap is refused unless the entity is one the panel actually draws as a control — a light or a fan on the floorplan, or a configured toggle — **and** its domain is in this list. Everything else is read-only no matter what is sent.
+
+### What the panel may fire
+
+```yaml
+events:
+  - DOORBELL_SILENCE
+```
+
+A panel fires a Home Assistant event by posting its type and data to `/api/event`, and cube fires it through `pyscript.fire_event`. That needs [pyscript](https://github.com/custom-components/pyscript) and a service of that name taking `event_type` and `event_data`: Home Assistant only fires an event over its websocket for an administrator's token, and this keeps cube's token from needing to be one.
+
+An event is refused unless `events` lists it, or a section of the config fires it itself, as [`mcw`](#mcw) does with its `clear_event`. The data is passed on as sent, so an allowed event should be one whose listeners are safe to hand whatever a panel sends them; which events may be fired is the line cube holds. `events` is empty unless set.
 
 ## Applying changes
 

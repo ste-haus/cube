@@ -241,6 +241,9 @@ export interface Labels {
   sunrise: string;
   sunset: string;
   now: string;
+  master_warning: string;
+  master_caution: string;
+  alert_cleared: string;
 }
 
 export interface Theme {
@@ -282,7 +285,21 @@ export interface DashboardConfig {
   fuel: GaugeRow;
   transcript: Transcript | null;
   visualizer: Visualizer | null;
+  mcw: Mcw | null;
+  events: string[];
   item_count_entities: string[];
+}
+
+/** The two alert levels with a master light of their own, most urgent first. */
+export type AlertTier = "warning" | "caution";
+
+export interface Mcw {
+  warning_entity_id: string;
+  caution_entity_id: string;
+  clear_event: string;
+  hold_seconds: number;
+  warning_color: string;
+  caution_color: string;
 }
 
 export interface EntityState {

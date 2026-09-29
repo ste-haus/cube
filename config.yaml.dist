@@ -362,6 +362,21 @@ fuel:
 transcript:
   entity_id: input_text.example_transcript
 
+# Master warning and master caution lights, top centre on every face. Each master is a binary
+# sensor that is `on` while its tier has an uncleared alert, with every active alert listed in
+# its `alerts` attribute. Tapping a master lists them; holding it fires `clear_event` with the
+# tier, which turning this on allows. Everything here has a default, so `mcw: {}` turns it on.
+mcw:
+  warning_entity_id: binary_sensor.master_warning
+  caution_entity_id: binary_sensor.master_caution
+  clear_event: MCW_CLEAR
+  hold_seconds: 1
+
+# Home Assistant events a panel may fire, through pyscript.fire_event. Anything not listed is
+# refused, except an event a section above fires itself, such as mcw's clear_event.
+# events:
+#   - DOORBELL_SILENCE
+
 # Full-screen overlay shown while the profile's media player is playing matching content.
 # Match on a path segment rather than a hostname: players hold onto addresses across a rename,
 # so a host that is right today is wrong for whatever is still queued tomorrow.

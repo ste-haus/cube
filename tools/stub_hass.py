@@ -17,7 +17,7 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 
-from cube.dashboard import Dashboard, load_dashboard
+from cube.dashboard import AlertTier, Dashboard, load_dashboard
 from cube.hass import protocol
 
 DEFAULT_HOST = "127.0.0.1"
@@ -85,6 +85,25 @@ GROUP_OFFSET_Y = 42
 FONT_SIZE = 11
 GROUP_FONT_SIZE = 9
 
+# Both masters were last cleared a while ago, so an alert is cleared when it triggered before
+# that and not when it triggered since. Master caution is lit, with alerts either side of its
+# clear; master warning is dark, with every alert from before it.
+MCW_ALERTS_ATTRIBUTE = "alerts"
+MCW_LAST_CLEARED_ATTRIBUTE = "last_cleared"
+MCW_CLEARED_MINUTES_AGO = 30
+MINUTES_PER_DAY = 24 * 60
+FIRE_EVENT_DOMAIN = "pyscript"
+FIRE_EVENT_SERVICE = "fire_event"
+SAMPLE_WARNINGS = (
+    ("binary_sensor.mcw_warning_water_leak", "Water leak: Kitchen sink", 75),
+    ("binary_sensor.mcw_warning_ups_runtime_low", "UPS runtime low: UPS 3301 4 min", 40),
+)
+SAMPLE_CAUTIONS = (
+    ("binary_sensor.mcw_caution_utility_power", "Utility power lost", 5),
+    ("binary_sensor.mcw_caution_doors_unsecured", "Doors unsecured: Front door, Garage door", 14),
+    ("binary_sensor.mcw_caution_backup_stale", "No backup in 11 days", 2 * MINUTES_PER_DAY),
+)
+
 PLACEHOLDER_CAMERA_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180">'
     '<rect width="320" height="180" fill="#111111" />'
@@ -103,9 +122,46 @@ def build_states(dashboard: Dashboard) -> dict[str, dict[str, Any]]:
     return states
 
 
+def sample_master(samples: tuple[tuple[str, str, int], ...]) -> dict[str, Any]:
+    now = datetime.now(UTC)
+    alerts = [
+        {
+            "entity_id": entity_id,
+            "message": message,
+            "triggered": (now - timedelta(minutes=minutes_ago)).isoformat(),
+            "cleared": minutes_ago >= MCW_CLEARED_MINUTES_AGO,
+        }
+        for entity_id, message, minutes_ago in sorted(samples, key=lambda sample: sample[2])
+    ]
+    lit = any(not alert["cleared"] for alert in alerts)
+    last_cleared = (now - timedelta(minutes=MCW_CLEARED_MINUTES_AGO)).isoformat()
+
+    return {
+        protocol.STATE: ON if lit else OFF,
+        protocol.ATTRIBUTES: {MCW_ALERTS_ATTRIBUTE: alerts, MCW_LAST_CLEARED_ATTRIBUTE: last_cleared},
+    }
+
+
+def clear_master(state: dict[str, Any]) -> None:
+    """What Home Assistant does on the clear event: every active alert is now a cleared one."""
+
+    attributes = state[protocol.ATTRIBUTES]
+    for alert in attributes.get(MCW_ALERTS_ATTRIBUTE, []):
+        alert["cleared"] = True
+
+    attributes[MCW_LAST_CLEARED_ATTRIBUTE] = datetime.now(UTC).isoformat()
+    state[protocol.STATE] = OFF
+
+
 def _initial_state(dashboard: Dashboard, entity_id: str) -> dict[str, Any]:
     domain, _, _ = entity_id.partition(".")
     attributes: dict[str, Any] = {}
+
+    if dashboard.mcw and entity_id == dashboard.mcw.warning_entity_id:
+        return sample_master(SAMPLE_WARNINGS)
+
+    if dashboard.mcw and entity_id == dashboard.mcw.caution_entity_id:
+        return sample_master(SAMPLE_CAUTIONS)
 
     if domain in ("light", "switch", "group", "input_boolean", "binary_sensor"):
         state = random.choice([ON, OFF])
@@ -363,6 +419,19 @@ def create_stub(dashboard: Dashboard) -> FastAPI:
                     protocol.RESULT_PAYLOAD: {protocol.RESPONSE: {entity_id: {"forecast": forecast}}},
                 }
             )
+        elif (
+            message_type == protocol.CALL_SERVICE
+            and message.get("domain") == FIRE_EVENT_DOMAIN
+            and message.get("service") == FIRE_EVENT_SERVICE
+        ):
+            tier = message.get(protocol.SERVICE_DATA, {}).get("event_data", {}).get("tier")
+            master = dashboard.mcw.entity_for(AlertTier(tier)) if dashboard.mcw and tier in set(AlertTier) else None
+
+            if master in states:
+                clear_master(states[master])
+                await broadcast([master])
+
+            await socket.send_json({protocol.ID: message_id, protocol.TYPE: protocol.RESULT, protocol.SUCCESS: True})
         elif message_type == protocol.CALL_SERVICE:
             entity_id = message.get("target", {}).get("entity_id")
             if entity_id in states:

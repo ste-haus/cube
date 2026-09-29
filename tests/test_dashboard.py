@@ -52,6 +52,8 @@ def test_allowlist_covers_every_referenced_entity(dashboard):
 
     assert dashboard.camera.entity_id in allowed
     assert dashboard.transcript.entity_id in allowed
+    assert dashboard.mcw.warning_entity_id in allowed
+    assert dashboard.mcw.caution_entity_id in allowed
 
 
 def test_only_controls_are_toggleable(dashboard):

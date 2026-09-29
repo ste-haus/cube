@@ -65,17 +65,20 @@ def call_service(
     message_id: int,
     domain: str,
     service: str,
-    entity_id: str,
+    entity_id: str | None,
     service_data: dict[str, Any] | None = None,
     return_response: bool = False,
 ) -> dict[str, Any]:
-    message = {
+    message: dict[str, Any] = {
         ID: message_id,
         TYPE: CALL_SERVICE,
         "domain": domain,
         "service": service,
-        "target": {"entity_id": entity_id},
     }
+
+    # A service that acts on nothing in particular, such as firing an event, takes no target.
+    if entity_id is not None:
+        message["target"] = {"entity_id": entity_id}
 
     if service_data:
         message[SERVICE_DATA] = service_data

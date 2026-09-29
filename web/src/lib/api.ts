@@ -55,6 +55,15 @@ export async function toggle(entityId: string): Promise<void> {
   });
 }
 
+/** Fires a Home Assistant event, if the config allows this dashboard to fire it. */
+export async function fireEvent(eventType: string, eventData: Record<string, unknown> = {}): Promise<void> {
+  await fetch(`${API_ROOT}/event`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ event_type: eventType, event_data: eventData }),
+  });
+}
+
 export function streamUrl(): string {
   const scheme = window.location.protocol === HTTPS_PROTOCOL ? WSS_SCHEME : WS_SCHEME;
 
