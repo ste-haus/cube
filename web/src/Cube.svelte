@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Cube, FACES, swipeable, type Direction, type FaceName } from "./lib/cube.svelte";
   import CubeFace from "./faces/CubeFace.svelte";
+  import MasterCaution from "./cards/MasterCaution.svelte";
   import type { DashboardConfig } from "./lib/types";
 
   const BLANK_CONTENT = "blank";
@@ -43,6 +44,10 @@
     {/if}
   {/each}
 </div>
+
+{#if config.mcw}
+  <MasterCaution mcw={config.mcw} labels={config.labels} />
+{/if}
 
 <nav class="face-map" aria-label="Cube faces">
   {#each MAP_LAYOUT as name, index (index)}

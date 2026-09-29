@@ -1,4 +1,4 @@
-import type { AgendaEvent, DashboardConfig, ForecastDay, ForecastHour } from "./types";
+import type { AgendaEvent, AlertTier, DashboardConfig, ForecastDay, ForecastHour } from "./types";
 
 const API_ROOT = "/api";
 const FACE_ROOT = "/faces";
@@ -52,6 +52,15 @@ export async function toggle(entityId: string): Promise<void> {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ entity_id: entityId }),
+  });
+}
+
+/** Asks Home Assistant to clear a master. It goes dark when the state stream says it has. */
+export async function clearMaster(tier: AlertTier): Promise<void> {
+  await fetch(`${API_ROOT}/mcw/clear`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ tier }),
   });
 }
 

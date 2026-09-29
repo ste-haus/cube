@@ -491,6 +491,33 @@ class Visualizer(BaseModel):
         return value
 
 
+class AlertTier(StrEnum):
+    """The two alert levels with a master light of their own, most urgent first."""
+
+    WARNING = "warning"
+    CAUTION = "caution"
+
+
+class Mcw(BaseModel):
+    """Master warning and master caution lights, across the top of every face.
+
+    Each master is a Home Assistant binary sensor that is `on` while its tier has an alert nobody
+    has cleared, and lists every active alert in its `alerts` attribute, cleared or not. Clearing
+    is Home Assistant's to record, so every panel goes dark together: the panel only asks for it,
+    by an event fired through pyscript.
+    """
+
+    warning_entity_id: str = "binary_sensor.master_warning"
+    caution_entity_id: str = "binary_sensor.master_caution"
+    clear_event: str = Field(default="MCW_CLEAR", description="Event fired, with the tier, to clear a master")
+    hold_seconds: float = Field(default=1.0, gt=0, description="How long a master is held down to clear it")
+    warning_color: str = "#ff3030"
+    caution_color: str = "#ffb000"
+
+    def entity_for(self, tier: AlertTier) -> str:
+        return self.warning_entity_id if tier == AlertTier.WARNING else self.caution_entity_id
+
+
 class Labels(BaseModel):
     """Section headings. Here rather than in the frontend so they stay translatable."""
 
@@ -499,6 +526,9 @@ class Labels(BaseModel):
     sunrise: str = "Sunrise"
     sunset: str = "Sunset"
     now: str = Field(default="Now", description="Where the hourly forecast starts")
+    master_warning: str = "Master Warning"
+    master_caution: str = "Master Caution"
+    alert_cleared: str = Field(default="ACK", description="Tag on an alert that has been cleared")
 
 
 BLANK_FACE_CONTENT = "blank"
@@ -831,6 +861,7 @@ class Dashboard(BaseModel):
     fuel: GaugeRow = Field(default_factory=GaugeRow)
     transcript: Transcript | None = None
     visualizer: Visualizer | None = None
+    mcw: Mcw | None = None
 
     toggleable_domains: list[str] = Field(default_factory=lambda: list(DEFAULT_TOGGLEABLE_DOMAINS))
     # Counts that drive the agenda's scroll animation, rather than anything rendered directly.
@@ -1071,6 +1102,9 @@ class Dashboard(BaseModel):
 
         if self.transcript:
             entities.add(self.transcript.entity_id)
+
+        if self.mcw:
+            entities.update(self.mcw.entity_for(tier) for tier in AlertTier)
 
         return frozenset(entities)
 

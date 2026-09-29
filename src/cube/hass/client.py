@@ -83,8 +83,10 @@ class HassClient:
         finally:
             self._subscribers.discard(queue)
 
-    async def call_service(self, domain: str, service: str, entity_id: str) -> None:
-        await self._call(protocol.call_service(self._next_message_id(), domain, service, entity_id))
+    async def call_service(
+        self, domain: str, service: str, entity_id: str | None, service_data: dict[str, Any] | None = None
+    ) -> None:
+        await self._call(protocol.call_service(self._next_message_id(), domain, service, entity_id, service_data))
 
     async def query_service(
         self, domain: str, service: str, entity_id: str, service_data: dict[str, Any] | None = None
