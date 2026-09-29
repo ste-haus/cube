@@ -1,0 +1,213 @@
+# The README demo: config.yaml.dist cut down to what the recording shows, served by demo_stub.py.
+# Every entity here is fictional; see run.sh.
+profiles:
+  default:
+    name: Demo
+    floorplan: downstairs
+    faces:
+      front:
+        content: dashboard
+        label_strip: false
+      back:
+        content: blank
+        label: back
+      left:
+        content: blank
+        label: left
+      right:
+        content: camera-grid
+        label: cameras
+        options:
+          rows:
+            - [camera.example_front_door, camera.example_back_yard]
+      up:
+        content: weather
+        label: Weather
+        options:
+          tiles:
+            - radar:
+                rings: [25, 50, 100]
+                ring_unit: mi
+      down:
+        content: blank
+        label: down
+
+colors:
+  primary: "#f205f2"
+  secondary: "#00bfff"
+  day: "#7a8fa0"
+  night: "#2e2a45"
+  twilight: "#a0706b"
+  sun: "#d0a46c"
+  sun_below: "#6d5a50"
+
+theme:
+  background: "#111111"
+
+labels:
+  notices: Notices
+  agenda: Today
+  sunrise: Sunrise
+  sunset: Sunset
+  now: Now
+
+clock:
+  date_format: "%A, %B %o, %Y"
+  time_format: "%H:%M"
+  easter_egg_times: []
+  easter_egg_text: ""
+
+indicators:
+  - icon: mdi:water-outline
+    entity_id: sensor.example_precipitation_probability
+    precision: 0
+    suffix: "%"
+
+  - icon: mdi:weather-windy
+    entity_id: weather.example
+    attribute: wind_speed
+    bearing:
+      entity_id: weather.example
+      attribute: wind_bearing
+    scale:
+      default_color: "#999999"
+      bands:
+        - { at: 36, color: "#ff0000" }
+        - { at: 24, color: "#fc8803" }
+        - { at: 12, color: "#11fcf7" }
+
+  - icon: mdi:blur
+    entity_id: sensor.example_air_quality_index
+    scale:
+      default_color: "#999999"
+      bands:
+        - { at: 300, color: "#ff0000" }
+        - { at: 200, color: "#fc8803" }
+        - { at: 100, color: "#11fcf7" }
+
+  - icon: mdi:flower-tulip-outline
+    entity_id: sensor.example_allergy_index
+    scale:
+      default_color: "#999999"
+      bands:
+        - { at: 9.6, color: "#ff0000" }
+        - { at: 7.2, color: "#fc8803" }
+        - { at: 4.8, color: "#11fcf7" }
+
+  - icon: mdi:weather-sunset-up
+    entity_id: sensor.example_sunrise
+    attribute: local_time
+
+  - icon: mdi:weather-sunset-down
+    entity_id: sensor.example_sunset
+    attribute: local_time
+
+notices:
+  - entity_id: sensor.example_condition
+    message_attribute: note
+    icon: mdi:alert-outline
+    nominal_state: Safe
+    state_colors:
+      Caution: "#11fcf7"
+      Unsafe: "#fc8803"
+      Dangerous: "#ff0000"
+    pulsing_states:
+      - Unsafe
+      - Dangerous
+  - entity_id: sensor.example_notice_delivery
+  - entity_id: sensor.example_notice_collection_day
+    pulsing: true
+
+agenda:
+  empty_text: Nothing today.
+  days: 1
+  hidden_prefixes:
+    - canceled
+    - cancelled
+  side_labels:
+    left: Alice
+    right: Bob
+  calendars:
+    - entity_id: calendar.example_alice
+      name: Alice
+      color: secondary
+      side: left
+    - entity_id: calendar.example_bob
+      name: Bob
+      color: primary
+      side: right
+    - entity_id: calendar.example_chores
+      name: Chores
+      color: "#777777"
+      side: extra
+      icon: mdi:broom
+
+item_count_entities:
+  - sensor.example_agenda_count
+  - sensor.example_notice_count
+
+floorplans:
+  downstairs:
+    image: downstairs
+    groups:
+      lights:
+        - light.example_garage
+        - light.example_kitchen
+        - light.example_living_room
+        - light.example_laundry
+        - light.example_hallway
+      doors:
+        - binary_sensor.example_front_door
+        - binary_sensor.example_garage_door
+      windows:
+        - binary_sensor.example_kitchen_window
+        - binary_sensor.example_living_room_window
+      motion:
+        - binary_sensor.example_hallway_motion
+      sensors:
+        - binary_sensor.example_washer
+      bins:
+        - sensor.example_bin
+      fans:
+        - switch.example_living_room_fan
+      vehicles:
+        - binary_sensor.example_driveway_occupied
+
+weather:
+  entity_id: weather.example
+  sun_entity_id: sun.sun
+  high:
+    entity_id: sensor.example_temperature_high
+    turning_point_attribute: turning_point
+  low:
+    entity_id: sensor.example_temperature_low
+    turning_point_attribute: turning_point
+  summary_entity_id: sensor.example_forecast_summary
+  zone_entity_id: zone.home
+  forecast_days: 7
+  forecast_hours: 12
+  wind_gust_threshold: 15
+  temperature_gradient:
+    - { at: 10, color: "#8ab4f8" }
+    - { at: 32, color: "#7ecfe0" }
+    - { at: 50, color: "#93d3a2" }
+    - { at: 70, color: "#fbee84" }
+    - { at: 85, color: "#f7b267" }
+    - { at: 100, color: "#f2645a" }
+
+camera:
+  entity_id: camera.example_traffic
+  title: Traffic
+
+fuel:
+  unit: "%"
+  scale:
+    default_color: "#e1e1e1"
+    bands:
+      - { at: 33, color: primary }
+      - { at: 15, color: secondary }
+  gauges:
+    - entity_id: sensor.example_vehicle_one_fuel_level
+      name: Alice's car
+    - entity_id: sensor.example_vehicle_two_fuel_level
+      name: Bob's car

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360">
+  <style>
+    .ink { stroke: #d8d8d8; stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .osd { fill: #ffffff; font: 600 15px "Courier New", monospace; opacity: 0.85; }
+    .left { transform-box: view-box; transform-origin: 250px 190px; animation: left 0.45s ease-in-out infinite alternate; }
+    .right { transform-box: view-box; transform-origin: 270px 190px; animation: right 0.45s ease-in-out infinite alternate; }
+    .jump { animation: jump 0.45s ease-in-out infinite alternate; }
+    .tail { transform-box: view-box; transform-origin: 470px 262px; animation: tail 0.2s linear infinite alternate; }
+    @keyframes left { from { transform: rotate(50deg); } to { transform: rotate(-40deg); } }
+    @keyframes right { from { transform: rotate(-50deg); } to { transform: rotate(40deg); } }
+    @keyframes jump { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+    @keyframes tail { from { transform: rotate(-25deg); } to { transform: rotate(25deg); } }
+  </style>
+  <rect width="640" height="360" fill="#23272a" />
+  <rect y="210" width="640" height="150" fill="#2c332c" />
+  <!-- Fence -->
+  <g fill="#393d3f" stroke="#2a2d2f" stroke-width="2">
+    <rect x="0" y="150" width="640" height="10" />
+    <rect x="0" y="190" width="640" height="10" />
+    <path d="M10 130 h24 v90 h-24 Z M60 130 h24 v90 h-24 Z M110 130 h24 v90 h-24 Z M510 130 h24 v90 h-24 Z M560 130 h24 v90 h-24 Z M610 130 h24 v90 h-24 Z" />
+  </g>
+  <!-- Tree -->
+  <rect x="120" y="120" width="22" height="120" fill="#3a2f27" />
+  <circle cx="131" cy="100" r="60" fill="#2e3a2f" />
+  <circle cx="95" cy="125" r="35" fill="#2b362c" />
+  <circle cx="170" cy="120" r="38" fill="#2b362c" />
+  <!-- Grill -->
+  <rect x="540" y="230" width="60" height="30" rx="8" fill="#2a2a2a" stroke="#444" stroke-width="3" />
+  <path d="M548 260 L540 300 M592 260 L600 300" stroke="#444" stroke-width="4" />
+  <!-- Someone doing jumping jacks at the camera -->
+  <g class="jump">
+    <circle class="ink" cx="260" cy="150" r="20" />
+    <path class="ink" d="M253 146 v2 M267 146 v2 M252 158 q8 6 16 0" stroke-width="3" />
+    <path class="ink" d="M260 170 V250 M260 250 L240 310 M260 250 L280 310" />
+    <g class="left"><path class="ink" d="M258 190 L250 190 L205 190" /></g>
+    <g class="right"><path class="ink" d="M262 190 L270 190 L315 190" /></g>
+  </g>
+  <!-- And a dog, unimpressed but wagging -->
+  <path class="ink" d="M400 262 H470 M405 262 L398 300 M420 262 L416 300 M455 262 L452 300 M468 262 L474 300 M400 262 L385 246 M385 246 L370 250 M385 246 L388 232" />
+  <g class="tail"><path class="ink" d="M470 262 L492 244" /></g>
+  <!-- Camera overlay -->
+  <text class="osd" x="16" y="28">BACK YARD</text>
+  <text class="osd" x="624" y="344" text-anchor="end">2026-09-29 14:20:17</text>
+</svg>
