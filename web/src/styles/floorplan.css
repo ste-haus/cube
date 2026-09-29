@@ -191,9 +191,12 @@
   fill: var(--floorplan-active) !important;
 }
 
+/* The spin stays attached and only pauses, so a fan switched off stops where it is instead of
+ * snapping back to its starting angle. */
 .floorplan__canvas .fan {
   transform-origin: 50% 50%;
   transform-box: fill-box;
+  animation: floorplan-spin 10s linear infinite paused;
 }
 
 .floorplan__canvas .fan * {
@@ -211,16 +214,7 @@
 
 .floorplan__canvas .fan.active {
   opacity: 1;
-  animation: floorplan-spin 10s linear infinite;
-}
-
-.floorplan__canvas .fan:not(.active) {
-  animation-name: none;
-}
-
-.floorplan__canvas .fan:not(.active) * {
-  stroke: #555555;
-  fill: #555555;
+  animation-play-state: running;
 }
 
 .floorplan__canvas .vehicle {
