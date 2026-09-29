@@ -257,6 +257,15 @@
 
 * {
   box-sizing: border-box;
+  /* A touchscreen's browser draws its own box round whatever was tapped, blue on Android. The
+   * panel says it heard a tap in its own way, so it has no use for another. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Nor for the focus ring a tapped control is left with. A keyboard, on a laptop checking something,
+ * still gets one. */
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
 html {
