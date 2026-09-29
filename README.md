@@ -1,3 +1,13 @@
+<p align="center"><img src="assets/cube-logo-spin.svg" alt="cube logo" width="280"></p>
+
+<p align="center">
+  <a href="https://github.com/ste-haus/cube/actions/workflows/ci.yml"><img src="https://github.com/ste-haus/cube/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci"></a>
+  <a href="https://github.com/ste-haus/cube/tags"><img src="https://img.shields.io/github/v/tag/ste-haus/cube?sort=semver&label=version" alt="version"></a>
+  <a href="https://github.com/ste-haus/cube/pkgs/container/cube"><img src="https://img.shields.io/badge/image-ghcr.io%2Fste--haus%2Fcube-blue?logo=docker&logoColor=white" alt="image"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ste-haus/cube" alt="license"></a>
+  <a href="https://www.home-assistant.io"><img src="https://img.shields.io/badge/works%20with-Home%20Assistant-18BCF2?logo=homeassistant&logoColor=white" alt="works with Home Assistant"></a>
+</p>
+
 # cube
 
 A Home Assistant wall panel that runs outside Home Assistant.
