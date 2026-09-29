@@ -247,6 +247,8 @@ export interface Slider {
   entity_id: string;
   label: string;
   icon: string;
+  /** Where a tap opens it to, and shuts it from; null, a tap toggles it. */
+  toggle_position: number | null;
 }
 
 /** A switch that arms the alarm, and the `input_datetime` holding when it goes off. */

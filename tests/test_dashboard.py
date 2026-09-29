@@ -873,6 +873,23 @@ def test_an_entity_only_shown_is_never_settable(dashboard):
     assert not dashboard.may_set("light.not_in_the_config")
 
 
+BLINDS_BAR = {"entity_id": GUEST_BLINDS, "label": "Blinds", "icon": "mdi:blinds"}
+
+
+def test_a_slider_toggles_unless_it_opens_to_a_position():
+    plain = Dashboard.model_validate(guest_face(sliders=[BLINDS_BAR]))
+    slats = Dashboard.model_validate(guest_face(sliders=[BLINDS_BAR | {"toggle_position": 50}]))
+
+    assert plain.profiles["gb"].faces["front"].options["sliders"][0]["toggle_position"] is None
+    assert slats.profiles["gb"].faces["front"].options["sliders"][0]["toggle_position"] == 50
+
+
+@pytest.mark.parametrize("position", [0, 101])
+def test_a_slider_opens_to_somewhere_between_shut_and_all_the_way(position):
+    with pytest.raises(ValidationError, match="toggle_position"):
+        Dashboard.model_validate(guest_face(sliders=[BLINDS_BAR | {"toggle_position": position}]))
+
+
 def test_a_slider_must_be_a_light_or_a_cover():
     with pytest.raises(ValidationError, match="not a light or a cover"):
         Dashboard.model_validate(guest_face(sliders=[{"entity_id": GUEST_FAN, "label": "Fan", "icon": "mdi:fan"}]))

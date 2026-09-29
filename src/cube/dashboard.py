@@ -833,11 +833,22 @@ UNSLIDABLE_ENTITY_MESSAGE = "Slider `{entity_id}` is not a light or a cover, so 
 
 
 class Slider(BaseModel):
-    """A bar dragged along to set a light's brightness or a cover's position, and tapped to switch it."""
+    """A bar dragged along to set a light's brightness or a cover's position, and tapped to switch it.
+
+    A tap toggles it, unless it has a `toggle_position`: then a tap shuts it if it is open at all,
+    and opens it to that position if it is shut. Slatted blinds, which are level at half way and
+    shut both all the way down and all the way up, want 50.
+    """
 
     entity_id: str
     label: str
     icon: str
+    toggle_position: int | None = Field(
+        default=None,
+        ge=1,
+        le=100,
+        description="Where a tap opens it to, and shuts it from; unset, a tap toggles it",
+    )
 
     @model_validator(mode="after")
     def require_slidable_domain(self) -> Self:

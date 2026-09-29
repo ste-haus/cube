@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { percentAlong, percentRound, pointRound, sliderPercent } from "../slider";
+import { percentAlong, percentRound, pointRound, sliderPercent, tapPosition } from "../slider";
 import { ha } from "../state.svelte";
 import type { EntityState } from "../types";
 
@@ -77,5 +77,14 @@ describe("pointRound", () => {
     const { x, y } = pointRound(25, 0, 0, 10);
 
     expect(percentRound(x, y)).toBe(25);
+  });
+});
+
+describe("tapPosition", () => {
+  it("opens a shut bar to its position, and shuts one open by any amount", () => {
+    expect(tapPosition(0, 50)).toBe(50);
+    expect(tapPosition(50, 50)).toBe(0);
+    expect(tapPosition(100, 50)).toBe(0);
+    expect(tapPosition(3, 50)).toBe(0);
   });
 });

@@ -2,6 +2,7 @@
   import HueWindow from "./HueWindow.svelte";
   import Icon from "../lib/Icon.svelte";
   import { Breath } from "../lib/breath.svelte";
+  import { SlidingLevel } from "../lib/level.svelte";
   import { takesHue } from "../lib/hue";
   import type { Box } from "../lib/picture";
   import { pending } from "../lib/pending.svelte";
@@ -87,7 +88,15 @@
   const requested = $derived(pending.requested(light.entity_id));
   const target = $derived(preview ?? (typeof requested === "number" ? requested : null));
   const level = $derived(target ?? value);
-  const handle = $derived(pointRound(level, CENTRE, CENTRE, RADIUS));
+
+  /* The arc and its handle follow the finger at once, and slide to anything else: a tap that
+   * switched the light, or a change made somewhere else. */
+  const sliding = new SlidingLevel();
+
+  $effect.pre(() => sliding.follow(level, preview !== null));
+
+  const drawn = $derived(sliding.current);
+  const handle = $derived(pointRound(drawn, CENTRE, CENTRE, RADIUS));
   const switching = $derived(pending.isPending(light.entity_id) && requested === null);
 
   const breath = new Breath();
@@ -218,8 +227,8 @@
 >
   <svg class="light-dial__arc" viewBox={VIEWBOX} aria-hidden="true">
     <path class="light-dial__track" d={arc(PERCENT)} />
-    {#if level > 0}
-      <path class="light-dial__fill" d={arc(level)} />
+    {#if drawn > 0}
+      <path class="light-dial__fill" d={arc(drawn)} />
     {/if}
     <circle
       class="light-dial__handle"

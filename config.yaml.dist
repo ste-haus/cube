@@ -112,6 +112,9 @@ profiles:
             - entity_id: cover.example_guest_blinds
               label: Blinds
               icon: mdi:blinds-horizontal
+              # Slatted blinds are shut all the way down and all the way up, and level at half way,
+              # so a tap opens them to 50 and shuts them to 0 rather than toggling.
+              toggle_position: 50
           toggles:
             - entity_id: input_boolean.example_guest_underlight
               label: Underlight

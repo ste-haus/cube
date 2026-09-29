@@ -82,3 +82,12 @@ export function sliderPercent(entityId: string): number {
 
   return state === STATE_OPEN ? PERCENT : 0;
 }
+
+/**
+ * Where a tap sends a bar that opens to a set position rather than all the way: shut if it is open
+ * at all, and to that position if it is shut. Slatted blinds open level at half way, and a tap is
+ * for open or shut, not for tilting them all the way over.
+ */
+export function tapPosition(value: number, togglePosition: number): number {
+  return value > 0 ? 0 : togglePosition;
+}

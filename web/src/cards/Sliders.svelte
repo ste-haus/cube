@@ -3,7 +3,8 @@
   import Icon from "../lib/Icon.svelte";
   import { pending } from "../lib/pending.svelte";
   import { Breath } from "../lib/breath.svelte";
-  import { sliderPercent, percentAlong } from "../lib/slider";
+  import { SlidingLevel } from "../lib/level.svelte";
+  import { sliderPercent, percentAlong, tapPosition } from "../lib/slider";
   import type { Slider } from "../lib/types";
 
   /*
@@ -17,7 +18,10 @@
    *
    * The edge is what the finger drags, and the fill comes with it, as the room light's handle and
    * arc do. Once let go, it stays where it was asked to go, with a glint across the bar, until Home
-   * Assistant says where it went.
+   * Assistant says where it went. Anything else that moves it, a tap or a change made somewhere
+   * else, slides it there rather than jumping.
+   *
+   * A bar with a `toggle_position` is tapped open to that position, and shut from any other.
    *
    * The edge glows from the moment a drag starts, since a drag is a change on its way to Home
    * Assistant, and settles a couple of seconds after it is let go, or once Home Assistant has
@@ -37,21 +41,40 @@
   let startX = 0;
   let startY = 0;
 
-  /* Each bar's edge glows while it is being set. Made here rather than on first use: state made
-   * while the markup is being drawn is not state the markup follows. */
+  /* Each bar's edge glows while it is being set, and its fill and edge slide to a level they are
+   * told of rather than jumping. Made here rather than on first use: state made while the markup is
+   * being drawn is not state the markup follows. */
   const breaths = new Map<string, Breath>();
+  const levels = new Map<string, SlidingLevel>();
 
-  function breatheFor(list: Slider[]) {
+  function prepare(list: Slider[]) {
     for (const slider of list) {
       if (!breaths.has(slider.entity_id)) {
         breaths.set(slider.entity_id, new Breath());
+        levels.set(slider.entity_id, new SlidingLevel());
       }
     }
   }
 
   // Now, for the first drawing, and again before any later one names a bar not seen before.
-  breatheFor(untrack(() => sliders));
-  $effect.pre(() => breatheFor(sliders));
+  prepare(untrack(() => sliders));
+  $effect.pre(() => prepare(sliders));
+
+  /** Where a bar is, or is being taken: the finger's place, the value asked for, or Home Assistant's. */
+  function setting(slider: Slider): { level: number; underFinger: boolean } {
+    const preview = active?.entityId === slider.entity_id ? active.preview : null;
+    const requested = pending.requested(slider.entity_id);
+    const asked = typeof requested === "number" ? requested : null;
+
+    return { level: preview ?? asked ?? sliderPercent(slider.entity_id), underFinger: preview !== null };
+  }
+
+  $effect.pre(() => {
+    for (const slider of sliders) {
+      const { level, underFinger } = setting(slider);
+      levels.get(slider.entity_id)?.follow(level, underFinger);
+    }
+  });
 
   function breathOf(entityId: string): Breath | undefined {
     return breaths.get(entityId);
@@ -115,6 +138,8 @@
     if (gesture === "dragging" && preview !== null) {
       pending.set(slider.entity_id, preview);
       breathOf(slider.entity_id)?.release();
+    } else if (gesture === "undecided" && slider.toggle_position !== null) {
+      pending.set(slider.entity_id, tapPosition(sliderPercent(slider.entity_id), slider.toggle_position));
     } else if (gesture === "undecided") {
       pending.send(slider.entity_id);
     }
@@ -162,16 +187,14 @@
 <div class="sliders">
   {#each sliders as slider (slider.entity_id)}
     {@const value = sliderPercent(slider.entity_id)}
-    {@const preview = active?.entityId === slider.entity_id ? active.preview : null}
     {@const requested = pending.requested(slider.entity_id)}
-    {@const target = preview ?? (typeof requested === "number" ? requested : null)}
-    {@const level = target ?? value}
+    {@const level = setting(slider).level}
+    {@const drawn = levels.get(slider.entity_id)?.current ?? level}
     <div
       class="slider"
       class:slider--on={value > 0}
       class:slider--pending={pending.isPending(slider.entity_id)}
       class:slider--held={active?.entityId === slider.entity_id && active.gesture !== "abandoned"}
-      class:slider--dragging={active?.entityId === slider.entity_id && active.gesture === "dragging"}
       role="slider"
       tabindex="-1"
       aria-label={slider.label}
@@ -183,13 +206,13 @@
     >
       <!-- Clipped to the bar's rounded shape; the edge is not, so it can stand out of the bar. -->
       <div class="slider__track">
-        <div class="slider__fill" style:width="{level}%"></div>
+        <div class="slider__fill" style:width="{drawn}%"></div>
       </div>
-      {#if level > 0}
+      {#if drawn > 0}
         <div
           class="slider__edge"
           class:slider__edge--breathing={breathOf(slider.entity_id)?.breathing}
-          style:left="{level}%"
+          style:left="{drawn}%"
           onanimationiteration={() => breathOf(slider.entity_id)?.breathed(typeof requested === "number")}
         ></div>
       {/if}
@@ -242,7 +265,6 @@
     position: absolute;
     inset: 0 auto 0 0;
     background-color: color-mix(in srgb, var(--color-muted) var(--slider-fill-strength), transparent);
-    transition: width var(--slider-settle) ease-out;
   }
 
   /* The fill's leading edge, the level in the primary colour. Nothing on or open draws no edge,
@@ -256,7 +278,6 @@
     border-radius: var(--slider-edge-width);
     transform: translateX(-100%);
     transition:
-      left var(--slider-settle) ease-out,
       width var(--held-grow-time) ease-out,
       transform var(--held-grow-time) ease-out;
   }
@@ -266,17 +287,6 @@
   .slider--held .slider__edge {
     width: calc(var(--slider-edge-width) * var(--held-grow));
     transform: translateX(-100%) scaleY(var(--slider-held-stretch));
-  }
-
-  /* Dragged: the fill and the edge are under the finger rather than easing after it. */
-  .slider--dragging .slider__fill {
-    transition: none;
-  }
-
-  .slider--dragging .slider__edge {
-    transition:
-      width var(--held-grow-time) ease-out,
-      transform var(--held-grow-time) ease-out;
   }
 
   /* Being set: a glow in the edge's own colour swells and fades, from the drag until it settles. */
