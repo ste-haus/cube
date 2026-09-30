@@ -1,6 +1,8 @@
 // Mirrors the dashboard models in src/cube/dashboard.py. The backend serves the whole
 // definition from /api/config, so nothing installation-specific is hard-coded here.
 
+import type { FaceName } from "./cube.svelte";
+
 export interface ThresholdBand {
   at: number;
   color: string;
@@ -279,6 +281,7 @@ export interface Profile {
   key: string;
   name: string;
   floorplan: string | null;
+  default_face: FaceName;
   media_player: string | null;
   faces: Record<string, Face>;
 }

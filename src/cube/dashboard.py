@@ -1013,7 +1013,7 @@ class Profile(BaseModel):
     """A panel's identity.
 
     One instance can serve several panels; the profile decides which cube faces they get,
-    which floorplan level they open on, and which media player their visualizer follows.
+    which face and floorplan level they open on, and which media player their visualizer follows.
 
     Every profile but `default` is a delta. `inherits` names the profile it starts from, and
     defaults to `default`, so a panel states only what makes it different. `media_player` is
@@ -1023,6 +1023,7 @@ class Profile(BaseModel):
 
     name: str | None = None
     floorplan: str | None = None
+    default_face: str | None = None
     media_player: str | None = None
     inherits: str | None = None
     faces: dict[str, Face] = Field(default_factory=dict)
@@ -1038,6 +1039,9 @@ SETTABLE_DOMAINS = frozenset({"light", "cover", "input_datetime"})
 
 CUBE_FACES = ("front", "back", "left", "right", "up", "down")
 
+# The face a panel opens on, and turns back to once it has been left alone.
+DEFAULT_CUBE_FACE = "front"
+
 DEFAULT_PROFILE_KEY = "default"
 
 MISSING_DEFAULT_PROFILE_MESSAGE = f"No `{DEFAULT_PROFILE_KEY}` profile. Every panel inherits from it, so it must exist."
@@ -1052,6 +1056,9 @@ INCOMPLETE_DEFAULT_PROFILE_MESSAGE = (
 UNKNOWN_PARENT_MESSAGE = "Profile `{profile}` inherits `{parent}`, which is not defined."
 INHERITANCE_CYCLE_MESSAGE = "Profile `{profile}` inherits itself, by way of `{parent}`."
 UNKNOWN_PROFILE_FLOORPLAN_MESSAGE = "Profile `{profile}` opens on floorplan `{floorplan}`, which is not defined."
+UNKNOWN_DEFAULT_FACE_MESSAGE = (
+    f"Profile `{{profile}}` opens on face `{{face}}`, which is not a cube face; it must be one of {', '.join(CUBE_FACES)}."
+)
 FACE_WITHOUT_PAGE_MESSAGE = (
     f"The {{face}} face of profile `{{profile}}` is `{CUSTOM_FACE_CONTENT}` but names no `page`."
 )
@@ -1145,6 +1152,9 @@ class Dashboard(BaseModel):
             if profile.floorplan is not None and profile.floorplan not in self.floorplans:
                 raise ValueError(UNKNOWN_PROFILE_FLOORPLAN_MESSAGE.format(profile=key, floorplan=profile.floorplan))
 
+            if profile.default_face not in CUBE_FACES:
+                raise ValueError(UNKNOWN_DEFAULT_FACE_MESSAGE.format(profile=key, face=profile.default_face))
+
             for name, face in profile.faces.items():
                 if face.content == CUSTOM_FACE_CONTENT:
                     if not face.page:
@@ -1194,9 +1204,15 @@ class Dashboard(BaseModel):
             if ancestor.floorplan is not None:
                 resolved.floorplan = ancestor.floorplan
 
+            if ancestor.default_face is not None:
+                resolved.default_face = ancestor.default_face
+
             # By face name, so a child that names `front` owns that face outright and leaves
             # its siblings alone.
             resolved.faces.update(ancestor.faces)
+
+        if resolved.default_face is None:
+            resolved.default_face = DEFAULT_CUBE_FACE
 
         own = self.profiles[key]
         resolved.name = own.name or key

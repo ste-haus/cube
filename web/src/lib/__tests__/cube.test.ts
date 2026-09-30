@@ -201,7 +201,7 @@ describe("swipeable", () => {
 
 /**
  * The timers the cube sets for itself: the one that ends a rotation, and the one that returns
- * an untouched panel to the front. Nothing here waits on either, so holding the handle and
+ * an untouched panel to its home face. Nothing here waits on either, so holding the handle and
  * doing nothing with it is the whole of what the class needs from a browser.
  */
 function fakeWindow() {
@@ -253,5 +253,54 @@ describe("which faces are built", () => {
     cube.show("left");
 
     expect(cube.isBuilt("up")).toBe(false);
+  });
+
+  it("opens on, and builds only, the home face it is given", () => {
+    const cube = new Cube("up");
+
+    expect(cube.current).toBe("up");
+    expect(cube.built).toEqual(["up"]);
+  });
+});
+
+describe("returning home", () => {
+  let pending: (() => void) | null;
+
+  beforeEach(() => {
+    pending = null;
+    vi.stubGlobal("window", {
+      setTimeout: (callback: () => void) => {
+        pending = callback;
+        return 1;
+      },
+      clearTimeout: () => {
+        pending = null;
+      },
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("goes back to the front when no home is given", () => {
+    const cube = new Cube();
+    cube.show("left");
+    pending?.();
+
+    expect(cube.current).toBe("front");
+  });
+
+  it("goes back to the home face it was given, not the front", () => {
+    const cube = new Cube("back");
+    cube.show("front");
+    pending?.();
+
+    expect(cube.current).toBe("back");
+  });
+
+  it("does not wait to go home when it is already there", () => {
+    const cube = new Cube("down");
+    cube.show("left");
+    cube.show("down");
+
+    expect(pending).toBeNull();
   });
 });
