@@ -48,6 +48,9 @@ interface Transition {
 }
 
 export class Cube {
+  /** The face the cube opens on, and turns back to once it has been left alone. */
+  readonly home: FaceName;
+
   current = $state<FaceName>(DEFAULT_FACE);
   transition = $state<Transition | null>(null);
 
@@ -63,6 +66,12 @@ export class Cube {
 
   #resetTimer: number | null = null;
   #rotating = false;
+
+  constructor(home: FaceName = DEFAULT_FACE) {
+    this.home = home;
+    this.current = home;
+    this.built = [home];
+  }
 
   /** Whether a face is in the DOM at all. */
   isBuilt(face: FaceName): boolean {
@@ -136,18 +145,18 @@ export class Cube {
     this.#scheduleReset();
   }
 
-  /** Returns the cube to its default face once a panel has been left alone. */
+  /** Returns the cube to its home face once a panel has been left alone. */
   #scheduleReset(): void {
     if (this.#resetTimer !== null) {
       window.clearTimeout(this.#resetTimer);
       this.#resetTimer = null;
     }
 
-    if (this.current === DEFAULT_FACE) {
+    if (this.current === this.home) {
       return;
     }
 
-    this.#resetTimer = window.setTimeout(() => this.show(DEFAULT_FACE), IDLE_RESET_MS);
+    this.#resetTimer = window.setTimeout(() => this.show(this.home), IDLE_RESET_MS);
   }
 }
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { Cube, FACES, swipeable, type Direction, type FaceName } from "./lib/cube.svelte";
   import CubeFace from "./faces/CubeFace.svelte";
   import MasterCaution from "./cards/MasterCaution.svelte";
@@ -16,7 +17,8 @@
 
   let { config }: { config: DashboardConfig } = $props();
 
-  const cube = new Cube();
+  // The config is fetched once and never replaced, so the cube is built for its home face once.
+  const cube = new Cube(untrack(() => config.profile.default_face));
 
   function faceFor(name: FaceName) {
     return (

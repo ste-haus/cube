@@ -1,6 +1,6 @@
 # Panels and profiles
 
-One instance of cube serves every panel in the house. A **profile** is a panel's identity: which cube faces it has, which floorplan level it opens on, and which speaker its announcement overlay follows.
+One instance of cube serves every panel in the house. A **profile** is a panel's identity: which cube faces it has, which face and floorplan level it opens on, and which speaker its announcement overlay follows.
 
 ## Addressing a panel
 
@@ -67,6 +67,7 @@ A panel states only what makes it different. Everything else comes from the prof
 |---|---|---|
 | `name` | For your own reference; defaults to the key | No |
 | `floorplan` | The level this panel opens on, and returns to | Yes |
+| `default_face` | The cube face this panel opens on, and returns to; `front` when absent | Yes |
 | `media_player` | The speaker whose announcements raise the overlay | **No** |
 | `inherits` | The profile to start from; `default` when absent | — |
 | `faces` | What sits on each of the six faces, merged by face name | Yes |
@@ -255,7 +256,7 @@ Which cards a face renders is fixed. `options` lets you configure the cards a fa
 
 Swipe, or press an arrow key, to turn it. The map of dots in the corner shows which face is showing and jumps straight to any of them.
 
-The panel returns to the front face after two minutes untouched, so a panel left mid-rotation rights itself.
+The panel opens on its profile's `default_face`, `front` unless the profile says otherwise, and returns to it after two minutes untouched, so a panel left mid-rotation rights itself.
 
 A face is built the first time you turn to it and kept from then on, so coming back to one finds it as you left it — the camera still showing its last frame, the floorplan not fetched again. A face you have never turned to is never built. Keeping one costs the markup and nothing else: it is not painted, its animations do not run, and its cards release their timers, so only the face being looked at is doing any work.
 

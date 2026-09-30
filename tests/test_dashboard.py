@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from cube.dashboard import (
     CUBE_FACES,
     DEFAULT_ALARM_MINUTE_STEP,
+    DEFAULT_CUBE_FACE,
     DEFAULT_FORECAST_DAYS,
     DEFAULT_PROFILE_KEY,
     DEFAULT_WIND_GUST_THRESHOLD,
@@ -350,6 +351,41 @@ def test_a_gust_is_worth_giving_from_the_default_unless_told_otherwise():
 def test_a_gust_threshold_cannot_be_negative():
     with pytest.raises(ValidationError, match="wind_gust_threshold"):
         Dashboard.model_validate(profiles() | {"weather": WEATHER | {"wind_gust_threshold": -1}})
+
+
+def test_a_profile_opens_on_the_front_face_unless_told_otherwise():
+    dashboard = Dashboard.model_validate(profiles(lr={"media_player": SPEAKER}))
+
+    assert dashboard.profiles["lr"].default_face == DEFAULT_CUBE_FACE
+
+
+def test_a_profile_may_open_on_any_face():
+    for face in CUBE_FACES:
+        dashboard = Dashboard.model_validate(profiles(lr={"default_face": face}))
+
+        assert dashboard.profiles["lr"].default_face == face
+
+
+def test_the_face_a_profile_opens_on_is_inherited():
+    dashboard = Dashboard.model_validate(
+        profiles(pb={"default_face": "up"}, ob={"inherits": "pb"}),
+    )
+
+    assert dashboard.profiles["ob"].default_face == "up"
+
+
+def test_a_child_may_open_on_a_different_face_than_its_parent():
+    document = profiles(lr={"default_face": "left"})
+    document["profiles"]["default"]["default_face"] = "back"
+    dashboard = Dashboard.model_validate(document)
+
+    assert dashboard.profiles["default"].default_face == "back"
+    assert dashboard.profiles["lr"].default_face == "left"
+
+
+def test_a_profile_may_not_open_on_a_face_the_cube_does_not_have():
+    with pytest.raises(ValidationError, match="sideways"):
+        Dashboard.model_validate(profiles(lr={"default_face": "sideways"}))
 
 
 def test_a_profile_without_a_name_is_called_after_its_key():
