@@ -22,6 +22,9 @@ const RADIANS_PER_DEGREE = Math.PI / 180;
 /** A hue picked on the ring is the colour at its fullest. */
 export const FULL_SATURATION = 100;
 
+/** How long a light is held to open its colour window rather than switch it. */
+export const COLOUR_HOLD_MS = 600;
+
 const PERCENT = 100;
 const RGB_MAX = 255;
 const HEX_RADIX = 16;
@@ -51,10 +54,14 @@ export function sameColour(a: HueSaturation | null, b: HueSaturation | null): bo
     return false;
   }
 
-  const apart = Math.abs(a.hue - b.hue) % FULL_TURN_DEGREES;
-  const hueGap = Math.min(apart, FULL_TURN_DEGREES - apart);
+  return hueGap(a.hue, b.hue) <= SAME_HUE_DEGREES && Math.abs(a.saturation - b.saturation) <= SAME_SATURATION;
+}
 
-  return hueGap <= SAME_HUE_DEGREES && Math.abs(a.saturation - b.saturation) <= SAME_SATURATION;
+/** How far apart two hues are, the short way round the ring. */
+export function hueGap(a: number, b: number): number {
+  const apart = Math.abs(a - b) % FULL_TURN_DEGREES;
+
+  return Math.min(apart, FULL_TURN_DEGREES - apart);
 }
 
 /** A hex colour's hue and saturation, as Home Assistant would take it, or null for anything else. */

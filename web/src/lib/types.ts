@@ -127,6 +127,8 @@ export interface ForecastDay {
 export interface Floorplan {
   image: string;
   groups: Record<string, string[]>;
+  /** What the brightness bar in a held light's colour window is filled with. */
+  fill: SliderFill;
 }
 
 export interface Gauge {
@@ -240,9 +242,18 @@ export interface Light {
   entity_id: string;
   icon: string;
   off_icon: string;
-  /** What the middle of its colour wheel sets it to, as a CIE xy point. */
+  /** What the brightness bar in its colour window is filled with. */
+  fill: SliderFill;
+}
+
+/** What every light the panel can colour shares. */
+export interface LightDefaults {
+  /** What the middle of a light's colour wheel sets it to, as a CIE xy point. */
   default_xy: [number, number];
 }
+
+/** What a bar's fill is drawn in: grey, or the light's own colour, as strong as it is bright. */
+export type SliderFill = "neutral" | "light";
 
 /** A light or a cover, dragged along to set it and tapped to switch it. */
 export interface Slider {
@@ -251,6 +262,7 @@ export interface Slider {
   icon: string;
   /** Where a tap opens it to, and shuts it from; null, a tap toggles it. */
   toggle_position: number | null;
+  fill: SliderFill;
 }
 
 /** A switch that arms the alarm, and the `input_datetime` holding when it goes off. */
@@ -297,6 +309,7 @@ export interface Labels {
   wifi_password: string;
   alarm: string;
   light_colour: string;
+  light_brightness: string;
   master_warning: string;
   master_caution: string;
   alert_cleared: string;
@@ -328,6 +341,7 @@ export interface DashboardConfig {
   theme: Theme;
   colors: Colors;
   labels: Labels;
+  light: LightDefaults;
   clock: Clock;
   indicators: Indicator[];
   status_indicators: StatusIndicator[];

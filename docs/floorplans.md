@@ -72,6 +72,8 @@ Only `lights` and `fans`. Tapping one toggles it, provided its domain is in `tog
 
 A tapped control is marked with four corner brackets until Home Assistant reports the change, and tapping it again in the meantime does nothing, so a slow round trip cannot switch it twice. The brackets let go when the new state arrives, or after ten seconds if it never does.
 
+Holding a light that can be coloured closes the brackets in on it for a moment and then opens the same colour window the guest face's room light has, out of the brackets' corners: every hue round a ring, and [`light.default_xy`](configuration.md#light) in the middle, the warm white of Home Assistant's `full` light profile unless you say otherwise. Under the wheel is a brightness bar, filled with the light's colour, as strong as the light is bright, unless the level says `fill: neutral`. Letting go before the brackets close is an ordinary tap. On a light with no colour, only brightness or colour temperature, a hold does nothing. See [the guest face](panels.md#the-guest-face) for how the wheel itself behaves.
+
 ## Styling
 
 Two stylesheets ship with the panel and cover the general case: one holds the class contract above, the other the rules naming particular rooms and fixtures.

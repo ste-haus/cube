@@ -106,8 +106,9 @@ profiles:
             qr_url: https://qr.example/?data={data}&size={size}
           light:
             entity_id: light.example_guest_room
-            # What the middle of its colour wheel sets, as a CIE xy point; this is the "full" profile.
-            default_xy: [0.469, 0.403]
+            # The brightness bar in its colour window: `light` (the default), which follows the light's
+            # colour and brightness, or `neutral`.
+            fill: light
           sliders:
             - entity_id: cover.example_guest_blinds
               label: Blinds
@@ -180,6 +181,11 @@ colors:
 theme:
   background: "#111111"
 
+# Shared by every light the panel can colour: the guest face's room light and the floorplan's.
+light:
+  # What the middle of a colour wheel sets, as a CIE xy point; this is the "full" profile.
+  default_xy: [0.469, 0.403]
+
 labels:
   notices: Notices
   agenda: Today
@@ -192,6 +198,7 @@ labels:
   wifi_password: Password
   alarm: Alarm Clock
   light_colour: Colour
+  light_brightness: Brightness
 
 clock:
   date_format: "%A, %B %o, %Y"
@@ -334,6 +341,9 @@ toggles:
 floorplans:
   downstairs:
     image: downstairs
+    # The brightness bar in a held light's colour window: `light` (the default), which follows the
+    # light's colour and brightness, or `neutral`.
+    fill: light
     groups:
       lights:
         - light.example_kitchen

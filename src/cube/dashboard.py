@@ -206,6 +206,14 @@ class Calendar(BaseModel):
     blocklist: str | None = Field(default=None, description="Regex of event titles to hide")
 
 
+class SliderFill(StrEnum):
+    """What a bar's fill is drawn in."""
+
+    NEUTRAL = "neutral"
+    # The light's own colour, as strong as it is bright, for a bar that sets a light's brightness.
+    LIGHT = "light"
+
+
 class Floorplan(BaseModel):
     """One floorplan level.
 
@@ -216,6 +224,10 @@ class Floorplan(BaseModel):
 
     image: str
     groups: dict[str, list[str]] = Field(default_factory=dict)
+    fill: SliderFill = Field(
+        default=SliderFill.LIGHT,
+        description="What the brightness bar in a held light's colour window is filled with",
+    )
 
     @property
     def entity_ids(self) -> list[str]:
@@ -561,6 +573,7 @@ class Labels(BaseModel):
     wifi_password: str = Field(default="Password", description="What the network's password is labelled")
     alarm: str = Field(default="Alarm Clock", description="The guest face's alarm card")
     light_colour: str = Field(default="Colour", description="The window the room light's colour is picked in")
+    light_brightness: str = Field(default="Brightness", description="The brightness bar in a light's colour window")
     master_warning: str = "Master Warning"
     master_caution: str = "Master Caution"
     alert_cleared: str = Field(default="ACK", description="Tag on an alert that has been cleared")
@@ -849,6 +862,7 @@ class Slider(BaseModel):
         le=100,
         description="Where a tap opens it to, and shuts it from; unset, a tap toggles it",
     )
+    fill: SliderFill = SliderFill.NEUTRAL
 
     @model_validator(mode="after")
     def require_slidable_domain(self) -> Self:
@@ -859,12 +873,25 @@ class Slider(BaseModel):
         return self
 
 
-DEFAULT_LIGHT_ICON = "mdi:lightbulb"
-DEFAULT_LIGHT_OFF_ICON = "mdi:lightbulb-off"
 # What the middle of a light's colour wheel sets it to, as a CIE xy point: the warm white of the
 # "full" light profile.
 DEFAULT_LIGHT_XY = (0.469, 0.403)
 XY_POINT_LENGTH = 2
+
+
+class LightDefaults(BaseModel):
+    """What every light the panel can colour shares: the room's light, and the floorplan's."""
+
+    default_xy: list[Annotated[float, Field(ge=0, le=1)]] = Field(
+        default_factory=lambda: list(DEFAULT_LIGHT_XY),
+        min_length=XY_POINT_LENGTH,
+        max_length=XY_POINT_LENGTH,
+        description="What the middle of a light's colour wheel sets it to, as a CIE xy point",
+    )
+
+
+DEFAULT_LIGHT_ICON = "mdi:lightbulb"
+DEFAULT_LIGHT_OFF_ICON = "mdi:lightbulb-off"
 UNDIALABLE_ENTITY_MESSAGE = "The room's light `{entity_id}` is not a light."
 
 
@@ -874,11 +901,9 @@ class Light(BaseModel):
     entity_id: str
     icon: str = DEFAULT_LIGHT_ICON
     off_icon: str = DEFAULT_LIGHT_OFF_ICON
-    default_xy: list[Annotated[float, Field(ge=0, le=1)]] = Field(
-        default_factory=lambda: list(DEFAULT_LIGHT_XY),
-        min_length=XY_POINT_LENGTH,
-        max_length=XY_POINT_LENGTH,
-        description="What the middle of its colour wheel sets it to, as a CIE xy point",
+    fill: SliderFill = Field(
+        default=SliderFill.LIGHT,
+        description="What the brightness bar in its colour window is filled with",
     )
 
     @model_validator(mode="after")
@@ -1084,6 +1109,7 @@ class Dashboard(BaseModel):
     theme: Theme = Field(default_factory=Theme)
     colors: Colors = Field(default_factory=Colors)
     labels: Labels = Field(default_factory=Labels)
+    light: LightDefaults = Field(default_factory=LightDefaults)
     clock: Clock = Field(default_factory=Clock)
     indicators: list[Indicator] = Field(default_factory=list)
     status_indicators: list[StatusIndicator] = Field(default_factory=list)

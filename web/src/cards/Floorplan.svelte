@@ -1,12 +1,15 @@
 <script lang="ts">
+  import HueWindow from "./HueWindow.svelte";
   import { floorplanStylesUrl, floorplanUrl } from "../lib/api";
   import { swipeable, type Direction } from "../lib/cube.svelte";
+  import { COLOUR_HOLD_MS, takesHue } from "../lib/hue";
   import { nextLevel } from "../lib/levels";
   import { Lapsing, PANE_RESET_MS } from "../lib/panes.svelte";
   import { pending } from "../lib/pending.svelte";
+  import type { Box } from "../lib/picture";
   import { keepTrying } from "../lib/retry";
   import { ha } from "../lib/state.svelte";
-  import type { Floorplan } from "../lib/types";
+  import type { Floorplan, Labels, SliderFill } from "../lib/types";
 
   /*
    * The floorplan SVG carries an entity id as the DOM id of every element it draws, and the
@@ -34,6 +37,7 @@
 
   /** Groups whose elements are controls rather than read-outs. */
   const CONTROLLABLE_GROUPS = new Set(["lights", "fans"]);
+  const LIGHTS = "lights";
 
   /** Doors report more than open or shut, and the stylesheet distinguishes all of it. */
   const DOOR_CLASSES: Record<string, string> = {
@@ -59,10 +63,22 @@
   const MILLISECONDS = "ms";
   const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
 
+  // A light held rather than tapped opens its colour, if it has one.
+  const COLOR_MODES_ATTRIBUTE = "supported_color_modes";
+  const PRIMARY_BUTTON = 0;
+  const TAP_SLOP_PX = 10;
+
   let {
     floorplans,
     initial,
-  }: { floorplans: Record<string, Floorplan>; initial: string | null } = $props();
+    defaultXy,
+    labels,
+  }: {
+    floorplans: Record<string, Floorplan>;
+    initial: string | null;
+    defaultXy: [number, number];
+    labels: Labels;
+  } = $props();
 
   const levels = $derived(Object.keys(floorplans));
   const defaultLevel = $derived(initial && initial in floorplans ? initial : levels[0]);
@@ -78,16 +94,25 @@
   /*
    * The control last tapped, marked on the pane it is drawn on, so it slides away with its
    * storey rather than staying over whichever one is swiped in. Counted, so a second tap
-   * starts the lock-on over rather than inheriting the first one's.
+   * starts the lock-on over rather than inheriting the first one's. While a light that can be
+   * coloured is being held, it closes in over the hold's length instead.
    */
   let reticle = $state<{
     entityId: string;
     level: string;
     serial: number;
-    box: { left: number; top: number; width: number; height: number };
+    holding: boolean;
+    box: Box;
   } | null>(null);
   let taps = 0;
-  const held = $derived(reticle !== null && pending.isPending(reticle.entityId));
+  const held = $derived(reticle !== null && (reticle.holding || pending.isPending(reticle.entityId)));
+
+  let colouring = $state<{ entityId: string; fill: SliderFill; from: Box } | null>(null);
+  let holdTimer: number | null = null;
+  // The press became a hold, so the click it ends in is not a tap.
+  let heldLong = false;
+
+  $effect(() => () => stopHold());
 
   $effect(() => {
     if (reticle === null || held) {
@@ -206,10 +231,11 @@
     element.style.fill = rgb ? `rgb(${rgb.join(",")})` : "";
   }
 
-  function onTap(event: MouseEvent): void {
+  /** The control a press landed on, if it landed on one. */
+  function controlAt(target: EventTarget | null): Element | null {
     const plan = floorplans[currentLevel];
     if (!plan) {
-      return;
+      return null;
     }
 
     const controllable = new Set([...CONTROLLABLE_GROUPS].flatMap((group) => plan.groups[group] ?? []));
@@ -217,36 +243,144 @@
     // Walked up rather than taken from the nearest id, because a drawing is free to give the
     // parts of a control ids of its own — a fan is a group of blades over a hit area, and the
     // entity is on the group, not on whichever piece the finger landed.
-    for (let element = event.target as Element | null; element; element = element.parentElement) {
+    for (let element = target as Element | null; element; element = element.parentElement) {
       if (controllable.has(element.id)) {
-        if (pending.send(element.id)) {
-          mark(element, element.id);
-        }
-
-        return;
+        return element;
       }
+    }
+
+    return null;
+  }
+
+  function onTap(event: MouseEvent): void {
+    if (heldLong) {
+      heldLong = false;
+      return;
+    }
+
+    const element = controlAt(event.target);
+    if (element && pending.send(element.id)) {
+      mark(element, element.id);
     }
   }
 
   /** Puts the reticle round a control, measured against the pane it is drawn on. */
-  function mark(element: Element, entityId: string): void {
+  function mark(element: Element, entityId: string, holding = false): void {
     const pane = panes[currentLevel];
     if (!pane) {
       return;
     }
 
     const within = pane.getBoundingClientRect();
-    const box = element.getBoundingClientRect();
+    const box = padded(element);
 
     reticle = {
       entityId,
       level: currentLevel,
       serial: ++taps,
-      box: {
-        left: box.left - within.left - RETICLE_PADDING_PX,
-        top: box.top - within.top - RETICLE_PADDING_PX,
-        width: box.width + 2 * RETICLE_PADDING_PX,
-        height: box.height + 2 * RETICLE_PADDING_PX,
+      holding,
+      box: { ...box, left: box.left - within.left, top: box.top - within.top },
+    };
+  }
+
+  /** Where the reticle's corners sit round a control, on the screen. */
+  function padded(element: Element): Box {
+    const box = element.getBoundingClientRect();
+
+    return {
+      left: box.left - RETICLE_PADDING_PX,
+      top: box.top - RETICLE_PADDING_PX,
+      width: box.width + 2 * RETICLE_PADDING_PX,
+      height: box.height + 2 * RETICLE_PADDING_PX,
+    };
+  }
+
+  function stopHold(): void {
+    if (holdTimer !== null) {
+      window.clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+  }
+
+  /*
+   * A light held long enough opens its colour window out of the reticle's corners, or, on a light
+   * that cannot be coloured, does nothing at all: it neither switches nor closes in, so it never
+   * promises a window it cannot open. Anything else held is a tap like any other.
+   *
+   * Listened for on the window once pressed, since the colour window opens over the finger, and the
+   * release lands on that rather than back here.
+   */
+  function holds(viewport: HTMLElement) {
+    let startX = 0;
+    let startY = 0;
+
+    function down(event: PointerEvent) {
+      heldLong = false;
+
+      if (event.button !== PRIMARY_BUTTON || !event.isPrimary) {
+        return;
+      }
+
+      const element = controlAt(event.target);
+      const level = currentLevel;
+      const plan = floorplans[level];
+      if (!element || !plan?.groups[LIGHTS]?.includes(element.id)) {
+        return;
+      }
+
+      const entityId = element.id;
+      const colourable = takesHue(ha.attribute<string[]>(entityId, COLOR_MODES_ATTRIBUTE));
+
+      startX = event.clientX;
+      startY = event.clientY;
+
+      if (colourable) {
+        mark(element, entityId, true);
+      }
+
+      holdTimer = window.setTimeout(() => {
+        holdTimer = null;
+        heldLong = true;
+
+        if (colourable) {
+          reticle = null;
+          colouring = { entityId, fill: plan.fill, from: padded(element) };
+        }
+      }, COLOUR_HOLD_MS);
+
+      window.addEventListener("pointermove", moved);
+      window.addEventListener("pointerup", ended);
+      window.addEventListener("pointercancel", ended);
+    }
+
+    function moved(event: PointerEvent) {
+      if (Math.hypot(event.clientX - startX, event.clientY - startY) > TAP_SLOP_PX) {
+        ended();
+      }
+    }
+
+    function ended() {
+      stopHold();
+      unlisten();
+
+      // Let go, so the reticle springs back out unless the tap it was holds it on.
+      if (reticle?.holding) {
+        reticle.holding = false;
+      }
+    }
+
+    function unlisten() {
+      window.removeEventListener("pointermove", moved);
+      window.removeEventListener("pointerup", ended);
+      window.removeEventListener("pointercancel", ended);
+    }
+
+    viewport.addEventListener("pointerdown", down);
+
+    return {
+      destroy() {
+        viewport.removeEventListener("pointerdown", down);
+        unlisten();
       },
     };
   }
@@ -265,6 +399,8 @@
   <div
     class="floorplan__viewport"
     onclick={onTap}
+    oncontextmenu={(event) => event.preventDefault()}
+    use:holds
     use:swipeable={{ onSwipe: step, axes: "horizontal", exclusive: true }}
   >
     <div class="floorplan__track" style:transform="translateX({-index * 100}%)">
@@ -276,12 +412,14 @@
             {#key reticle.serial}
               <div
                 class="floorplan__reticle"
+                class:floorplan__reticle--holding={reticle.holding}
                 class:floorplan__reticle--releasing={!held}
                 style:left="{reticle.box.left}px"
                 style:top="{reticle.box.top}px"
                 style:width="{reticle.box.width}px"
                 style:height="{reticle.box.height}px"
                 style:--floorplan-release="{RELEASE_MS}{MILLISECONDS}"
+                style:--floorplan-hold="{COLOUR_HOLD_MS}{MILLISECONDS}"
                 aria-hidden="true"
               >
                 {#each CORNERS as corner (corner)}
@@ -294,6 +432,17 @@
       {/each}
     </div>
   </div>
+
+  {#if colouring}
+    <HueWindow
+      entityId={colouring.entityId}
+      {defaultXy}
+      fill={colouring.fill}
+      from={colouring.from}
+      {labels}
+      onclose={() => (colouring = null)}
+    />
+  {/if}
 
   {#if levels.length > 1}
     <nav class="floorplan__levels" aria-label="Floorplan levels">
@@ -324,6 +473,8 @@
     min-height: 0;
     width: 100%;
     overflow: hidden;
+    -webkit-touch-callout: none;
+    user-select: none;
   }
 
   .floorplan__track {
@@ -367,6 +518,12 @@
     animation:
       reticle-lock var(--reticle-lock) cubic-bezier(0.2, 0.8, 0.3, 1) both,
       reticle-breathe var(--reticle-breathe) ease-in-out var(--reticle-lock) infinite;
+  }
+
+  /* Held on a light that can be coloured: the corners close in for as long as the hold takes, so
+   * it is plain that letting go now switches it and holding on opens its colour. */
+  .floorplan__reticle--holding .floorplan__bracket {
+    animation: reticle-lock var(--floorplan-hold) linear both;
   }
 
   .floorplan__reticle--releasing .floorplan__bracket {

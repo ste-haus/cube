@@ -143,4 +143,52 @@ describe("PendingRequests setting a value", () => {
     expect(requests.isPending(LIGHT)).toBe(true);
     expect(requests.requested(LIGHT)).toBeNull();
   });
+
+  it("answers a streamed value only once the entity reaches it", () => {
+    const requests = new PendingRequests(() => Promise.resolve(), () => Promise.resolve());
+
+    requests.stream(LIGHT, BRIGHTER, () => ha.state(LIGHT) === "on");
+    answer(LIGHT, "off");
+
+    expect(requests.isPending(LIGHT)).toBe(true);
+    expect(requests.requested(LIGHT)).toBe(BRIGHTER);
+
+    answer(LIGHT, "on");
+
+    expect(requests.isPending(LIGHT)).toBe(false);
+  });
+
+  it("gives up on a streamed value at the timeout", () => {
+    const requests = new PendingRequests(() => Promise.resolve(), () => Promise.resolve());
+
+    requests.stream(LIGHT, BRIGHTER, () => false);
+    vi.advanceTimersByTime(PENDING_TIMEOUT_MS);
+
+    expect(requests.isPending(LIGHT)).toBe(false);
+  });
+
+  it("streams nothing while a toggle is waiting", () => {
+    const request = vi.fn(() => Promise.resolve());
+    const requests = new PendingRequests(() => Promise.resolve(), request);
+
+    requests.send(LIGHT);
+
+    expect(requests.stream(LIGHT, BRIGHTNESS, () => true)).toBeNull();
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("keeps a later request when an earlier one is refused", async () => {
+    let refuse = () => {};
+    const refused = new Promise<void>((_, reject) => (refuse = () => reject(new Error("refused"))));
+    const request = vi.fn().mockReturnValueOnce(refused).mockReturnValue(new Promise(() => {}));
+    const requests = new PendingRequests(() => Promise.resolve(), request);
+
+    requests.stream(LIGHT, BRIGHTNESS, () => false);
+    requests.stream(LIGHT, BRIGHTER, () => false);
+    refuse();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(requests.requested(LIGHT)).toBe(BRIGHTER);
+  });
 });

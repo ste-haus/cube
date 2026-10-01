@@ -51,7 +51,7 @@
   </div>
 
   <div class="dashboard__center">
-    <Floorplan floorplans={config.floorplans} initial={config.profile.floorplan} />
+    <Floorplan floorplans={config.floorplans} initial={config.profile.floorplan} defaultXy={config.light.default_xy} labels={config.labels} />
   </div>
 
   <div class="dashboard__right">
