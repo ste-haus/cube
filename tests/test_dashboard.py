@@ -920,6 +920,28 @@ def test_a_slider_toggles_unless_it_opens_to_a_position():
     assert slats.profiles["gb"].faces["front"].options["sliders"][0]["toggle_position"] == 50
 
 
+def test_a_slider_is_neutral_unless_it_follows_its_light():
+    plain = Dashboard.model_validate(guest_face(sliders=[BLINDS_BAR]))
+    lit = Dashboard.model_validate(guest_face(sliders=[BLINDS_BAR | {"fill": "light"}]))
+
+    assert plain.profiles["gb"].faces["front"].options["sliders"][0]["fill"] == "neutral"
+    assert lit.profiles["gb"].faces["front"].options["sliders"][0]["fill"] == "light"
+
+
+def test_a_colour_windows_brightness_bar_follows_the_light_unless_told_otherwise():
+    dashboard = Dashboard.model_validate(guest_face(light={"entity_id": GUEST_LIGHT}))
+    neutral = Dashboard.model_validate(guest_face(light={"entity_id": GUEST_LIGHT, "fill": "neutral"}))
+
+    assert dashboard.floorplans["downstairs"].fill == "light"
+    assert dashboard.profiles["gb"].faces["front"].options["light"]["fill"] == "light"
+    assert neutral.profiles["gb"].faces["front"].options["light"]["fill"] == "neutral"
+
+
+def test_a_bar_is_filled_neutral_or_from_its_light_and_nothing_else():
+    with pytest.raises(ValidationError, match="fill"):
+        Dashboard.model_validate(guest_face(sliders=[BLINDS_BAR | {"fill": "blue"}]))
+
+
 @pytest.mark.parametrize("position", [0, 101])
 def test_a_slider_opens_to_somewhere_between_shut_and_all_the_way(position):
     with pytest.raises(ValidationError, match="toggle_position"):
@@ -981,16 +1003,16 @@ def test_the_rooms_light_is_switched_and_dimmed():
     assert GUEST_LIGHT in dashboard.allowed_entities
 
 
-def test_the_rooms_light_defaults_to_the_full_profiles_warm_white():
-    dashboard = Dashboard.model_validate(guest_face(light={"entity_id": GUEST_LIGHT}))
+def test_a_lights_default_colour_is_the_full_profiles_warm_white():
+    dashboard = Dashboard.model_validate(profiles())
 
-    assert dashboard.profiles["gb"].faces["front"].options["light"]["default_xy"] == [0.469, 0.403]
+    assert dashboard.light.default_xy == [0.469, 0.403]
 
 
 @pytest.mark.parametrize("xy", [[0.5], [0.5, 0.4, 0.3], [1.2, 0.4]])
-def test_the_rooms_default_colour_must_be_a_point_on_the_chart(xy):
+def test_a_lights_default_colour_must_be_a_point_on_the_chart(xy):
     with pytest.raises(ValidationError, match="default_xy"):
-        Dashboard.model_validate(guest_face(light={"entity_id": GUEST_LIGHT, "default_xy": xy}))
+        Dashboard.model_validate(profiles() | {"light": {"default_xy": xy}})
 
 
 def test_the_rooms_light_must_be_a_light():

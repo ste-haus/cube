@@ -1,5 +1,6 @@
 <script lang="ts">
   import PanelWindow from "./PanelWindow.svelte";
+  import SliderBar from "./SliderBar.svelte";
   import {
     FULL_SATURATION,
     colourOf,
@@ -12,23 +13,30 @@
     type HueSaturation,
     type XyPoint,
   } from "../lib/hue";
+  import { liveHue } from "../lib/live";
   import { pending } from "../lib/pending.svelte";
   import type { Box } from "../lib/picture";
   import { ha } from "../lib/state.svelte";
-  import type { Labels, Light } from "../lib/types";
+  import type { Labels, Slider, SliderFill } from "../lib/types";
 
   /*
-   * The room light's colour, picked on a wheel in a window opened out of its bulb.
+   * A light's colour, picked on a wheel in a window opened out of whatever was held to ask for it:
+   * the room light's bulb, or a light on the floorplan.
    *
    * Round the ring is every hue, red at the top; in the middle is the light's default colour, the
    * warm white of the "full" light profile unless it is given another. The band across the top is
    * whatever colour is showing, so the window says what the light is, or is about to be.
    *
    * The marker is the light's colour now, and it is what the finger drags. While it is held it throws
-   * a wide glow of its own colour that breathes, so the colour under the finger shows round it. Let
-   * go on the ring and the light takes that hue, at full saturation; tap the middle and it takes its
-   * default. Either way the window closes after it, back into the bulb, which shows the colour once
-   * Home Assistant has it.
+   * a wide glow of its own colour that breathes, so the colour under the finger shows round it. The
+   * light follows the marker as it goes, paced so as not to flood it. Let go on the ring and the
+   * light takes that hue, at full saturation; tap the middle and it takes its default. Either way
+   * the window closes after it, back into what opened it, which shows the colour once Home Assistant
+   * has it.
+   *
+   * Under the wheel is the light's brightness, on the same bar the guest face's lights and blinds
+   * are set on, filled grey or in the light's colour as `fill` says. Setting it, by a drag or a tap,
+   * closes the window as a colour does.
    *
    * A tap on the glass around it closes it without changing anything.
    */
@@ -44,10 +52,35 @@
   const PERCENT = "%";
   const PERCENT_PER_SHARE = 100;
   const HUE_TURN = 360;
+  const BRIGHTNESS_ICON = "mdi:brightness-6";
 
   type Gesture = "ring" | "default" | "abandoned";
 
-  let { light, from, labels, onclose }: { light: Light; from: Box; labels: Labels; onclose: () => void } = $props();
+  let {
+    entityId,
+    defaultXy,
+    fill,
+    from,
+    labels,
+    onclose,
+  }: {
+    entityId: string;
+    defaultXy: [number, number];
+    fill: SliderFill;
+    from: Box;
+    labels: Labels;
+    onclose: () => void;
+  } = $props();
+
+  const live = liveHue(() => entityId);
+
+  const brightness = $derived<Slider>({
+    entity_id: entityId,
+    label: labels.light_brightness,
+    icon: BRIGHTNESS_ICON,
+    toggle_position: null,
+    fill,
+  });
 
   let panel = $state<PanelWindow | null>(null);
   let gesture = $state<Gesture | null>(null);
@@ -55,11 +88,11 @@
   let startX = 0;
   let startY = 0;
 
-  const defaultPoint = $derived<XyPoint>({ x: light.default_xy[0], y: light.default_xy[1] });
+  const defaultPoint = $derived<XyPoint>({ x: defaultXy[0], y: defaultXy[1] });
   const defaultColour = $derived(xyToHueSaturation(defaultPoint));
-  const current = $derived(readHueSaturation(ha.attribute(light.entity_id, HS_COLOR_ATTRIBUTE)));
+  const current = $derived(readHueSaturation(ha.attribute(entityId, HS_COLOR_ATTRIBUTE)));
   const requested = $derived.by<HueSaturation | null>(() => {
-    const value = pending.requested(light.entity_id);
+    const value = pending.requested(entityId);
 
     if (typeof value !== "object" || value === null) {
       return null;
@@ -95,6 +128,7 @@
     if (share >= RING_INNER) {
       gesture = "ring";
       preview = hueAt(dx, dy);
+      live.move(preview);
       wheel.setPointerCapture(event.pointerId);
     } else {
       gesture = "default";
@@ -105,6 +139,7 @@
     if (gesture === "ring") {
       const { dx, dy } = reach(event, event.currentTarget as HTMLElement);
       preview = hueAt(dx, dy);
+      live.move(preview);
     } else if (gesture === "default" && Math.hypot(event.clientX - startX, event.clientY - startY) > TAP_SLOP_PX) {
       gesture = "abandoned";
     }
@@ -116,9 +151,9 @@
     gesture = null;
 
     if (finished === "ring" && landed !== null) {
-      pending.set(light.entity_id, { hue: landed, saturation: FULL_SATURATION });
+      live.finish(landed);
     } else if (finished === "default") {
-      pending.set(light.entity_id, defaultPoint);
+      pending.set(entityId, defaultPoint);
     } else {
       preview = null;
       return;
@@ -131,6 +166,7 @@
   function cancel() {
     gesture = null;
     preview = null;
+    live.cancel();
   }
 </script>
 
@@ -182,6 +218,8 @@
         ></div>
       {/if}
     </div>
+
+    <SliderBar slider={brightness} onset={() => panel?.close()} />
   </div>
 </PanelWindow>
 
@@ -195,6 +233,9 @@
   }
 
   .hue-window {
+    display: flex;
+    flex-direction: column;
+    gap: var(--hue-window-padding);
     padding: var(--hue-window-padding);
   }
 

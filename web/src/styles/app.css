@@ -157,6 +157,10 @@
   --slider-icon-size: 2.4rem;
   /* The fill's grey, mixed thin so the edge in front of it reads as the level. */
   --slider-fill-strength: 35%;
+  /* A fill in the light's own colour is as strong as the light is bright: this strong at full, and
+   * this share of it at its dimmest, so a light barely on still reads as on. */
+  --slider-colour-strength: 60%;
+  --slider-colour-dim-floor: 0.25;
   /* The fill's leading edge, the level in the primary colour, and the mark a drag leaves. */
   --slider-edge-width: 0.25rem;
   --slider-glow-spread: 0.2rem;

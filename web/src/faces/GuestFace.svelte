@@ -63,7 +63,7 @@
 
   <div class="dashboard__center guest-face__center">
     {#if options.light}
-      <LightDial light={options.light} labels={config.labels} />
+      <LightDial light={options.light} defaultXy={config.light.default_xy} labels={config.labels} />
     {/if}
     {#if options.sliders?.length}
       <Sliders sliders={options.sliders} />

@@ -446,6 +446,15 @@ Match `content_marker` against a path segment rather than a hostname. A player h
 
 The audio is relayed through the panel rather than read from Home Assistant directly. The overlay analyses the sound it is drawing, and a browser will not hand a cross-origin recording to an analyser without a header Home Assistant does not send; serving both from here sidesteps that, and the signed media address stays on this side. The relay only ever fetches what a configured speaker is playing at that moment, so it cannot be pointed at anything else.
 
+### light
+
+What every light the panel can colour shares, the guest face's room light and any light on the floorplan. `default_xy` is the CIE xy point the middle of a colour wheel sets, `[0.469, 0.403]` (the warm white of Home Assistant's `full` light profile) unless you say otherwise.
+
+```yaml
+light:
+  default_xy: [0.469, 0.403]
+```
+
 ### labels
 
 Section headings, the horizon's two captions, where the hourly forecast starts, the guest face's network and alarm cards, the two master lights, and the tag on a cleared alert, in case yours should not read as they do here.
@@ -462,6 +471,7 @@ labels:
   wifi_password: Password
   alarm: Alarm Clock
   light_colour: Colour
+  light_brightness: Brightness
   master_warning: Master Warning
   master_caution: Master Caution
   alert_cleared: ACK

@@ -21,9 +21,19 @@ type SetRequest = (entityId: string, value: Value) => Promise<void>;
  *
  * The entity is compared by the record the stream last sent for it rather than by its state,
  * so any word of it counts as the answer, including one that leaves the state where it was.
+ *
+ * A value streamed while a finger is still moving is the exception. Several are in flight at once
+ * there, and the answer to an earlier one can land after a later one was asked for, so a streamed
+ * value is only answered once the entity matches it, or at the timeout.
  */
 export class PendingRequests {
-  #asked = $state<Record<string, { before: EntityState | null | undefined; value: Value | null }>>({});
+  #asked = $state<
+    Record<
+      string,
+      { before: EntityState | null | undefined; value: Value | null; answered: (() => boolean) | null; serial: number }
+    >
+  >({});
+  #serial = 0;
   #timers = new Map<string, ReturnType<typeof setTimeout>>();
   #toggle: ToggleRequest;
   #set: SetRequest;
@@ -35,8 +45,11 @@ export class PendingRequests {
 
   isPending(entityId: string): boolean {
     const asked = this.#asked[entityId];
+    if (asked === undefined) {
+      return false;
+    }
 
-    return asked !== undefined && ha.entities[entityId] === asked.before;
+    return asked.answered ? !asked.answered() : ha.entities[entityId] === asked.before;
   }
 
   /** The value a set is waiting on, or null when nothing is being set. */
@@ -50,7 +63,7 @@ export class PendingRequests {
       return false;
     }
 
-    this.#ask(entityId, null, () => this.#toggle(entityId));
+    this.#ask(entityId, null, null, () => this.#toggle(entityId));
 
     return true;
   }
@@ -64,21 +77,45 @@ export class PendingRequests {
       return false;
     }
 
-    this.#ask(entityId, value, () => this.#set(entityId, value));
+    this.#ask(entityId, value, null, () => this.#set(entityId, value));
 
     return true;
   }
 
-  #ask(entityId: string, value: Value | null, request: () => Promise<void>): void {
+  /**
+   * Asks for a value while a finger is still moving, answered only once `answered` says the entity
+   * has reached it. Gives back the request, so the caller can wait on it before sending the next, or
+   * null when a toggle is waiting on the entity and nothing was sent.
+   */
+  stream(entityId: string, value: Value, answered: () => boolean): Promise<void> | null {
+    if (this.isPending(entityId) && this.#asked[entityId]?.value === null) {
+      return null;
+    }
+
+    return this.#ask(entityId, value, answered, () => this.#set(entityId, value));
+  }
+
+  #ask(
+    entityId: string,
+    value: Value | null,
+    answered: (() => boolean) | null,
+    request: () => Promise<void>,
+  ): Promise<void> {
     this.#forget(entityId);
-    this.#asked = { ...this.#asked, [entityId]: { before: ha.entities[entityId], value } };
+    const serial = ++this.#serial;
+    this.#asked = { ...this.#asked, [entityId]: { before: ha.entities[entityId], value, answered, serial } };
     this.#timers.set(
       entityId,
       setTimeout(() => this.#forget(entityId), PENDING_TIMEOUT_MS),
     );
 
-    // Refused outright, it is not coming either.
-    request().catch(() => this.#forget(entityId));
+    // Refused outright, it is not coming either. Only this request's own refusal forgets the entity,
+    // not one a later request has already replaced.
+    return request().catch(() => {
+      if (this.#asked[entityId]?.serial === serial) {
+        this.#forget(entityId);
+      }
+    });
   }
 
   #forget(entityId: string): void {

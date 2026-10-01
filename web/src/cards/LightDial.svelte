@@ -3,7 +3,8 @@
   import Icon from "../lib/Icon.svelte";
   import { Breath } from "../lib/breath.svelte";
   import { SlidingLevel } from "../lib/level.svelte";
-  import { takesHue } from "../lib/hue";
+  import { liveBrightness } from "../lib/live";
+  import { COLOUR_HOLD_MS, takesHue } from "../lib/hue";
   import type { Box } from "../lib/picture";
   import { pending } from "../lib/pending.svelte";
   import { DIAL_SWEEP_DEGREES, percentRound, pointRound, sliderPercent } from "../lib/slider";
@@ -16,6 +17,9 @@
    * A tap on the bulb switches the light. A press on the arc sets the brightness there, and a drag
    * round it follows the finger; either belongs to the dial, so the cube stays put. A drag that
    * starts on the bulb is left to turn the cube, as it would anywhere else on the face.
+   *
+   * A drag round the arc is sent as it goes, so the light follows the finger, paced so as not to
+   * flood it, and where it is let go is sent last.
    *
    * The arc and its handle are one mark, so the fill follows the handle while the finger moves it,
    * and stays with it once let go until Home Assistant says where the light went. The handle grows
@@ -40,15 +44,13 @@
 
   const RGB_ATTRIBUTE = "rgb_color";
   const COLOR_MODES_ATTRIBUTE = "supported_color_modes";
-  // How long the bulb is held to open the colour window rather than switch the light.
-  const HOLD_MS = 600;
   const MILLISECONDS = "ms";
 
   // A press on the bulb is a tap until it has been held long enough, when it is a hold: one that
   // opened the colour window, or one on a light with no colour that does nothing.
   type Gesture = "tap" | "held" | "dial" | "abandoned";
 
-  let { light, labels }: { light: Light; labels: Labels } = $props();
+  let { light, defaultXy, labels }: { light: Light; defaultXy: [number, number]; labels: Labels } = $props();
 
   let bulb = $state<HTMLElement | null>(null);
   let colourFrom = $state<Box | null>(null);
@@ -100,6 +102,7 @@
   const switching = $derived(pending.isPending(light.entity_id) && requested === null);
 
   const breath = new Breath();
+  const live = liveBrightness(() => light.entity_id);
 
   $effect(() => () => breath.dispose());
 
@@ -138,11 +141,12 @@
       if (reach >= RING_REACH) {
         gesture = "dial";
         preview = percentRound(dx, dy);
+        live.move(preview);
         dial.setPointerCapture(event.pointerId);
         breath.start();
       } else {
         gesture = "tap";
-        holdTimer = window.setTimeout(held, HOLD_MS);
+        holdTimer = window.setTimeout(held, COLOUR_HOLD_MS);
         // Kept, so the release comes back here even once a hold has opened the colour window over
         // the bulb, rather than landing on the window's glass.
         dial.setPointerCapture(event.pointerId);
@@ -153,6 +157,7 @@
       if (gesture === "dial") {
         const { dx, dy } = offset(event, dial);
         preview = percentRound(dx, dy);
+        live.move(preview);
       } else if (gesture === "tap" && Math.hypot(event.clientX - startX, event.clientY - startY) > TAP_SLOP_PX) {
         gesture = "abandoned";
         stopHold();
@@ -178,7 +183,7 @@
       event.stopPropagation();
 
       if (finished === "dial" && landed !== null) {
-        pending.set(light.entity_id, landed);
+        live.finish(landed);
       } else if (finished === "tap") {
         pending.send(light.entity_id);
       }
@@ -188,6 +193,8 @@
       if (gesture === "dial") {
         breath.release();
       }
+
+      live.cancel();
 
       gesture = null;
       preview = null;
@@ -215,7 +222,7 @@
   class:light-dial--on={on}
   class:light-dial--switching={switching}
   class:light-dial--holding={gesture === "tap" && colourable}
-  style:--light-hold="{HOLD_MS}{MILLISECONDS}"
+  style:--light-hold="{COLOUR_HOLD_MS}{MILLISECONDS}"
   role="slider"
   tabindex="-1"
   aria-valuemin={0}
@@ -248,7 +255,7 @@
 </div>
 
 {#if colourFrom}
-  <HueWindow {light} from={colourFrom} {labels} onclose={() => (colourFrom = null)} />
+  <HueWindow entityId={light.entity_id} {defaultXy} fill={light.fill} from={colourFrom} {labels} onclose={() => (colourFrom = null)} />
 {/if}
 
 <style>
