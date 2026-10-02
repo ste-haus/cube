@@ -577,6 +577,29 @@ class Labels(BaseModel):
     master_warning: str = "Master Warning"
     master_caution: str = "Master Caution"
     alert_cleared: str = Field(default="ACK", description="Tag on an alert that has been cleared")
+    travel: str = Field(default="Travel", description="The departure face's travel time card")
+    forecast: str = Field(default="Forecast", description="The departure face's forecast heading")
+    travel_idle: str = Field(default="No trips", description="What the travel time card says with no route under way")
+    travel_more: str = Field(default="More trips", description="What the travel card's chevron is called")
+    travel_drive: str = Field(default="Drive", description="A route's window: how long it takes")
+    travel_in_traffic: str = Field(default="in traffic", description="A route's window: after what traffic adds")
+    travel_distance: str = Field(default="Distance", description="A route's window: how far it is")
+    travel_destination: str = Field(default="Destination", description="A route's window: where it goes")
+    travel_checked: str = Field(default="Checked", description="A route's window: when its time was asked for")
+    travel_checked_note: str = Field(
+        default="checked",
+        description="A route's window: how fresh its time to leave is, in brackets after it",
+    )
+    travel_all_day: str = Field(default="All day", description="A route's window: an event with no start time")
+    travel_countdown: str = Field(default="T", description="A route's window: what its countdown to leave starts with")
+    travel_away: str = Field(default="Away", description="A route's window band: where its person is once they have left, when it is nowhere named")
+    travel_send: str = Field(default="Send to phone", description="A route's window: the button that sends it")
+    travel_sent: str = Field(default="Sent", description="A route's window: the phone once it has sent")
+    travel_send_failed: str = Field(default="Not sent", description="A route's window: the phone when it could not send")
+    leave_by: str = Field(default="Leave by", description="What a route's departure time is labelled")
+    minutes: str = Field(default="min", description="The unit after a route's travel time")
+    leave_now: str = Field(default="Now", description="What a trip's icon is called once its time to leave has come")
+    departed: str = Field(default="Gone", description="What a trip's icon is called once its person has left")
 
 
 BLANK_FACE_CONTENT = "blank"
@@ -586,6 +609,7 @@ CAMERA_GRID_FACE_CONTENT = "camera-grid"
 CAMERA_HERO_FACE_CONTENT = "camera-hero"
 WEATHER_FACE_CONTENT = "weather"
 GUEST_FACE_CONTENT = "guest"
+DEPARTURE_FACE_CONTENT = "departure"
 
 FACE_DIRECTORY = "faces"
 FACE_ENTRYPOINT = "index.html"
@@ -634,6 +658,12 @@ class FaceOptions(BaseModel):
     @property
     def controls(self) -> list[str]:
         """Everything the face draws as something to press or drag."""
+
+        return []
+
+    @property
+    def events(self) -> list[str]:
+        """Every event the face fires itself."""
 
         return []
 
@@ -966,6 +996,137 @@ class GuestFaceOptions(FaceOptions):
         return controls
 
 
+class TravelTime(BaseModel):
+    """A route's travel time, in minutes, from a sensor that reads below nought while the route is
+    not being kept up to date.
+
+    A route tied to a particular trip names the sensor holding when to leave for it, as a Unix
+    timestamp; one that is always there to be read, like a commute, names none and shows its
+    minutes alone. Any route may name the person taking it, whose phone it is sent to; while they
+    are anywhere but home they have left or are leaving from somewhere else, so a trip keeps its
+    countdown but not its colour, and its window says where they are.
+    """
+
+    entity_id: str
+    name: str
+    departure_entity_id: str | None = Field(
+        default=None,
+        description="A sensor holding when to leave, as a Unix timestamp, or anything else when it cannot be known",
+    )
+    person_entity_id: str | None = Field(
+        default=None,
+        description="Who takes the route: whose phone it is sent to, and while they are not home, not drawn as due",
+    )
+
+    # Details of the route, each left unshown when unset.
+    free_flow_entity_id: str | None = Field(
+        default=None,
+        description="The same route's minutes with no traffic, so the window can say what traffic adds",
+    )
+    distance_entity_id: str | None = Field(default=None, description="How far the route is, in its own unit")
+    destination_entity_id: str | None = Field(default=None, description="Where the route goes")
+    destination_attribute: str | None = Field(
+        default=None,
+        description="The attribute of `destination_entity_id` holding the place, if not its state",
+    )
+    calendar_entity_id: str | None = Field(
+        default=None,
+        description="The calendar whose event the trip is for: its title, start, and location",
+    )
+    checked_entity_id: str | None = Field(
+        default=None,
+        description="When the route's time was last asked for: a timestamp sensor or an input_datetime",
+    )
+
+    @property
+    def entities(self) -> list[str]:
+        named = (
+            self.entity_id,
+            self.departure_entity_id,
+            self.person_entity_id,
+            self.free_flow_entity_id,
+            self.distance_entity_id,
+            self.destination_entity_id,
+            self.calendar_entity_id,
+            self.checked_entity_id,
+        )
+
+        return [entity_id for entity_id in named if entity_id]
+
+
+class MapsLink(StrEnum):
+    """Which maps a route sent to a phone opens in."""
+
+    APPLE = "apple"
+    GOOGLE = "google"
+
+
+SOON_BEFORE_IMMINENT_MESSAGE = "`soon_minutes` comes before `imminent_minutes`, so it cannot be fewer."
+DEFAULT_DEPARTURE_IMMINENT_MINUTES = 5
+DEFAULT_DEPARTURE_SOON_MINUTES = 15
+DEFAULT_LEAVE_NOW_ICON = "mdi:run-fast"
+DEFAULT_DEPARTED_ICON = "mdi:account-arrow-right-outline"
+
+
+class DepartureFaceOptions(CameraFaceOptions):
+    """What to look at on the way out: the traffic, and how long the trips under way will take.
+
+    A trip tied to a time to leave counts down to it, and breathes as that time nears: in the
+    primary colour once it is soon, and the secondary once it is imminent or gone, as the fuel
+    gauges go from one to the other as a tank runs down. The fuel gauges are the dashboard's own,
+    from the top-level `fuel` block, so the two faces cannot disagree about which vehicles there
+    are.
+    """
+
+    map: CameraEntry
+    travel_times: list[TravelTime] = Field(min_length=1)
+    send_event: str | None = Field(
+        default=None,
+        description="An event a route's window fires to send the route to its person's phone; unset, no button",
+    )
+    maps: MapsLink = Field(
+        default=MapsLink.APPLE,
+        description="Which maps a route sent to a phone opens in, carried with `send_event`",
+    )
+    imminent_minutes: float = Field(
+        default=DEFAULT_DEPARTURE_IMMINENT_MINUTES,
+        ge=0,
+        description="Minutes before a trip's time to leave that it is imminent",
+    )
+    soon_minutes: float = Field(
+        default=DEFAULT_DEPARTURE_SOON_MINUTES,
+        ge=0,
+        description="Minutes before a trip's time to leave that it is soon",
+    )
+    leave_now_icon: str = Field(
+        default=DEFAULT_LEAVE_NOW_ICON,
+        description="What a trip shows in place of its countdown once its time to leave has come",
+    )
+    departed_icon: str = Field(
+        default=DEFAULT_DEPARTED_ICON,
+        description="What a trip shows instead, in grey, once its time has come and its person has gone",
+    )
+
+    @model_validator(mode="after")
+    def require_soon_before_imminent(self) -> Self:
+        if self.soon_minutes < self.imminent_minutes:
+            raise ValueError(SOON_BEFORE_IMMINENT_MESSAGE)
+
+        return self
+
+    @property
+    def cameras(self) -> list[Camera]:
+        return [self.map]
+
+    @property
+    def entities(self) -> list[str]:
+        return [entity_id for travel in self.travel_times for entity_id in travel.entities]
+
+    @property
+    def events(self) -> list[str]:
+        return [self.send_event] if self.send_event else []
+
+
 # The renderers that read `options` as something more than a passthrough, and the shape each
 # one reads it as. A content name absent from here takes its options untouched.
 FACE_OPTIONS: dict[str, type[FaceOptions]] = {
@@ -973,6 +1134,7 @@ FACE_OPTIONS: dict[str, type[FaceOptions]] = {
     CAMERA_HERO_FACE_CONTENT: CameraHeroOptions,
     WEATHER_FACE_CONTENT: WeatherFaceOptions,
     GUEST_FACE_CONTENT: GuestFaceOptions,
+    DEPARTURE_FACE_CONTENT: DepartureFaceOptions,
 }
 
 
@@ -1032,6 +1194,12 @@ class Face(BaseModel):
         """The entities this face draws as controls."""
 
         return self._options.controls if self._options else []
+
+    @property
+    def events(self) -> list[str]:
+        """The events this face fires itself, which turning it on allows."""
+
+        return self._options.events if self._options else []
 
 
 class Profile(BaseModel):
@@ -1450,6 +1618,10 @@ class Dashboard(BaseModel):
 
         if self.mcw:
             events.add(self.mcw.clear_event)
+
+        for profile in self.profiles.values():
+            for face in profile.faces.values():
+                events.update(face.events)
 
         return frozenset(events)
 

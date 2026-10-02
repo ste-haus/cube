@@ -4,6 +4,7 @@
   import CameraHero from "./CameraHero.svelte";
   import CustomFace from "./CustomFace.svelte";
   import Dashboard from "./Dashboard.svelte";
+  import DepartureFace from "./DepartureFace.svelte";
   import GuestFace from "./GuestFace.svelte";
   import WeatherFace from "./WeatherFace.svelte";
   import { provideVisibility } from "../lib/cube.svelte";
@@ -12,6 +13,7 @@
     CameraGridOptions,
     CameraHeroOptions,
     DashboardConfig,
+    DepartureFaceOptions,
     Face,
     GuestFaceOptions,
     WeatherFaceOptions,
@@ -36,6 +38,7 @@
   const CAMERA_HERO_CONTENT = "camera-hero";
   const WEATHER_CONTENT = "weather";
   const GUEST_CONTENT = "guest";
+  const DEPARTURE_CONTENT = "departure";
 
   let {
     face,
@@ -73,6 +76,7 @@
   const heroOptions = $derived(face.options as unknown as CameraHeroOptions);
   const weatherOptions = $derived(face.options as unknown as WeatherFaceOptions);
   const guestOptions = $derived(face.options as unknown as GuestFaceOptions);
+  const departureOptions = $derived(face.options as unknown as DepartureFaceOptions);
 
   const label = $derived(face.label || name);
 </script>
@@ -98,6 +102,8 @@
         <WeatherFace {config} weather={config.weather} options={weatherOptions} />
       {:else if face.content === GUEST_CONTENT}
         <GuestFace {config} options={guestOptions} />
+      {:else if face.content === DEPARTURE_CONTENT}
+        <DepartureFace {config} options={departureOptions} />
       {:else}
         <Blank {label} named={!face.label_strip} />
       {/if}

@@ -31,6 +31,8 @@
     tint = null,
     lightType = false,
     interactive = false,
+    bracketColor = null,
+    beat = null,
     header,
     children,
     onlanding,
@@ -47,6 +49,13 @@
     tint?: string | null;
     lightType?: boolean;
     interactive?: boolean;
+    /** A colour for the brackets in place of their grey, as CSS, for a window about something lit. */
+    bracketColor?: string | null;
+    /**
+     * A beat for the brackets to keep, fading to `low` and back once a `period`, started `phase`
+     * in, so they keep time with whatever on the panel the window came out of.
+     */
+    beat?: { period: string; phase: string; low: string } | null;
     /** What the band says; with none, there is no band, and the body simply drops. */
     header?: Snippet;
     children: Snippet;
@@ -145,6 +154,11 @@
 <div
   class="panel-window"
   class:panel-window--closing={closing}
+  class:panel-window--beating={beat !== null}
+  style:--bracket-color={bracketColor}
+  style:--window-beat={beat?.period}
+  style:--window-beat-phase={beat?.phase}
+  style:--window-beat-low={beat?.low}
   style:--window-fly="{FLY_MS}{MILLISECONDS}"
   style:--window-expand="{EXPAND_MS}{MILLISECONDS}"
   style:--window-wipe="{WIPE_MS}{MILLISECONDS}"
@@ -229,6 +243,27 @@
     animation:
       window-close var(--window-expand) ease-in both,
       window-return var(--window-fly) var(--window-flight) var(--window-leaving) forwards;
+  }
+
+  /* In step with what the window came out of, from opening through to closing. */
+  .panel-window--beating .panel-window__bracket {
+    animation:
+      window-fly var(--window-fly) var(--window-flight) both,
+      window-open var(--window-expand) ease-out var(--window-fly) forwards,
+      window-beat var(--window-beat) ease-in-out var(--window-beat-phase) infinite;
+  }
+
+  .panel-window--beating.panel-window--closing .panel-window__bracket {
+    animation:
+      window-close var(--window-expand) ease-in both,
+      window-return var(--window-fly) var(--window-flight) var(--window-leaving) forwards,
+      window-beat var(--window-beat) ease-in-out var(--window-beat-phase) infinite;
+  }
+
+  @keyframes window-beat {
+    50% {
+      opacity: var(--window-beat-low);
+    }
   }
 
   /* Each corner starts on the same corner of what it came out of. */

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { TAP_SLOP_PX } from "../lib/cube.svelte";
   import Icon from "../lib/Icon.svelte";
   import { pending } from "../lib/pending.svelte";
   import { Breath } from "../lib/breath.svelte";
@@ -35,7 +36,6 @@
    * rather than stopping wherever it happens to be.
    */
 
-  const TAP_SLOP_PX = 10;
   const PRIMARY_BUTTON = 0;
   const PERCENT = 100;
   const RGB_ATTRIBUTE = "rgb_color";

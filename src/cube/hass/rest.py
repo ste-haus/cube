@@ -20,6 +20,10 @@ from cube.config import Settings
 logger = logging.getLogger(__name__)
 
 CALENDAR_PATH = "/api/calendars/{entity_id}"
+HISTORY_PATH = "/api/history/period/{start}"
+HISTORY_ENTITY_PARAM = "filter_entity_id"
+# Bare states and when each began: the attributes are not wanted, and are most of the weight.
+HISTORY_LEAN_PARAMS = {"minimal_response": "", "no_attributes": ""}
 CAMERA_SNAPSHOT_PATH = "/api/camera_proxy/{entity_id}"
 CAMERA_STREAM_PATH = "/api/camera_proxy_stream/{entity_id}"
 QUERIED_PATH_TEMPLATE = "{path}?{query}"
@@ -67,6 +71,19 @@ class HassRest:
         response.raise_for_status()
 
         return response.json()
+
+    async def history(self, entity_id: str, start: datetime) -> list[dict[str, Any]]:
+        """One entity's states from `start` on, oldest first, each with when it began."""
+
+        response = await self._client.get(
+            HISTORY_PATH.format(start=start.isoformat()),
+            params={HISTORY_ENTITY_PARAM: entity_id, **HISTORY_LEAN_PARAMS},
+        )
+        response.raise_for_status()
+
+        series = response.json()
+
+        return series[0] if series else []
 
     async def camera_snapshot(self, entity_id: str) -> tuple[bytes, str]:
         response = await self._client.get(CAMERA_SNAPSHOT_PATH.format(entity_id=entity_id))

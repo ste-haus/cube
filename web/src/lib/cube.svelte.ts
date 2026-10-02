@@ -39,6 +39,8 @@ export const ADJACENCY: Record<FaceName, Record<Direction, FaceName>> = {
 const ROTATION_MS = 600;
 const IDLE_RESET_MS = 2 * 60 * 1000;
 const SWIPE_THRESHOLD_PX = 50;
+/** Further than this between press and release is a swipe across something, not a tap on it. */
+export const TAP_SLOP_PX = 10;
 const TOUCH_ACTION_NONE = "none";
 
 /** How long a face takes to fade out over the one replacing it. Reaches the stylesheet as `--face-fade`. */

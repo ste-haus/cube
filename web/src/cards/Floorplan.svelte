@@ -1,7 +1,8 @@
 <script lang="ts">
   import HueWindow from "./HueWindow.svelte";
+  import Reticle from "./Reticle.svelte";
   import { floorplanStylesUrl, floorplanUrl } from "../lib/api";
-  import { swipeable, type Direction } from "../lib/cube.svelte";
+  import { swipeable, type Direction, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { COLOUR_HOLD_MS, takesHue } from "../lib/hue";
   import { nextLevel } from "../lib/levels";
   import { Lapsing, PANE_RESET_MS } from "../lib/panes.svelte";
@@ -60,13 +61,10 @@
   // off the control, and how long it takes to let go once the answer is in.
   const RETICLE_PADDING_PX = 7;
   const RELEASE_MS = 260;
-  const MILLISECONDS = "ms";
-  const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
 
   // A light held rather than tapped opens its colour, if it has one.
   const COLOR_MODES_ATTRIBUTE = "supported_color_modes";
   const PRIMARY_BUTTON = 0;
-  const TAP_SLOP_PX = 10;
 
   let {
     floorplans,
@@ -412,19 +410,12 @@
             {#key reticle.serial}
               <div
                 class="floorplan__reticle"
-                class:floorplan__reticle--holding={reticle.holding}
-                class:floorplan__reticle--releasing={!held}
                 style:left="{reticle.box.left}px"
                 style:top="{reticle.box.top}px"
                 style:width="{reticle.box.width}px"
                 style:height="{reticle.box.height}px"
-                style:--floorplan-release="{RELEASE_MS}{MILLISECONDS}"
-                style:--floorplan-hold="{COLOUR_HOLD_MS}{MILLISECONDS}"
-                aria-hidden="true"
               >
-                {#each CORNERS as corner (corner)}
-                  <span class="bracket bracket--{corner} floorplan__bracket floorplan__bracket--{corner}"></span>
-                {/each}
+                <Reticle holding={reticle.holding} releasing={!held} holdMs={COLOUR_HOLD_MS} releaseMs={RELEASE_MS} />
               </div>
             {/key}
           {/if}
@@ -497,73 +488,10 @@
     height: 100%;
   }
 
-  /*
-   * A tapped control is locked on to until Home Assistant answers: four corners close in on it
-   * from outside, breathe while the toggle is on its way, and spring back out once the stream
-   * says it has landed.
-   */
+  /* Where the reticle round a tapped control is drawn; `Reticle` draws it. */
   .floorplan__reticle {
-    --bracket-size: 0.8rem;
-    --bracket-weight: 2px;
-    --bracket-color: var(--color-foreground);
-    --reticle-lock: 180ms;
-    --reticle-breathe: var(--waiting-breathe);
-    --reticle-reach: 14px;
-
     position: absolute;
     pointer-events: none;
-  }
-
-  .floorplan__bracket {
-    animation:
-      reticle-lock var(--reticle-lock) cubic-bezier(0.2, 0.8, 0.3, 1) both,
-      reticle-breathe var(--reticle-breathe) ease-in-out var(--reticle-lock) infinite;
-  }
-
-  /* Held on a light that can be coloured: the corners close in for as long as the hold takes, so
-   * it is plain that letting go now switches it and holding on opens its colour. */
-  .floorplan__reticle--holding .floorplan__bracket {
-    animation: reticle-lock var(--floorplan-hold) linear both;
-  }
-
-  .floorplan__reticle--releasing .floorplan__bracket {
-    animation: reticle-release var(--floorplan-release) ease-in forwards;
-  }
-
-  .floorplan__bracket--top-left {
-    --reticle-out: translate(calc(-1 * var(--reticle-reach)), calc(-1 * var(--reticle-reach)));
-  }
-
-  .floorplan__bracket--top-right {
-    --reticle-out: translate(var(--reticle-reach), calc(-1 * var(--reticle-reach)));
-  }
-
-  .floorplan__bracket--bottom-left {
-    --reticle-out: translate(calc(-1 * var(--reticle-reach)), var(--reticle-reach));
-  }
-
-  .floorplan__bracket--bottom-right {
-    --reticle-out: translate(var(--reticle-reach), var(--reticle-reach));
-  }
-
-  @keyframes reticle-lock {
-    from {
-      opacity: 0;
-      transform: var(--reticle-out);
-    }
-  }
-
-  @keyframes reticle-breathe {
-    50% {
-      opacity: var(--waiting-opacity);
-    }
-  }
-
-  @keyframes reticle-release {
-    to {
-      opacity: 0;
-      transform: var(--reticle-out);
-    }
   }
 
   .floorplan__levels {

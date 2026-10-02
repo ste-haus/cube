@@ -112,6 +112,7 @@ Cycles, a parent that does not exist, and a `floorplan` that was never declared 
 | `camera-hero` | One camera at size, with the rest in a column beside it |
 | `weather` | The conditions, the wind, and how it feels, today's range, the sun and moon against the horizon, the forecast, and a radar and cameras |
 | `guest` | For a guest room: the clock, how to join the network, the room's light and blinds, the weather, today's range and the forecast, and an alarm clock |
+| `departure` | For the way out: the clock, a traffic map, how long the trips under way will take and when to leave for them, and the fuel gauges |
 | `custom` | A page you supply yourself, served from the resources directory |
 | `blank` | Nothing but its own label |
 
@@ -228,6 +229,57 @@ A light follows a drag on its bar, its dial, or its colour ring as the finger mo
 The alarm's bell arms and disarms it. Disarmed, the bell is all there is, grey, since a time that will not go off is not worth reading. Armed, the bell turns the primary colour and the time is to its right, with a wheel above and below the hours and the minutes. Arming slides the bell from the middle over to the left and writes the time in beside it; disarming erases the time back into the bell and slides the bell back to the middle. The minutes go round the hour without carrying into it, the way a clock's setting wheels do. Pressing moves the time on the panel at once, and it is sent to Home Assistant a moment after the last press, so a run of presses is one change rather than a round trip each. Once sent, the time breathes until Home Assistant has it. Going off is Home Assistant's business: the face only sets the switch and the time, so an automation watching them does the rest.
 
 Everything a guest face draws is added to the allowlists, so there is nothing to list twice. See [what the panel may switch](configuration.md#what-the-panel-may-switch).
+
+### The departure face
+
+What to look at on the way out. The clock, the header's indicators, and the weather now with today's high and low sit exactly where they do on the dashboard, so turning between the two moves none of them. Under them, a traffic map headed from the left and, beside it, the trips under way headed from the right with the [`fuel`](configuration.md#fuel) gauges straight under them and the forecast, headed `labels.forecast`, under those, as one block against the top and centred across the face, stopping short of the face map's dots at the foot of the panel. The forecast and the weather need the [`weather`](configuration.md#weather) block, and are left out without it.
+
+```yaml
+faces:
+  back:
+    content: departure
+    label: Departure
+    label_strip: false
+    options:
+      map:
+        entity_id: camera.traffic
+        title: Traffic
+      travel_times:
+        - entity_id: sensor.travel_time_alice
+          name: Alice
+          departure_entity_id: sensor.travel_departure_time_alice
+        - entity_id: sensor.travel_time_home_to_work
+          name: Home to work
+```
+
+| Option | Holds |
+|---|---|
+| `map` | A camera, written as on a [camera face](cameras.md); a bare entity id will do |
+| `travel_times` | At least one route: `entity_id`, a sensor reading the trip's minutes, or anything below nought while nobody is keeping the route up to date; `name`; and, for a route tied to a particular trip, `departure_entity_id`, a sensor holding when to leave as a Unix timestamp, or anything else while that cannot be known, and optionally `person_entity_id`, who takes it. A person may only be named alongside a departure sensor |
+| `send_event` | An event a route's window fires to send the route to its person's phone, carrying `route`, `name`, `person`, `destination` (the destination entity's state), `label` (the place as the window shows it), and `maps`. The face may fire it without listing it under `events`. Unset, nothing sends |
+| `maps` | Which maps a route sent to a phone should open in, `apple` unless you say `google`; it rides along with `send_event` for Home Assistant to build the link from |
+| `leave_now_icon` | What a trip shows in place of its countdown once its time to leave has come, `mdi:run-fast` unless you say otherwise; any icon a chip takes |
+| `departed_icon` | What a trip shows instead, in grey, once its time to leave has come and its person is not home, `mdi:account-arrow-right-outline` unless you say otherwise |
+| `imminent_minutes`, `soon_minutes` | How close a trip's time to leave is when it is imminent, and when it is soon: 5 and 15 unless you say otherwise. A time already gone is imminent |
+
+Only the routes reading nought or more are shown, two side by side: the trips first, then the routes that are always there, each in the order written. With more than two, a chevron at the right says so, and a sideways swipe across them, or a tap on the chevron, slides the pair one route along, round from the last to the first in either direction; it goes back to the first pair a minute after it was last swiped, and an upward or downward swipe still turns the cube. A route that is always there to be read, like a commute, names no departure sensor and shows its name and how many minutes it takes. A trip, one naming a departure sensor that has a time, shows its name, a countdown in whole minutes to when it is time to leave, below nought as a launch counts ("−11" is eleven minutes to go, and the last part-minute is "−1"), then `leave_now_icon` once that time has come, which `labels.leave_now` names to a screen reader, and "Leave by" and that time on a 24-hour clock; while its departure sensor has no time it shows its travel minutes like a commute. Once leaving is soon, the countdown and the time breathe slowly in the primary colour, and once it is imminent or gone they pulse, faster and deeper, in the secondary. A route with no departure sensor never changes colour, and neither does a trip whose person is somewhere other than `home`: they have left already or are leaving from somewhere else (a person Home Assistant cannot place is taken to be home, so a tracker that drops out never silences a late trip), so it keeps its countdown and stays grey, and once its time has come it shows `departed_icon` in grey, which `labels.departed` names to a screen reader, rather than `leave_now_icon`. A route that is unknown or unavailable counts as no trip. With none under way the card says `labels.travel_idle` in grey. The card's heading is `labels.travel`, the unit after the minutes `labels.minutes`, and the departure's label `labels.leave_by`.
+
+A tap on a route opens a window out of its card with more about it. A trip leads with the event it is for: its title, when it starts (or `labels.travel_all_day`), and where. Under that, how long it takes, what traffic adds to it, and an arrow for which way the minutes went the last time they changed, `mdi:trending-up` in the primary colour (the secondary while the trip is imminent), breathing or pulsing with the trip while it is soon or imminent, or `mdi:trending-down` in grey, read from Home Assistant's history of the route's own sensor and only across a run where it was kept up to date; how far it is; where it goes, only for a route with no event, since an event already says; and last, for a trip, when to leave, with how long ago its time was asked for in brackets after it ("23:13 (checked 4 minutes ago)"); a route with no time to leave gives that a line of its own. The band names the route and, for a trip, counts down to the second after `labels.travel_countdown` (`T−11:42`, or `T−1:05:09` an hour or more out) until the time comes, then shows `labels.leave_now`, or once its person has left, where they are: the zone they are in, or `labels.travel_away`; while the trip is soon or imminent the band is solid in the primary or secondary colour, the time to leave is drawn in it and keeps the trip's breath or pulse, and the window's brackets take it too and keep the card's breath or pulse in step with it, as a master's list keeps time with its master.
+
+When the face has a `send_event`, a trip names a person, and the event's location is where the trip is going, holding the event sends the trip to their phone; a route that is always there is not sent, since its person already knows the way, and nor is a trip whose event is somewhere else, since the phone would be sent somewhere the window does not say. A phone with a pin (`mdi:cellphone-marker`) at its right says it can be sent. The hold is the floorplan's: corners close in on the event over the hold, and letting go or sliding off before they meet sends nothing. Once they meet they breathe while the send is on its way, and the phone fades across to a tick (`mdi:cellphone-check`) once Home Assistant has it, or a crossed-out phone (`mdi:cellphone-remove`) if it was refused. The window then closes only at a tap on the glass around it. What reaches the phone is Home Assistant's to decide, from the event. Any window closes itself a minute after it was last touched, and the carousel keeps its place behind it while it is open, starting its own minute again once it closes. Each is read from an optional entity on the route and left out when the route names none, or its entity has nothing to say:
+
+| Route option | Shows |
+|---|---|
+| `free_flow_entity_id` | The route's minutes with no traffic, so the window can say what traffic adds |
+| `distance_entity_id` | How far it is, in the entity's own `unit_of_measurement` |
+| `destination_entity_id`, `destination_attribute` | Where it goes: the entity's state, or the attribute named. A route that is always there and names none takes it from its own entity's name when that is `<from>_to_<to>`: `sensor.travel_time_home_to_lab` goes to "Lab" |
+| `calendar_entity_id` | The calendar whose event the trip is for: its `message`, `start_time`, and `location`. `start_time` carries no timezone, so it is read in the panel's own, which has to be Home Assistant's |
+| `person_entity_id` | Who takes the route, on any route: where they are while not home, and for a trip, whose phone it is sent to. On a trip, being anywhere but home also keeps it from being drawn as due |
+| `checked_entity_id` | When the route's time was last asked for: an `input_datetime`, a timestamp sensor, or a local date and time. A stamp at the epoch reads as never, and is left out |
+
+A tap anywhere closes it. The window's words are `labels.travel_drive`, `travel_in_traffic`, `travel_distance`, `travel_destination`, `travel_checked`, `travel_checked_note`, `travel_away`, `travel_send` (what a screen reader calls the event that sends), `travel_sent` (what it calls the tick), and `travel_send_failed` (what it calls the crossed-out phone).
+
+Everything a departure face reads is added to the allowlist, and it switches nothing.
 
 ### The label strip
 

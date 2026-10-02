@@ -55,6 +55,39 @@ CALENDARS = {
 }
 EVENT_MINUTES = 45
 
+# Minutes to each trip under way, and how long from now each should leave: Alice soon, Bob a
+# couple of minutes ago, and the commute, which leaves whenever, with none.
+TRAVEL_TIMES = {
+    "sensor.example_travel_time_alice": (34, "sensor.example_departure_time_alice", 12),
+    "sensor.example_travel_time_bob": (22, "sensor.example_departure_time_bob", -2),
+    "sensor.example_travel_time_home_to_work": (18, None, None),
+}
+
+# The event each trip is for: its title, how long from now it starts (the time to leave, the
+# drive, and the five minutes the departure time leaves spare), and where.
+DEPARTURE_SPARE_MINUTES = 5
+TRIP_EVENTS = {
+    "calendar.example_alice": ("Climbing gym", 12 + 34 + DEPARTURE_SPARE_MINUTES, "Botanica, 701 Amidon St, Wichita"),
+    "calendar.example_bob": ("Oil change", -2 + 22 + DEPARTURE_SPARE_MINUTES, "Midas, 2001 N Rock Rd, Wichita"),
+}
+
+# How many minutes ago each route's time was last asked for.
+CHECKED_MINUTES_AGO = {
+    "input_datetime.example_checked_alice": 4,
+    "input_datetime.example_checked_bob": 11,
+    "input_datetime.example_checked_home_to_work": 2,
+}
+HA_LOCAL_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+# What each route read before now, as (minutes ago, minutes), oldest first, for the window's
+# trend; its reading now is from TRAVEL_TIMES, as of a few minutes ago.
+TRAVEL_HISTORY = {
+    "sensor.example_travel_time_alice": [(40, 28), (20, 31)],
+    "sensor.example_travel_time_bob": [(30, 25)],
+    "sensor.example_travel_time_home_to_work": [(25, 16)],
+}
+LATEST_READING_MINUTES_AGO = 5
+
 # One light flips at a time, in this order, so the floorplan is visibly live.
 LIGHT_CYCLE = [
     "light.example_hallway",
@@ -92,6 +125,18 @@ STATES: dict[str, Any] = {
     "sensor.example_bin": "out",
     "switch.example_living_room_fan": "on",
     "binary_sensor.example_driveway_occupied": "on",
+    # What a tap on a route opens: what traffic adds, how far, and where.
+    "sensor.example_free_flow_alice": ("26", {"unit_of_measurement": "min"}),
+    "sensor.example_distance_alice": ("18.43", {"unit_of_measurement": "mi"}),
+    "sensor.example_destination_alice": ("37.6872,-97.3301", {"address": "Botanica, 701 Amidon St, Wichita"}),
+    "sensor.example_free_flow_bob": ("19", {"unit_of_measurement": "min"}),
+    "sensor.example_distance_bob": ("11.72", {"unit_of_measurement": "mi"}),
+    "sensor.example_destination_bob": ("37.7174,-97.2447", {"address": "Midas, 2001 N Rock Rd, Wichita"}),
+    "sensor.example_free_flow_home_to_work": ("15", {"unit_of_measurement": "min"}),
+    "sensor.example_distance_home_to_work": ("9.06", {"unit_of_measurement": "mi"}),
+    # Alice is home and due to leave; Bob has already gone, so his trip is not hurried.
+    "person.example_alice": "home",
+    "person.example_bob": "not_home",
 }
 
 
@@ -160,6 +205,37 @@ def demo_state(dashboard, entity_id: str, clock: type[datetime]) -> dict[str, An
                 protocol.ATTRIBUTES: {notice.message_attribute: message, notice.icon_attribute: icon},
             }
 
+    for travel_entity_id, (minutes, departure_entity_id, leave_in_minutes) in TRAVEL_TIMES.items():
+        if entity_id == travel_entity_id:
+            return {protocol.STATE: str(minutes), protocol.ATTRIBUTES: {"unit_of_measurement": "min"}}
+
+        if entity_id == departure_entity_id:
+            leave = now + timedelta(minutes=leave_in_minutes)
+
+            return {protocol.STATE: str(int(leave.timestamp())), protocol.ATTRIBUTES: {}}
+
+    if entity_id in TRIP_EVENTS:
+        title, starts_in_minutes, location = TRIP_EVENTS[entity_id]
+        start = (now + timedelta(minutes=starts_in_minutes)).astimezone()
+
+        return {
+            protocol.STATE: "off",
+            protocol.ATTRIBUTES: {
+                "message": title,
+                "all_day": False,
+                "start_time": start.strftime(HA_LOCAL_FORMAT),
+                "location": location,
+            },
+        }
+
+    if entity_id in CHECKED_MINUTES_AGO:
+        checked = (now - timedelta(minutes=CHECKED_MINUTES_AGO[entity_id])).astimezone()
+
+        return {
+            protocol.STATE: checked.strftime(HA_LOCAL_FORMAT),
+            protocol.ATTRIBUTES: {"timestamp": checked.timestamp()},
+        }
+
     if entity_id == "sensor.example_condition":
         return {protocol.STATE: "Caution", protocol.ATTRIBUTES: {"note": CONDITION_NOTE}}
 
@@ -198,6 +274,22 @@ def main() -> None:
                 "end": {"dateTime": (midnight + timedelta(hours=hour, minutes=minute + EVENT_MINUTES)).isoformat()},
             }
             for hour, minute, title in CALENDARS.get(entity_id, [])
+        ]
+
+    @app.get("/api/history/period/{start}")
+    async def history(start: str, filter_entity_id: str) -> list[list[dict[str, Any]]]:
+        now = clock.now(UTC)
+        current = TRAVEL_TIMES.get(filter_entity_id)
+        if current is None:
+            return []
+
+        readings = [*TRAVEL_HISTORY.get(filter_entity_id, []), (LATEST_READING_MINUTES_AGO, current[0])]
+
+        return [
+            [
+                {"state": str(minutes), "last_changed": (now - timedelta(minutes=ago)).isoformat()}
+                for ago, minutes in readings
+            ]
         ]
 
     @app.get("/api/camera_proxy_stream/{entity_id}")

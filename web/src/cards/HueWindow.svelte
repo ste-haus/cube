@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { TAP_SLOP_PX } from "../lib/cube.svelte";
   import PanelWindow from "./PanelWindow.svelte";
   import SliderBar from "./SliderBar.svelte";
   import {
@@ -43,7 +44,6 @@
 
   const HS_COLOR_ATTRIBUTE = "hs_color";
   const PRIMARY_BUTTON = 0;
-  const TAP_SLOP_PX = 10;
   // Where the ring lies, as shares of the wheel's radius: what is pressable of it reaches a little
   // inside what is drawn, and the marker rides its middle.
   const RING_INNER = 0.68;

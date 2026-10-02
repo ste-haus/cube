@@ -122,7 +122,8 @@
       holding = null;
 
       if (lit) {
-        void fireEvent(mcw.clear_event, { [TIER_FIELD]: tier });
+        // Nothing on the panel waits on it: the master goes dark when Home Assistant says so.
+        fireEvent(mcw.clear_event, { [TIER_FIELD]: tier }).catch(() => {});
       }
     }, mcw.hold_seconds * MILLISECONDS_PER_SECOND);
   }

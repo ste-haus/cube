@@ -11,6 +11,7 @@ The one idea underneath all of it: **a mark or a motion means the same thing eve
 - **A frame is dimmer than what it frames.** Brackets and bands sit a step or more below the content they surround: the transcript's corners are `--color-dim` against `--color-foreground` text, and the camera window's are `--color-muted`.
 - **A level is primary, and thin.** The room light's arc and handle are drawn in the primary colour, as the fuel gauges' arcs are, over a `--color-dim` track; the bulb inside takes the light's own colour, as bright as the light is. A bar keeps its grey fill and gives only the fill's leading edge to the primary colour. The one exception is a light's bar set to `fill: light`, as the colour window's brightness bar is by default: its fill is the light's own colour, as strong as the light is bright (from `--slider-colour-dim-floor` of `--slider-colour-strength` at its dimmest to all of it at full), following the edge while it is dragged, because the colour is what that bar is about. Its edge stays primary. A level is a line, never a block of colour: a primary fill the size of a bar shouts.
 - **A lit chip is primary.** A chip's icon and its label take the primary colour while its entity is on, and rest in grey; `active_color` overrides the primary.
+- **A trip that is due is primary, then secondary.** On the departure face, a trip's countdown and its leave-by time turn the primary colour once leaving is soon and the secondary once it is imminent or gone, the order the fuel gauges' bands run in as a tank empties: breathing while soon, pulsing while imminent; its window's band is solid in the same colour for as long as it is, with the leave-by time in the window drawn in it too and keeping the beat, and quiet otherwise; the window's brackets take the colour and keep the card's beat, phased by the page's clock (`beatPhase` in `src/lib/travel.ts`), as a master's list keeps time with its master. A trip whose person is away from home stays grey throughout, since they are not here to be hurried, and once its time has come its departed icon is muted grey, not the foreground's white: gone is not something to act on. In its window, a route that has got slower says so with a trending-up arrow in the primary colour, the secondary while the trip is imminent, keeping the trip's beat while it is due and still otherwise; one that has got quicker keeps its arrow grey. The rest of the column stays grey.
 - **An armed alarm is primary.** The guest face's bell is the one mark on it in colour while armed, because it decides whether someone is woken. Its time and wheels stay grey.
 - **Tokens live in `src/styles/app.css`.** A new colour, size or duration that more than one rule uses becomes a custom property there, not a literal in a component.
 
@@ -21,9 +22,10 @@ Every repeating animation on the panel is one of these. Pick by meaning, not by 
 | Rhythm | Timing | Means | Used by |
 |---|---|---|---|
 | Flash | 1 s, `steps(1, end)` | A warning is lit | Master warning, and its list's brackets |
-| Breathe (alert) | 3 s, `ease-in-out`, brightness | A caution is lit | Master caution, and its list's brackets |
+| Breathe (alert) | 3 s, `ease-in-out`, brightness (a trip fades its opacity to `--travel-breathe-opacity` instead, so a pared icon's outline is not darkened into a rim) | A caution is lit, or a trip is soon | Master caution, and its list's brackets; a departure face trip that is soon |
+| Pulse | 0.9 s, `ease-in-out`, opacity down to `--travel-pulse-opacity` (0.3) with a glow of its own colour at the top | Time is up, or nearly | A departure face trip that is imminent or late |
 | Breathe (settled) | 3 s, `ease-in-out`, opacity to 0.35 | Done and still showing | Transcript brackets once the line has finished |
-| Breathe (waiting) | `--waiting-breathe` (1.2 s), `ease-in-out`, opacity to `--waiting-opacity` (0.4) | Asked Home Assistant, waiting on the answer | Floorplan reticle; the alarm's bell and its time once sent; the room light's bulb once tapped |
+| Breathe (waiting) | `--waiting-breathe` (1.2 s), `ease-in-out`, opacity to `--waiting-opacity` (0.4) | Asked Home Assistant, waiting on the answer | The reticle, on the floorplan and round a trip's event being sent; the alarm's bell and its time once sent; the room light's bulb once tapped |
 | Glow | `--glow-breathe` (1.4 s), `ease-in-out`, a halo in the control's own colour swelling and fading | Being set: a change on its way to Home Assistant | The room light's handle and a bar's primary edge, from the start of a drag until it settles |
 | Glint | a sweep across | Live: in flight, or an alert's band | Toggle chip and slider bar while pending (continuous); MCW list header (every 5 s) |
 
@@ -56,7 +58,7 @@ Windows are clipped rather than resized, so nothing inside reflows while they op
 
 A bar is `SliderBar` in `src/cards/SliderBar.svelte`, wherever it appears: the guest face's column of them and the colour window's brightness bar are the same component.
 
-A new window is built on `PanelWindow` in `src/cards/PanelWindow.svelte`, which holds the choreography, so every window opens and closes alike; the camera window and the room light's colour window are built on it, and the master caution list predates it. The caller gives it the origin, the band's words, and the body.
+A new window is built on `PanelWindow` in `src/cards/PanelWindow.svelte`, which holds the choreography, so every window opens and closes alike; the camera window, the room light's colour window, and the departure face's route window are built on it, and the master caution list predates it. The caller gives it the origin, the band's words, and the body.
 
 Its band is one of two. `quiet` is a dark strip with light type, for a closer look at something: the camera window. `solid` is drawn the way a lit master's list is, a band with dark type at the heading's size, grey (`--color-muted`) unless the window's control has a colour of its own to show, when the band is that colour (`tint`), with light type over a dark one: the colour window's band is the light's colour, following the marker as it is dragged. Neither glints; a glint on a band is an alert's.
 
@@ -91,9 +93,11 @@ A hold that opens something rather than switching it swells what is held for the
 
 Something too big to swell, like a floorplan light that fills its room, has the reticle close in on it over the hold instead, the lock-on stretched to the hold's length, and its window flies out of the reticle's corners. The hold's length is `COLOUR_HOLD_MS` in `src/lib/hue.ts`, shared by both.
 
+Sending a trip to a phone is held the same way, the reticle closing in on the trip's event over `COLOUR_HOLD_MS`; when the corners meet it sends, and they breathe until Home Assistant answers. The reticle is `Reticle` in `src/cards/Reticle.svelte`, wherever it appears: the holder places it, and it draws the corners, the lock-on, the hold, the breath, and the release.
+
 ### Icons ease between their colours
 
-An icon that lights up when its thing is on eases between grey and its colour over `--colour-fade` (400 ms) rather than snapping, so the switch reads as a change: a toggle chip's icon, the alarm's bell as it slides.
+An icon that lights up when its thing is on eases between grey and its colour over `--colour-fade` (400 ms) rather than snapping, so the switch reads as a change: a toggle chip's icon, the alarm's bell as it slides. An icon that turns into another fades across into it, both drawn in the one place, rather than swapping: the route window's phone becomes a ticked phone, or a crossed-out one, over `--travel-send-fade` (250 ms).
 
 ### How the cube changes face
 
@@ -117,6 +121,9 @@ A face that is turned away does not animate and does not fetch. A settled face i
 - **Nothing read-only sits over a control.** An overlay that only shows something, like the announcement's full-width band, takes `pointer-events: none`, so a control under it (the alarm, at the foot of the guest face) still takes its taps.
 - **A drag decides its axis once.** A slider waits for 10 px of movement, then takes the drag if it went more along than up or down, captures the pointer, and stops the release reaching the cube. A drag that started vertical is the cube's even if it later turns sideways.
 - **A tap is not a swipe.** Anything tappable inside the cube checks how far the pointer moved between press and release (the camera uses 10 px) so a drag that turns the cube does not also open something.
+- **An icon set beside thin figures is pared to their weight.** Material icons are filled shapes, far heavier than Roboto Thin at the same size, and have no weight to turn down. An outline in the background's colour (`-webkit-text-stroke`) eats evenly into every edge instead: the departure face's trip icons use `--travel-icon-pare` (0.05em). It only works over the panel's own background, so it is not for an icon drawn over a picture or a coloured band, and an animation on a pared icon fades its opacity rather than dimming it with `brightness`, which would darken the outline into a visible rim.
+- **A card holding more than it shows says so with a chevron.** The departure face's travel card shows two routes and loops through the rest by sideways swipe, one card a swipe; a dim (`--color-dim`) `mdi:chevron-right` at its right edge is the only sign there are more, and since a chevron looks pressable it is: a tap steps on as a swipe left does, unless the finger moved more than a tap's slop, when it was the swipe's. It slides at the floorplan's pace (`--floorplan-slide-duration`) and lapses back to the start after `PANE_RESET_MS`, as every card with panes does.
+- **A window's brackets can keep a beat.** `PanelWindow` takes a `bracketColor` and a `beat` (a period, a phase, and how low it fades) for a window about something lit, so the brackets carry its colour and rhythm from opening to closing. Phase it with `beatPhase`, as whatever it came out of was, and the two stay in step.
 - **Measure what you animate from.** A picture shown with `object-fit: contain` is smaller than its element; `containedBox` in `src/lib/picture.ts` finds the picture itself.
 - **No magic values.** Durations, distances and strengths are named constants or custom properties, like everything else in this repo.
 

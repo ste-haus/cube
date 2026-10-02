@@ -1,6 +1,6 @@
 <script lang="ts">
   import { cameraSnapshotUrl } from "../lib/api";
-  import { faceVisibility } from "../lib/cube.svelte";
+  import { faceVisibility, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { go2rtcServer, playStream } from "../lib/go2rtc";
   import { containedBox, ratioOf, type Box } from "../lib/picture";
   import type { Camera, StreamType } from "../lib/types";
@@ -8,8 +8,6 @@
 
   const MS_PER_SECOND = 1000;
   const GO2RTC: StreamType = "go2rtc";
-  // Further than this between press and release is a swipe across the tile, not a tap on it.
-  const TAP_SLOP_PX = 10;
 
   /** `expanded` is the camera drawn inside its own window: no title, and nothing to tap. */
   let { camera, expanded = false }: { camera: Camera; expanded?: boolean } = $props();

@@ -49,4 +49,29 @@ describe("Lapsing", () => {
 
     expect(choice.chosen).toBeNull();
   });
+
+  it("keeps a held choice past its lapse, and lapses a whole wait after it is let go", () => {
+    const choice = new Lapsing<string>(LAPSE_MS);
+
+    choice.choose(WEEK);
+    choice.hold();
+    vi.advanceTimersByTime(LAPSE_MS * 3);
+    expect(choice.chosen).toBe(WEEK);
+
+    choice.resume();
+    vi.advanceTimersByTime(LAPSE_MS - 1);
+    expect(choice.chosen).toBe(WEEK);
+
+    vi.advanceTimersByTime(1);
+    expect(choice.chosen).toBeNull();
+  });
+
+  it("has nothing to resume when nothing was chosen", () => {
+    const choice = new Lapsing<string>(LAPSE_MS);
+
+    choice.hold();
+    choice.resume();
+
+    expect(choice.chosen).toBeNull();
+  });
 });
