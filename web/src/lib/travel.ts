@@ -31,6 +31,15 @@ export interface Thresholds {
   soon_minutes: number;
 }
 
+export interface SlowerThresholds {
+  slower_percent: number;
+  much_slower_percent: number;
+  traffic_slower_minutes: number;
+  traffic_slower_percent: number;
+  traffic_much_slower_minutes: number;
+  traffic_much_slower_percent: number;
+}
+
 /**
  * The routes under way, with their minutes rounded: the trips tied to a time to leave first,
  * then the ones that are always there, each in the order the config gives them.
@@ -219,6 +228,66 @@ export function urgency(leave: Date, now: Date, thresholds: Thresholds): Urgency
   }
 
   return left < thresholds.soon_minutes ? "soon" : null;
+}
+
+const WHOLE_PERCENT = 100;
+
+/**
+ * How much slower than usual a route that is always there is running, in the same terms as a trip
+ * that is due: soon once it is more than `slower_percent` over its usual minutes, imminent once it
+ * is more than `much_slower_percent` over. A route with no usual time to go by is neither.
+ */
+export function slowness(minutes: number, usual: number | null, thresholds: SlowerThresholds): Urgency | null {
+  if (!usable(usual)) {
+    return null;
+  }
+
+  const over = ((minutes - usual) / usual) * WHOLE_PERCENT;
+
+  if (over > thresholds.much_slower_percent) {
+    return "imminent";
+  }
+
+  return over > thresholds.slower_percent ? "soon" : null;
+}
+
+/**
+ * How much traffic is slowing a route down, from what it adds over the route's free-flow minutes:
+ * soon once it adds more than both `traffic_slower_minutes` and `traffic_slower_percent`, imminent
+ * once more than both of the much-slower pair. Needing both keeps a few minutes on a short route,
+ * and a small share of a long one, from counting. A route with no free flow to go by is neither.
+ */
+export function trafficSlowness(minutes: number, freeFlow: number | null, thresholds: SlowerThresholds): Urgency | null {
+  if (!usable(freeFlow)) {
+    return null;
+  }
+
+  const added = minutes - freeFlow;
+  const over = (added / freeFlow) * WHOLE_PERCENT;
+
+  if (added > thresholds.traffic_much_slower_minutes && over > thresholds.traffic_much_slower_percent) {
+    return "imminent";
+  }
+
+  return added > thresholds.traffic_slower_minutes && over > thresholds.traffic_slower_percent ? "soon" : null;
+}
+
+/**
+ * How slow a route that is always there is running: against its usual time when it has one, and
+ * only when it has none, against what traffic adds. A usual time that says all is well is believed,
+ * since it already counts the traffic that is usual at this hour.
+ */
+export function commuteSlowness(
+  minutes: number,
+  usual: number | null,
+  freeFlow: number | null,
+  thresholds: SlowerThresholds,
+): Urgency | null {
+  return usable(usual) ? slowness(minutes, usual, thresholds) : trafficSlowness(minutes, freeFlow, thresholds);
+}
+
+function usable(minutes: number | null): minutes is number {
+  return minutes !== null && Number.isFinite(minutes) && minutes > 0;
 }
 
 /*

@@ -42,6 +42,7 @@ profiles:
               free_flow_entity_id: sensor.example_free_flow_home_to_work
               distance_entity_id: sensor.example_distance_home_to_work
               checked_entity_id: input_datetime.example_checked_home_to_work
+              usual_entity_id: sensor.example_usual_home_to_work
           send_event: CUBE_SEND_ROUTE
       left:
         content: blank

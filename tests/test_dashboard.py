@@ -1179,6 +1179,82 @@ def test_a_trip_cannot_be_soon_after_it_is_imminent():
         )
 
 
+def test_a_route_is_slower_at_ten_percent_over_usual_and_much_slower_at_twenty_unless_told_otherwise():
+    options = departure().profiles["hall"].faces["back"].options
+
+    assert (options["slower_percent"], options["much_slower_percent"]) == (10, 20)
+
+
+def test_a_route_cannot_be_much_slower_before_it_is_slower():
+    with pytest.raises(ValidationError, match="much_slower_percent"):
+        Dashboard.model_validate(
+            departure_face(
+                map=TRAFFIC_CAMERA,
+                travel_times=[{"entity_id": COMMUTE_TIME, "name": "Commute"}],
+                slower_percent=20,
+                much_slower_percent=10,
+            )
+        )
+
+
+def test_traffic_is_slower_past_eight_minutes_and_forty_percent_and_much_slower_past_fifteen_and_seventy_five():
+    options = departure().profiles["hall"].faces["back"].options
+
+    assert (options["traffic_slower_minutes"], options["traffic_slower_percent"]) == (8, 40)
+    assert (options["traffic_much_slower_minutes"], options["traffic_much_slower_percent"]) == (15, 75)
+
+
+@pytest.mark.parametrize(
+    "thresholds",
+    [
+        {"traffic_slower_minutes": 20, "traffic_much_slower_minutes": 10},
+        {"traffic_slower_percent": 80, "traffic_much_slower_percent": 50},
+    ],
+)
+def test_traffic_cannot_be_much_slower_before_it_is_slower(thresholds):
+    with pytest.raises(ValidationError, match="traffic_much_slower"):
+        Dashboard.model_validate(
+            departure_face(
+                map=TRAFFIC_CAMERA,
+                travel_times=[{"entity_id": COMMUTE_TIME, "name": "Commute"}],
+                **thresholds,
+            )
+        )
+
+
+USUAL_TIME = "sensor.commute_usual"
+
+
+def test_a_routes_usual_time_is_subscribed_and_is_not_a_control():
+    dashboard = Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[{"entity_id": COMMUTE_TIME, "name": "Commute", "usual_entity_id": USUAL_TIME}],
+        )
+    )
+
+    assert USUAL_TIME in dashboard.allowed_entities
+    assert not dashboard.may_toggle(USUAL_TIME)
+    assert not dashboard.may_set(USUAL_TIME)
+
+
+def test_only_a_route_with_no_departure_sensor_may_name_its_usual_time():
+    with pytest.raises(ValidationError, match="usual_entity_id"):
+        Dashboard.model_validate(
+            departure_face(
+                map=TRAFFIC_CAMERA,
+                travel_times=[
+                    {
+                        "entity_id": TRAVEL_TIME,
+                        "name": "Alice",
+                        "departure_entity_id": DEPARTURE_TIME,
+                        "usual_entity_id": USUAL_TIME,
+                    }
+                ],
+            )
+        )
+
+
 def test_a_trip_runs_once_its_time_has_come_unless_told_otherwise():
     plain = departure().profiles["hall"].faces["back"].options
     door = Dashboard.model_validate(

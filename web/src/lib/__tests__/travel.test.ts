@@ -4,6 +4,7 @@ import {
   activeRoutes,
   beatPhase,
   carouselStrip,
+  commuteSlowness,
   countdown,
   countdownClock,
   departureAt,
@@ -14,8 +15,10 @@ import {
   momentOf,
   timeAgo,
   trafficDelay,
+  trafficSlowness,
   trendOf,
   samePlace,
+  slowness,
   urgency,
 } from "../travel";
 import type { TravelTime } from "../types";
@@ -28,6 +31,7 @@ const DETAILS = {
   destination_attribute: null,
   calendar_entity_id: null,
   checked_entity_id: null,
+  usual_entity_id: null,
 };
 const ALICE: TravelTime = {
   entity_id: "sensor.alice",
@@ -151,6 +155,82 @@ describe("urgency", () => {
   it("is imminent once it is close, and once it has gone", () => {
     expect(urgency(inMinutes(4), NOW, THRESHOLDS)).toBe("imminent");
     expect(urgency(inMinutes(-10), NOW, THRESHOLDS)).toBe("imminent");
+  });
+});
+
+const SLOWER = {
+  slower_percent: 10,
+  much_slower_percent: 20,
+  traffic_slower_minutes: 8,
+  traffic_slower_percent: 40,
+  traffic_much_slower_minutes: 15,
+  traffic_much_slower_percent: 75,
+};
+
+describe("slowness", () => {
+  const THRESHOLDS = SLOWER;
+  const USUAL = 30;
+
+  it("is calm at or under ten percent over its usual time", () => {
+    expect(slowness(25, USUAL, THRESHOLDS)).toBeNull();
+    expect(slowness(33, USUAL, THRESHOLDS)).toBeNull();
+  });
+
+  it("is soon past ten percent over, up to twenty", () => {
+    expect(slowness(34, USUAL, THRESHOLDS)).toBe("soon");
+    expect(slowness(36, USUAL, THRESHOLDS)).toBe("soon");
+  });
+
+  it("is imminent past twenty percent over", () => {
+    expect(slowness(37, USUAL, THRESHOLDS)).toBe("imminent");
+  });
+
+  it("says nothing without a usual time to go by", () => {
+    expect(slowness(60, null, THRESHOLDS)).toBeNull();
+    expect(slowness(60, 0, THRESHOLDS)).toBeNull();
+  });
+});
+
+describe("trafficSlowness", () => {
+  it("is calm while traffic adds what an ordinary evening does", () => {
+    expect(trafficSlowness(22, 16, SLOWER)).toBeNull();
+  });
+
+  it("needs both the minutes and the percent before it is slower", () => {
+    expect(trafficSlowness(25, 16, SLOWER)).toBe("soon");
+    // Ten minutes is plenty, but only a fifth of an hour's drive.
+    expect(trafficSlowness(70, 60, SLOWER)).toBeNull();
+    // Over half again, but only five minutes of it.
+    expect(trafficSlowness(14, 9, SLOWER)).toBeNull();
+  });
+
+  it("is imminent once it is over both of the much-slower pair", () => {
+    expect(trafficSlowness(32, 16, SLOWER)).toBe("imminent");
+    expect(trafficSlowness(30, 16, SLOWER)).toBe("soon");
+  });
+
+  it("says nothing without a free flow to go by", () => {
+    expect(trafficSlowness(60, null, SLOWER)).toBeNull();
+    expect(trafficSlowness(60, 0, SLOWER)).toBeNull();
+  });
+});
+
+describe("commuteSlowness", () => {
+  it("believes a usual time that says all is well, whatever traffic adds", () => {
+    expect(commuteSlowness(32, 31, 16, SLOWER)).toBeNull();
+  });
+
+  it("goes by its usual time when it has one", () => {
+    expect(commuteSlowness(36, 30, 35, SLOWER)).toBe("soon");
+  });
+
+  it("falls back on what traffic adds with no usual time", () => {
+    expect(commuteSlowness(32, null, 16, SLOWER)).toBe("imminent");
+    expect(commuteSlowness(32, 0, 16, SLOWER)).toBe("imminent");
+  });
+
+  it("says nothing with neither", () => {
+    expect(commuteSlowness(60, null, null, SLOWER)).toBeNull();
   });
 });
 

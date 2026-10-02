@@ -17,6 +17,7 @@
     leavesFromHome,
     MINUS_SIGN,
     PULSE_MS,
+    commuteSlowness,
     urgency,
     type ActiveRoute,
   } from "../lib/travel";
@@ -38,7 +39,9 @@
    * launch does, then shows `leave_now_icon` once that time has come, and says what the time is.
    * Once leaving is soon the countdown and the time breathe in the primary colour, and once it is
    * imminent or gone they pulse, faster and deeper, in the secondary, the way the fuel gauges go
-   * from one colour to the other. A trip whose person is away from home has left already or is
+   * from one colour to the other. A route that is always there takes the same colours and beats
+   * once it is slower than its usual time, and once it is much slower, or with no usual time, once
+   * traffic adds more than it should over the route's free flow. A trip whose person is away from home has left already or is
    * leaving from elsewhere, so it keeps its countdown without the colour, and once its time has
    * come shows `departed_icon` in grey rather than urging anyone to run.
    */
@@ -92,6 +95,13 @@
   });
 
   const read = (entityId: string) => ha.state(entityId);
+
+  function numberOf(entityId: string | null): number | null {
+    const state = entityId === null ? null : read(entityId);
+    const value = state === null ? NaN : Number(state);
+
+    return Number.isFinite(value) ? value : null;
+  }
 
   const active = $derived(activeRoutes(options.travel_times, read));
   const carousel = $derived(active.length > SHOWING);
@@ -306,7 +316,14 @@
 {#snippet card({ route, minutes }: ActiveRoute)}
   {@const leave = route.departure_entity_id ? departureAt(ha.state(route.departure_entity_id)) : null}
   {@const home = leavesFromHome(route, read)}
-  {@const level = leave && home ? urgency(leave, now, options) : null}
+  <!-- A trip is coloured by when to leave; a route that is always there, by how much slower than
+       usual it is, or than free flow without a usual time. A trip whose departure sensor has no
+       time is still a trip, and stays grey. -->
+  {@const level = route.departure_entity_id
+    ? leave && home
+      ? urgency(leave, now, options)
+      : null
+    : commuteSlowness(minutes, numberOf(route.usual_entity_id), numberOf(route.free_flow_entity_id), options)}
   {@const count = leave ? countdown(leave, now) : minutes}
   <!-- Its beat is phased by the page's clock, so it keeps time with its window's brackets. -->
   <li

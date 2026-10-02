@@ -298,6 +298,8 @@ export interface TravelTime {
   destination_attribute: string | null;
   calendar_entity_id: string | null;
   checked_entity_id: string | null;
+  /** What a route with no departure sensor usually takes around now, to say when it is slower. */
+  usual_entity_id: string | null;
 }
 
 export type MapsLink = "apple" | "google";
@@ -308,6 +310,14 @@ export interface DepartureFaceOptions {
   /** Minutes before a trip's time to leave that it is imminent, and that it is soon. */
   imminent_minutes: number;
   soon_minutes: number;
+  /** How far over its usual time, in percent, a route that is always there is slower, and much slower. */
+  slower_percent: number;
+  much_slower_percent: number;
+  /** With no usual time, what traffic has to add over free flow, in both minutes and percent. */
+  traffic_slower_minutes: number;
+  traffic_slower_percent: number;
+  traffic_much_slower_minutes: number;
+  traffic_much_slower_percent: number;
   /** What a trip shows in place of its countdown once its time to leave has come. */
   leave_now_icon: string;
   /** What a trip shows instead, in grey, once its time has come and its person has gone. */

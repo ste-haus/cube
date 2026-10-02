@@ -996,6 +996,9 @@ class GuestFaceOptions(FaceOptions):
         return controls
 
 
+USUAL_WITHOUT_DEPARTURE_MESSAGE = "`usual_entity_id` is for a route with no `departure_entity_id`; a trip is coloured by when to leave."
+
+
 class TravelTime(BaseModel):
     """A route's travel time, in minutes, from a sensor that reads below nought while the route is
     not being kept up to date.
@@ -1042,6 +1045,19 @@ class TravelTime(BaseModel):
         description="When the route's time was last asked for: a timestamp sensor or an input_datetime",
     )
 
+    # What a route that is always there usually takes at this time of day, to say when it is slower.
+    usual_entity_id: str | None = Field(
+        default=None,
+        description="The route's usual minutes around now, for a route with no departure sensor",
+    )
+
+    @model_validator(mode="after")
+    def require_usual_only_without_departure(self) -> Self:
+        if self.usual_entity_id and self.departure_entity_id:
+            raise ValueError(USUAL_WITHOUT_DEPARTURE_MESSAGE)
+
+        return self
+
     @property
     def entities(self) -> list[str]:
         named = (
@@ -1053,6 +1069,7 @@ class TravelTime(BaseModel):
             self.destination_entity_id,
             self.calendar_entity_id,
             self.checked_entity_id,
+            self.usual_entity_id,
         )
 
         return [entity_id for entity_id in named if entity_id]
@@ -1068,6 +1085,17 @@ class MapsLink(StrEnum):
 SOON_BEFORE_IMMINENT_MESSAGE = "`soon_minutes` comes before `imminent_minutes`, so it cannot be fewer."
 DEFAULT_DEPARTURE_IMMINENT_MINUTES = 5
 DEFAULT_DEPARTURE_SOON_MINUTES = 15
+SLOWER_BEFORE_MUCH_SLOWER_MESSAGE = "`much_slower_percent` comes after `slower_percent`, so it cannot be fewer."
+DEFAULT_SLOWER_PERCENT = 10
+DEFAULT_MUCH_SLOWER_PERCENT = 20
+TRAFFIC_SLOWER_BEFORE_MUCH_SLOWER_MESSAGE = (
+    "`traffic_much_slower_minutes` and `traffic_much_slower_percent` come after "
+    "`traffic_slower_minutes` and `traffic_slower_percent`, so neither can be fewer."
+)
+DEFAULT_TRAFFIC_SLOWER_MINUTES = 8
+DEFAULT_TRAFFIC_SLOWER_PERCENT = 40
+DEFAULT_TRAFFIC_MUCH_SLOWER_MINUTES = 15
+DEFAULT_TRAFFIC_MUCH_SLOWER_PERCENT = 75
 DEFAULT_LEAVE_NOW_ICON = "mdi:run-fast"
 DEFAULT_DEPARTED_ICON = "mdi:account-arrow-right-outline"
 
@@ -1077,7 +1105,10 @@ class DepartureFaceOptions(CameraFaceOptions):
 
     A trip tied to a time to leave counts down to it, and breathes as that time nears: in the
     primary colour once it is soon, and the secondary once it is imminent or gone, as the fuel
-    gauges go from one to the other as a tank runs down. The fuel gauges are the dashboard's own,
+    gauges go from one to the other as a tank runs down. A route that is always there, given its
+    usual time, takes the same colours once it is slower than usual and once it is much slower;
+    with none, from what traffic adds over its free-flow minutes.
+    The fuel gauges are the dashboard's own,
     from the top-level `fuel` block, so the two faces cannot disagree about which vehicles there
     are.
     """
@@ -1102,6 +1133,39 @@ class DepartureFaceOptions(CameraFaceOptions):
         ge=0,
         description="Minutes before a trip's time to leave that it is soon",
     )
+    slower_percent: float = Field(
+        default=DEFAULT_SLOWER_PERCENT,
+        ge=0,
+        description="How far over its usual time, in percent, a route that is always there is slower",
+    )
+    much_slower_percent: float = Field(
+        default=DEFAULT_MUCH_SLOWER_PERCENT,
+        ge=0,
+        description="How far over its usual time, in percent, a route that is always there is much slower",
+    )
+
+    # With no usual time to go by, a route that is always there is judged by what traffic adds
+    # over its free-flow minutes instead, and has to be over both the minutes and the percent.
+    traffic_slower_minutes: float = Field(
+        default=DEFAULT_TRAFFIC_SLOWER_MINUTES,
+        ge=0,
+        description="Minutes traffic has to add, with `traffic_slower_percent`, for a route with no usual time to be slower",
+    )
+    traffic_slower_percent: float = Field(
+        default=DEFAULT_TRAFFIC_SLOWER_PERCENT,
+        ge=0,
+        description="Percent over free flow traffic has to add, with `traffic_slower_minutes`, for it to be slower",
+    )
+    traffic_much_slower_minutes: float = Field(
+        default=DEFAULT_TRAFFIC_MUCH_SLOWER_MINUTES,
+        ge=0,
+        description="Minutes traffic has to add, with `traffic_much_slower_percent`, for it to be much slower",
+    )
+    traffic_much_slower_percent: float = Field(
+        default=DEFAULT_TRAFFIC_MUCH_SLOWER_PERCENT,
+        ge=0,
+        description="Percent over free flow traffic has to add, with `traffic_much_slower_minutes`, for it to be much slower",
+    )
     leave_now_icon: str = Field(
         default=DEFAULT_LEAVE_NOW_ICON,
         description="What a trip shows in place of its countdown once its time to leave has come",
@@ -1115,6 +1179,23 @@ class DepartureFaceOptions(CameraFaceOptions):
     def require_soon_before_imminent(self) -> Self:
         if self.soon_minutes < self.imminent_minutes:
             raise ValueError(SOON_BEFORE_IMMINENT_MESSAGE)
+
+        return self
+
+    @model_validator(mode="after")
+    def require_slower_before_much_slower(self) -> Self:
+        if self.much_slower_percent < self.slower_percent:
+            raise ValueError(SLOWER_BEFORE_MUCH_SLOWER_MESSAGE)
+
+        return self
+
+    @model_validator(mode="after")
+    def require_traffic_slower_before_much_slower(self) -> Self:
+        if (
+            self.traffic_much_slower_minutes < self.traffic_slower_minutes
+            or self.traffic_much_slower_percent < self.traffic_slower_percent
+        ):
+            raise ValueError(TRAFFIC_SLOWER_BEFORE_MUCH_SLOWER_MESSAGE)
 
         return self
 
