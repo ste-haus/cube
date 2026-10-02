@@ -26,7 +26,8 @@
    *
    * Round the ring is every hue, red at the top; in the middle is the light's default colour, the
    * warm white of the "full" light profile unless it is given another. The band across the top is
-   * whatever colour is showing, so the window says what the light is, or is about to be.
+   * whatever colour is showing, so the window says what the light is, or is about to be, and it is
+   * headed with the light's name.
    *
    * The marker is the light's colour now, and it is what the finger drags. While it is held it throws
    * a wide glow of its own colour that breathes, so the colour under the finger shows round it. The
@@ -43,6 +44,7 @@
    */
 
   const HS_COLOR_ATTRIBUTE = "hs_color";
+  const FRIENDLY_NAME_ATTRIBUTE = "friendly_name";
   const PRIMARY_BUTTON = 0;
   // Where the ring lies, as shares of the wheel's radius: what is pressable of it reaches a little
   // inside what is drawn, and the marker rides its middle.
@@ -87,6 +89,12 @@
   let preview = $state<number | null>(null);
   let startX = 0;
   let startY = 0;
+
+  const title = $derived.by(() => {
+    const name = ha.attribute(entityId, FRIENDLY_NAME_ATTRIBUTE);
+
+    return typeof name === "string" && name ? name : entityId;
+  });
 
   const defaultPoint = $derived<XyPoint>({ x: defaultXy[0], y: defaultXy[1] });
   const defaultColour = $derived(xyToHueSaturation(defaultPoint));
@@ -171,13 +179,14 @@
 </script>
 
 {#snippet band()}
-  <h2 class="hue-window__title">{labels.light_colour}</h2>
+  <h2 class="hue-window__title">{title}</h2>
 {/snippet}
 
 <PanelWindow
   bind:this={panel}
   {from}
-  label={labels.light_colour}
+  label={title}
+  width="var(--hue-window-width)"
   band="solid"
   tint={shown ? colourOf(shown) : null}
   lightType={shown ? wantsLightType(shown) : false}
@@ -225,7 +234,11 @@
 
 <style>
   .hue-window__title {
+    min-width: 0;
     margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     font-size: var(--title-size);
     font-weight: var(--weight-medium);
     letter-spacing: 0.12em;

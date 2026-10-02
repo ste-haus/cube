@@ -572,7 +572,7 @@ class Labels(BaseModel):
     wifi_network: str = Field(default="SSID", description="What the network's name is labelled")
     wifi_password: str = Field(default="Password", description="What the network's password is labelled")
     alarm: str = Field(default="Alarm Clock", description="The guest face's alarm card")
-    light_colour: str = Field(default="Colour", description="The window the room light's colour is picked in")
+    light_colour: str = Field(default="Colour", description="The label of the wheel in a light's colour window")
     light_brightness: str = Field(default="Brightness", description="The brightness bar in a light's colour window")
     master_warning: str = "Master Warning"
     master_caution: str = "Master Caution"
