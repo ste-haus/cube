@@ -134,6 +134,8 @@ STATES: dict[str, Any] = {
     "sensor.example_destination_bob": ("37.7174,-97.2447", {"address": "Midas, 2001 N Rock Rd, Wichita"}),
     "sensor.example_free_flow_home_to_work": ("15", {"unit_of_measurement": "min"}),
     "sensor.example_distance_home_to_work": ("9.06", {"unit_of_measurement": "mi"}),
+    # The commute usually takes 16 at this hour, so today's 18 is slower than usual.
+    "sensor.example_usual_home_to_work": ("16", {"unit_of_measurement": "min"}),
     # Alice is home and due to leave; Bob has already gone, so his trip is not hurried.
     "person.example_alice": "home",
     "person.example_bob": "not_home",

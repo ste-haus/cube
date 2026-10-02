@@ -134,10 +134,11 @@ One websocket connection, and four REST paths. Nothing else is ever requested.
 |---|---|---|---|
 | websocket | `/api/websocket` | continuously | `auth`, then one `subscribe_entities` over the allowlist, plus `call_service` per toggle or value set |
 | REST | `/api/calendars/{entity_id}` | one call per configured calendar, every 5 minutes, per panel | merged, filtered, and sorted by the proxy |
+| REST | `/api/history/period/{start}` | once each time a travel route's window opens, per panel | one entity on the allowlist, at most a day back, for the window's trend arrow |
 | REST | `/api/camera_proxy/{entity_id}` | once per camera refresh, per panel, and only for cameras on the face being looked at | a still; this is what the panel actually uses |
 | REST | `/api/camera_proxy_stream/{entity_id}` | never, as shipped | MJPEG relay, available but unused by the current panel |
 
-Floorplan drawings and stylesheet overrides are not in that list: they come from `resources/` on disk. Nor is live video: a camera with `stream_type: go2rtc` is played from go2rtc by the panel directly, and cube only serves the still that stands in while it connects. Nothing else is ever requested — no state polling, no history, no service or config discovery.
+Floorplan drawings and stylesheet overrides are not in that list: they come from `resources/` on disk. Nor is live video: a camera with `stream_type: go2rtc` is played from go2rtc by the panel directly, and cube only serves the still that stands in while it connects. Nothing else is ever requested — no state polling, no service or config discovery.
 
 Every REST call carries the long-lived token as a bearer header, and the camera routes refuse any entity the config does not name, so the proxy cannot be used to reach arbitrary Home Assistant paths.
 
