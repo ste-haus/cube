@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { Cube, FACES, swipeable, type Direction, type FaceName } from "./lib/cube.svelte";
+  import { Cube, FACES, FADE_MS, swipeable, type Direction, type FaceName } from "./lib/cube.svelte";
+  import { ha } from "./lib/state.svelte";
   import CubeFace from "./faces/CubeFace.svelte";
   import MasterCaution from "./cards/MasterCaution.svelte";
   import type { DashboardConfig } from "./lib/types";
@@ -20,6 +21,10 @@
   // The config is fetched once and never replaced, so the cube is built for its home face once.
   const cube = new Cube(untrack(() => config.profile.default_face));
 
+  $effect(() => {
+    cube.follow(ha.state(config.profile.face_entity));
+  });
+
   function faceFor(name: FaceName) {
     return (
       config.profile.faces[name] ??
@@ -32,7 +37,7 @@
   }
 </script>
 
-<div class="cube" use:swipeable={{ onSwipe, keyboard: true }}>
+<div class="cube" style:--face-fade="{FADE_MS}ms" use:swipeable={{ onSwipe, keyboard: true }}>
   {#each FACES as name (name)}
     {#if cube.isBuilt(name)}
       <CubeFace

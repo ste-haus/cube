@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ADJACENCY, Cube, FACES, swipeable, type Direction, type FaceName } from "../cube.svelte";
+import { ADJACENCY, Cube, FACES, FADE_MS, swipeable, type Direction, type FaceName } from "../cube.svelte";
+
+// Mirror the cube's own timings, which it does not export since nothing else needs them.
+const ROTATION_MS = 600;
+const IDLE_RESET_MS = 2 * 60 * 1000;
 
 const DIRECTIONS: Direction[] = ["up", "down", "left", "right"];
 
@@ -302,5 +306,115 @@ describe("returning home", () => {
     cube.show("down");
 
     expect(pending).toBeNull();
+  });
+});
+
+/**
+ * A window whose timers run only when asked, by how long they were set for, so a test can end
+ * a fade or a rotation without also sending the panel home.
+ */
+function timedWindow() {
+  let next = 1;
+  const timers = new Map<number, { callback: () => void; delay: number }>();
+
+  return {
+    window: {
+      setTimeout: (callback: () => void, delay: number) => {
+        timers.set(next, { callback, delay });
+        return next++;
+      },
+      clearTimeout: (handle: number) => {
+        timers.delete(handle);
+      },
+    },
+    run(delay: number) {
+      for (const [handle, timer] of [...timers]) {
+        if (timer.delay === delay) {
+          timers.delete(handle);
+          timer.callback();
+        }
+      }
+    },
+  };
+}
+
+describe("following a face entity", () => {
+  let clock: ReturnType<typeof timedWindow>;
+
+  beforeEach(() => {
+    clock = timedWindow();
+    vi.stubGlobal("window", clock.window);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("fades to the face it is told to follow", () => {
+    const cube = new Cube();
+    cube.follow("back");
+
+    expect(cube.current).toBe("back");
+    expect(cube.transition).toEqual({ from: "front", to: "back", motion: "fade" });
+    expect(cube.animationClass("front")).toBe("fade-out on-top");
+    expect(cube.animationClass("back")).toBe("");
+  });
+
+  it("settles once the fade is over", () => {
+    const cube = new Cube();
+    cube.follow("back");
+    clock.run(FADE_MS);
+
+    expect(cube.transition).toBeNull();
+    expect(cube.isVisible("front")).toBe(false);
+  });
+
+  it("falls back to its default when the entity names no face", () => {
+    for (const state of [null, "", "sideways"]) {
+      const cube = new Cube("up");
+      cube.follow("left");
+      clock.run(FADE_MS);
+      cube.follow(state);
+
+      expect(cube.current).toBe("up");
+    }
+  });
+
+  it("stays put when the followed face is the one it is already on", () => {
+    const cube = new Cube();
+    cube.follow("front");
+
+    expect(cube.transition).toBeNull();
+  });
+
+  it("does not move again when the entity repeats itself", () => {
+    const cube = new Cube();
+    cube.follow("back");
+    clock.run(FADE_MS);
+    cube.show("left");
+    cube.follow("back");
+
+    expect(cube.current).toBe("left");
+  });
+
+  it("finishes a rotation before fading to a newly followed face", () => {
+    const cube = new Cube();
+    cube.rotate("left");
+    cube.follow("down");
+
+    expect(cube.current).toBe(ADJACENCY.front.left);
+
+    clock.run(ROTATION_MS);
+
+    expect(cube.current).toBe("down");
+    expect(cube.transition?.motion).toBe("fade");
+  });
+
+  it("goes back to the followed face, not its default, when left alone", () => {
+    const cube = new Cube();
+    cube.follow("back");
+    clock.run(FADE_MS);
+    cube.show("left");
+    clock.run(IDLE_RESET_MS);
+
+    expect(cube.current).toBe("back");
+    expect(cube.transition?.motion).toBe("fade");
   });
 });

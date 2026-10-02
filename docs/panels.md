@@ -68,6 +68,7 @@ A panel states only what makes it different. Everything else comes from the prof
 | `name` | For your own reference; defaults to the key | No |
 | `floorplan` | The level this panel opens on, and returns to | Yes |
 | `default_face` | The cube face this panel opens on, and returns to; `front` when absent | Yes |
+| `face_entity` | An entity whose state names the face this panel should be on right now; empty or unrecognised falls back to `default_face`. `default` follows nothing, whatever the parent follows | Yes |
 | `media_player` | The speaker whose announcements raise the overlay | **No** |
 | `inherits` | The profile to start from; `default` when absent | — |
 | `faces` | What sits on each of the six faces, merged by face name | Yes |
@@ -257,6 +258,18 @@ Which cards a face renders is fixed. `options` lets you configure the cards a fa
 Swipe, or press an arrow key, to turn it. The map of dots in the corner shows which face is showing and jumps straight to any of them.
 
 The panel opens on its profile's `default_face`, `front` unless the profile says otherwise, and returns to it after two minutes untouched, so a panel left mid-rotation rights itself.
+
+A profile's `face_entity` lets Home Assistant move the panel. While the entity's state is a face name (`front`, `back`, `left`, `right`, `up` or `down`), that face is home in place of `default_face`: the panel fades to it as soon as the state changes, whatever it was showing, and returns to it after two minutes untouched. Any other state, empty, `unknown` or a name the cube does not have, gives home back to `default_face`, and the panel fades there. A change that arrives mid-rotation waits for the rotation to finish. The panel opens on `default_face` and moves once the first state arrives from Home Assistant, a moment later.
+
+A child that should not follow its parent's entity names `default` instead, and keeps to its own `default_face`. Its own children inherit that, and may name an entity again.
+
+```yaml
+profiles:
+  default:
+    face_entity: input_select.panel_face
+  gb:
+    face_entity: default
+```
 
 A face is built the first time you turn to it and kept from then on, so coming back to one finds it as you left it — the camera still showing its last frame, the floorplan not fetched again. A face you have never turned to is never built. Keeping one costs the markup and nothing else: it is not painted, its animations do not run, and its cards release their timers, so only the face being looked at is doing any work.
 

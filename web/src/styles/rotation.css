@@ -35,6 +35,18 @@
   display: none;
 }
 
+/* A face change nobody at the panel asked for: the outgoing face fades over the incoming one,
+ * which is already in place underneath. */
+.fade-out {
+  animation: fade-face-out var(--face-fade) both ease-in-out;
+}
+
+@keyframes fade-face-out {
+  to {
+    opacity: 0;
+  }
+}
+
 .rotate-out-left {
   transform-origin: 100% 50%;
   animation: rotate-cube-left-out var(--rotation-duration) both ease-in;
