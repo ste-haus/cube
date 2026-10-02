@@ -285,6 +285,8 @@ export interface GuestFaceOptions {
 export interface TravelTime {
   entity_id: string;
   name: string;
+  /** What the card calls the route, where `name` is too long for it; its window still says `name`. */
+  short_name: string | null;
   /** A sensor holding when to leave, as a Unix timestamp, for a route tied to a particular trip. */
   departure_entity_id: string | null;
   /** Who takes the trip; while they are not home, it is not drawn as due. */

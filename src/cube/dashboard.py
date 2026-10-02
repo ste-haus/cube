@@ -1009,6 +1009,10 @@ class TravelTime(BaseModel):
 
     entity_id: str
     name: str
+    short_name: str | None = Field(
+        default=None,
+        description="What the card calls the route, where `name` is too long for it; its window still says `name`",
+    )
     departure_entity_id: str | None = Field(
         default=None,
         description="A sensor holding when to leave, as a Unix timestamp, or anything else when it cannot be known",
