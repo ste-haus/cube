@@ -49,6 +49,7 @@
   const PERCENT = "%";
   const WHOLE_PERCENT = 100;
   const MORE_ICON = "mdi:chevron-right";
+  const STAND_IN_FIGURE = "0";
 
   // How many routes show at once, and the strip's cards either side of them to slide in from.
   const SHOWING = 2;
@@ -277,7 +278,20 @@
   <h2 class="panel-title panel-title--right">{labels.travel}</h2>
 
   {#if active.length === 0}
-    <p class="travel__idle">{labels.travel_idle}</p>
+    <!-- A card with nothing to show stands unseen behind the words, so the rail is as tall with no
+         trips as with one and nothing under it moves up when the last one goes. -->
+    <div class="travel__idle">
+      <ul class="travel__routes travel__routes--stand-in" aria-hidden="true">
+        <li class="travel__route">
+          <span class="travel__card">
+            <span class="travel__name">{labels.travel_idle}</span>
+            <span class="travel__minutes">{STAND_IN_FIGURE}</span>
+            <span class="travel__leave">{labels.leave_by}</span>
+          </span>
+        </li>
+      </ul>
+      <p class="travel__idle-text">{labels.travel_idle}</p>
+    </div>
   {:else if carousel}
     <div class="travel__carousel">
     <div class="travel__window" use:swipeable={{ onSwipe: step, axes: "horizontal", exclusive: true }}>
@@ -521,9 +535,24 @@
     color: var(--color-foreground);
   }
 
+  /* The words and the unseen card share one cell, the words centred in it. */
   .travel__idle {
+    display: grid;
+  }
+
+  .travel__idle > * {
+    grid-area: 1 / 1;
+  }
+
+  .travel__routes--stand-in {
+    visibility: hidden;
+  }
+
+  .travel__idle-text {
+    align-self: center;
     margin: 0;
     color: var(--color-dim);
     font-size: var(--travel-name-size);
+    text-align: center;
   }
 </style>
