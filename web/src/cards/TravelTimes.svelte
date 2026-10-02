@@ -318,7 +318,7 @@
     <button
       type="button"
       class="travel__card"
-      aria-label={route.name}
+      aria-label={route.short_name ?? route.name}
       onpointerdown={(event) => hold(event, route.entity_id)}
       oncontextmenu={(event) => event.preventDefault()}
     >
@@ -327,7 +327,7 @@
           <Reticle holding={!lock.releasing} releasing={lock.releasing} holdMs={COLOUR_HOLD_MS} releaseMs={RETICLE_RELEASE_MS} />
         </span>
       {/if}
-      <span class="travel__name">{route.name}</span>
+      <span class="travel__name">{route.short_name ?? route.name}</span>
       <span class="travel__minutes">
         {#if count === null && !home}
           <span class="travel__now travel__now--departed" role="img" aria-label={labels.departed}>

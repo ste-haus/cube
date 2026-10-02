@@ -1220,6 +1220,19 @@ def test_everything_a_routes_window_reads_is_subscribed_and_none_of_it_is_a_cont
         assert not dashboard.may_set(entity_id)
 
 
+def test_a_route_is_called_by_its_name_on_the_card_unless_given_a_short_one():
+    plain = departure().profiles["hall"].faces["back"].options["travel_times"][0]
+    short = Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[{"entity_id": COMMUTE_TIME, "name": "Home to lab", "short_name": "Lab"}],
+        )
+    ).profiles["hall"].faces["back"].options["travel_times"][0]
+
+    assert plain["short_name"] is None
+    assert (short["name"], short["short_name"]) == ("Home to lab", "Lab")
+
+
 def test_a_routes_window_shows_only_what_it_is_given():
     route = departure().profiles["hall"].faces["back"].options["travel_times"][1]
 

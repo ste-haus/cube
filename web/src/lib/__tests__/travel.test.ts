@@ -21,6 +21,7 @@ import {
 import type { TravelTime } from "../types";
 
 const DETAILS = {
+  short_name: null,
   free_flow_entity_id: null,
   distance_entity_id: null,
   destination_entity_id: null,
