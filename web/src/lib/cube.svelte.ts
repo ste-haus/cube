@@ -41,15 +41,30 @@ const IDLE_RESET_MS = 2 * 60 * 1000;
 const SWIPE_THRESHOLD_PX = 50;
 const TOUCH_ACTION_NONE = "none";
 
+/** How long a face takes to fade out over the one replacing it. Reaches the stylesheet as `--face-fade`. */
+export const FADE_MS = 250;
+
+const FADE = "fade";
+
+/**
+ * How a face change is shown. A rotation follows a swipe, so it carries the swipe's direction;
+ * a fade is for a change nobody on this side of the glass asked for.
+ */
+type Motion = Direction | typeof FADE;
+
 interface Transition {
   from: FaceName;
   to: FaceName;
-  direction: Direction;
+  motion: Motion;
+}
+
+function isFace(value: string | null | undefined): value is FaceName {
+  return FACES.includes(value as FaceName);
 }
 
 export class Cube {
-  /** The face the cube opens on, and turns back to once it has been left alone. */
-  readonly home: FaceName;
+  /** The face the cube opens on, and turns back to whenever nothing names another. */
+  readonly defaultFace: FaceName;
 
   current = $state<FaceName>(DEFAULT_FACE);
   transition = $state<Transition | null>(null);
@@ -64,13 +79,24 @@ export class Cube {
    */
   built = $state<FaceName[]>([DEFAULT_FACE]);
 
-  #resetTimer: number | null = null;
-  #rotating = false;
+  /** The face Home Assistant says this panel should be on, when it says one. */
+  #followed: FaceName | null = null;
 
-  constructor(home: FaceName = DEFAULT_FACE) {
-    this.home = home;
-    this.current = home;
-    this.built = [home];
+  #resetTimer: number | null = null;
+  #moving = false;
+
+  /** Whether to go home once the face change under way finishes. */
+  #homeward = false;
+
+  constructor(defaultFace: FaceName = DEFAULT_FACE) {
+    this.defaultFace = defaultFace;
+    this.current = defaultFace;
+    this.built = [defaultFace];
+  }
+
+  /** The face the cube belongs on: the followed one while there is one, else its default. */
+  get home(): FaceName {
+    return this.#followed ?? this.defaultFace;
   }
 
   /** Whether a face is in the DOM at all. */
@@ -78,7 +104,7 @@ export class Cube {
     return this.built.includes(face);
   }
 
-  /** Whether a face is painted: the current one, plus both sides of a rotation. */
+  /** Whether a face is painted: the current one, plus both sides of a rotation or fade. */
   isVisible(face: FaceName): boolean {
     if (this.transition) {
       return face === this.transition.from || face === this.transition.to;
@@ -93,56 +119,106 @@ export class Cube {
     }
   }
 
-  /** The animation class a face wears for the duration of a rotation. */
+  /** The animation class a face wears for the duration of a rotation or fade. */
   animationClass(face: FaceName): string {
     if (!this.transition) {
       return "";
     }
 
-    if (face === this.transition.from) {
-      return `rotate-out-${this.transition.direction} on-top`;
+    const { from, to, motion } = this.transition;
+
+    // The incoming face sits still underneath, so the outgoing one fading is the whole of it.
+    if (motion === FADE) {
+      return face === from ? "fade-out on-top" : "";
     }
 
-    if (face === this.transition.to) {
-      return `rotate-in-${this.transition.direction}`;
+    if (face === from) {
+      return `rotate-out-${motion} on-top`;
+    }
+
+    if (face === to) {
+      return `rotate-in-${motion}`;
     }
 
     return "";
   }
 
   rotate(direction: Direction): void {
-    if (this.#rotating) {
+    if (this.#moving) {
       return;
     }
 
-    const from = this.current;
-    const to = ADJACENCY[from][direction];
-    if (to === from) {
+    const to = ADJACENCY[this.current][direction];
+    if (to === this.current) {
       return;
     }
 
-    this.#rotating = true;
-    this.#build(to);
-    this.transition = { from, to, direction };
-    this.current = to;
-
-    window.setTimeout(() => {
-      this.transition = null;
-      this.#rotating = false;
-    }, ROTATION_MS);
-
-    this.#scheduleReset();
+    this.#move(to, direction, ROTATION_MS);
   }
 
   /** Jumps straight to a face, with no rotation. Used by the face map. */
   show(face: FaceName): void {
-    if (this.#rotating) {
+    if (this.#moving) {
       return;
     }
 
     this.#build(face);
     this.current = face;
     this.#scheduleReset();
+  }
+
+  /**
+   * Takes the face Home Assistant names as home, or gives home back to the default when it
+   * names none the cube has.
+   *
+   * A change of home is a change of face, whatever the panel was showing: someone asked for
+   * it, just not at the panel.
+   */
+  follow(state: string | null): void {
+    const previous = this.home;
+    this.#followed = isFace(state) ? state : null;
+
+    if (this.home !== previous) {
+      this.#goHome();
+    }
+  }
+
+  /** Fades home, or waits for the face change under way to finish and then does. */
+  #goHome(): void {
+    if (this.#moving) {
+      this.#homeward = true;
+
+      return;
+    }
+
+    if (this.current === this.home) {
+      this.#scheduleReset();
+
+      return;
+    }
+
+    this.#move(this.home, FADE, FADE_MS);
+  }
+
+  #move(to: FaceName, motion: Motion, duration: number): void {
+    this.#moving = true;
+    this.#build(to);
+    this.transition = { from: this.current, to, motion };
+    this.current = to;
+
+    window.setTimeout(() => this.#settle(), duration);
+
+    this.#scheduleReset();
+  }
+
+  #settle(): void {
+    this.transition = null;
+    this.#moving = false;
+
+    if (this.#homeward) {
+      this.#homeward = false;
+      this.#goHome();
+    }
   }
 
   /** Returns the cube to its home face once a panel has been left alone. */
@@ -156,7 +232,7 @@ export class Cube {
       return;
     }
 
-    this.#resetTimer = window.setTimeout(() => this.show(this.home), IDLE_RESET_MS);
+    this.#resetTimer = window.setTimeout(() => this.#goHome(), IDLE_RESET_MS);
   }
 }
 

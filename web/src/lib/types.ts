@@ -294,6 +294,7 @@ export interface Profile {
   name: string;
   floorplan: string | null;
   default_face: FaceName;
+  face_entity: string | null;
   media_player: string | null;
   faces: Record<string, Face>;
 }

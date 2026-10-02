@@ -10,6 +10,7 @@ from cube.dashboard import (
     DEFAULT_FORECAST_DAYS,
     DEFAULT_PROFILE_KEY,
     DEFAULT_WIND_GUST_THRESHOLD,
+    NO_FACE_ENTITY,
     RAINVIEWER_MAX_ZOOM,
     Camera,
     Dashboard,
@@ -31,6 +32,9 @@ MID_COLOR = "#11fcf7"
 HIGH_COLOR = "#ff0000"
 
 SPEAKER = "media_player.a_speaker"
+
+FACE_ENTITY = "input_select.panel_face"
+OTHER_FACE_ENTITY = "sensor.other_panel_face"
 
 CHIP = {"entity_id": "cover.garage_door", "label": "Garage", "icon": "mdi:garage"}
 
@@ -386,6 +390,62 @@ def test_a_child_may_open_on_a_different_face_than_its_parent():
 def test_a_profile_may_not_open_on_a_face_the_cube_does_not_have():
     with pytest.raises(ValidationError, match="sideways"):
         Dashboard.model_validate(profiles(lr={"default_face": "sideways"}))
+
+
+def test_a_profile_follows_no_face_entity_unless_told_to():
+    dashboard = Dashboard.model_validate(profiles(lr={"media_player": SPEAKER}))
+
+    assert dashboard.profiles["lr"].face_entity is None
+
+
+def test_the_face_entity_a_profile_follows_is_inherited():
+    dashboard = Dashboard.model_validate(
+        profiles(pb={"face_entity": FACE_ENTITY}, ob={"inherits": "pb"}),
+    )
+
+    assert dashboard.profiles["ob"].face_entity == FACE_ENTITY
+
+
+def test_a_child_may_follow_a_different_face_entity_than_its_parent():
+    document = profiles(lr={"face_entity": OTHER_FACE_ENTITY})
+    document["profiles"]["default"]["face_entity"] = FACE_ENTITY
+    dashboard = Dashboard.model_validate(document)
+
+    assert dashboard.profiles["default"].face_entity == FACE_ENTITY
+    assert dashboard.profiles["lr"].face_entity == OTHER_FACE_ENTITY
+
+
+def test_a_child_may_decline_the_face_entity_its_parent_follows():
+    dashboard = Dashboard.model_validate(
+        profiles(pb={"face_entity": FACE_ENTITY}, ob={"inherits": "pb", "face_entity": NO_FACE_ENTITY}),
+    )
+
+    assert dashboard.profiles["pb"].face_entity == FACE_ENTITY
+    assert dashboard.profiles["ob"].face_entity is None
+
+
+def test_a_grandchild_may_follow_again_under_a_parent_that_declined():
+    document = profiles(
+        pb={"face_entity": NO_FACE_ENTITY},
+        ob={"inherits": "pb", "face_entity": OTHER_FACE_ENTITY},
+    )
+    document["profiles"]["default"]["face_entity"] = FACE_ENTITY
+    dashboard = Dashboard.model_validate(document)
+
+    assert dashboard.profiles["pb"].face_entity is None
+    assert dashboard.profiles["ob"].face_entity == OTHER_FACE_ENTITY
+
+
+def test_a_declined_face_entity_is_not_subscribed_to():
+    dashboard = Dashboard.model_validate(profiles(lr={"face_entity": NO_FACE_ENTITY}))
+
+    assert NO_FACE_ENTITY not in dashboard.allowed_entities
+
+
+def test_the_panel_subscribes_to_every_face_entity():
+    dashboard = Dashboard.model_validate(profiles(lr={"face_entity": FACE_ENTITY}))
+
+    assert FACE_ENTITY in dashboard.allowed_entities
 
 
 def test_a_profile_without_a_name_is_called_after_its_key():

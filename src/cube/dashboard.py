@@ -1040,6 +1040,11 @@ class Profile(BaseModel):
     One instance can serve several panels; the profile decides which cube faces they get,
     which face and floorplan level they open on, and which media player their visualizer follows.
 
+    `face_entity` names an entity whose state is the face the panel should be showing right now,
+    standing in for `default_face` while it holds one; an empty or unrecognised state leaves
+    `default_face` in charge. The frontend reads it, so nothing here checks the state itself.
+    A child that names `default` follows nothing, whatever its parent follows.
+
     Every profile but `default` is a delta. `inherits` names the profile it starts from, and
     defaults to `default`, so a panel states only what makes it different. `media_player` is
     the exception that never inherits: a panel following the wrong room's speaker looks
@@ -1049,6 +1054,7 @@ class Profile(BaseModel):
     name: str | None = None
     floorplan: str | None = None
     default_face: str | None = None
+    face_entity: str | None = None
     media_player: str | None = None
     inherits: str | None = None
     faces: dict[str, Face] = Field(default_factory=dict)
@@ -1066,6 +1072,10 @@ CUBE_FACES = ("front", "back", "left", "right", "up", "down")
 
 # The face a panel opens on, and turns back to once it has been left alone.
 DEFAULT_CUBE_FACE = "front"
+
+# What a profile names as its `face_entity` to follow nothing, and keep to `default_face`. An
+# entity id always has a domain and a dot, so this can never be mistaken for one.
+NO_FACE_ENTITY = "default"
 
 DEFAULT_PROFILE_KEY = "default"
 
@@ -1233,12 +1243,18 @@ class Dashboard(BaseModel):
             if ancestor.default_face is not None:
                 resolved.default_face = ancestor.default_face
 
+            if ancestor.face_entity is not None:
+                resolved.face_entity = ancestor.face_entity
+
             # By face name, so a child that names `front` owns that face outright and leaves
             # its siblings alone.
             resolved.faces.update(ancestor.faces)
 
         if resolved.default_face is None:
             resolved.default_face = DEFAULT_CUBE_FACE
+
+        if resolved.face_entity == NO_FACE_ENTITY:
+            resolved.face_entity = None
 
         own = self.profiles[key]
         resolved.name = own.name or key
@@ -1358,6 +1374,9 @@ class Dashboard(BaseModel):
         for profile in self.profiles.values():
             if profile.media_player:
                 entities.add(profile.media_player)
+
+            if profile.face_entity:
+                entities.add(profile.face_entity)
 
         if self.weather:
             entities.add(self.weather.entity_id)
