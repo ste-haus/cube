@@ -37,6 +37,18 @@ export class Lapsing<T> {
     this.#chosen = null;
   }
 
+  /** Keeps the choice for as long as it is held, however long that is: it lapses only once let go. */
+  hold(): void {
+    this.#clear();
+  }
+
+  /** Lets go of a held choice, which lapses a whole wait from now. */
+  resume(): void {
+    if (this.#chosen !== null) {
+      this.choose(this.#chosen);
+    }
+  }
+
   #clear(): void {
     if (this.#timer !== null) {
       clearTimeout(this.#timer);

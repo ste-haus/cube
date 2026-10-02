@@ -1100,3 +1100,173 @@ def test_a_code_page_must_be_a_web_address():
 
     with pytest.raises(ValidationError, match="not an http or https address"):
         Dashboard.model_validate(guest_face(wifi=wifi))
+
+
+TRAVEL_TIME = "sensor.travel_time_alice"
+DEPARTURE_TIME = "sensor.departure_time_alice"
+COMMUTE_TIME = "sensor.travel_time_commute"
+TRAVELLER = "person.alice"
+TRAFFIC_CAMERA = "camera.traffic"
+
+
+def departure_face(**options) -> dict:
+    return profiles(hall={"faces": {"back": {"content": "departure", "options": options}}})
+
+
+def departure() -> Dashboard:
+    return Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[
+                {
+                    "entity_id": TRAVEL_TIME,
+                    "name": "Alice",
+                    "departure_entity_id": DEPARTURE_TIME,
+                    "person_entity_id": TRAVELLER,
+                },
+                {"entity_id": COMMUTE_TIME, "name": "Commute"},
+            ],
+        )
+    )
+
+
+def test_everything_a_departure_face_reads_is_subscribed():
+    assert {TRAVEL_TIME, DEPARTURE_TIME, TRAVELLER, COMMUTE_TIME, TRAFFIC_CAMERA} <= departure().allowed_entities
+
+
+def test_a_departure_face_controls_nothing():
+    dashboard = departure()
+
+    for entity_id in (TRAVEL_TIME, DEPARTURE_TIME, TRAVELLER, COMMUTE_TIME, TRAFFIC_CAMERA):
+        assert not dashboard.may_toggle(entity_id)
+        assert not dashboard.may_set(entity_id)
+
+
+def test_a_departure_faces_map_may_be_a_bare_camera():
+    face = departure().profiles["hall"].faces["back"]
+
+    assert face.options["map"]["entity_id"] == TRAFFIC_CAMERA
+    assert [camera.entity_id for camera in face.cameras] == [TRAFFIC_CAMERA]
+
+
+def test_a_route_leaves_whenever_unless_it_says_when():
+    routes = departure().profiles["hall"].faces["back"].options["travel_times"]
+
+    assert routes[0]["departure_entity_id"] == DEPARTURE_TIME
+    assert routes[1]["departure_entity_id"] is None
+
+
+def test_a_departure_face_needs_a_route():
+    with pytest.raises(ValidationError, match="travel_times"):
+        Dashboard.model_validate(departure_face(map=TRAFFIC_CAMERA, travel_times=[]))
+
+
+def test_a_trip_is_imminent_at_five_minutes_and_soon_at_fifteen_unless_told_otherwise():
+    options = departure().profiles["hall"].faces["back"].options
+
+    assert (options["imminent_minutes"], options["soon_minutes"]) == (5, 15)
+
+
+def test_a_trip_cannot_be_soon_after_it_is_imminent():
+    with pytest.raises(ValidationError, match="soon_minutes"):
+        Dashboard.model_validate(
+            departure_face(
+                map=TRAFFIC_CAMERA,
+                travel_times=[{"entity_id": TRAVEL_TIME, "name": "Alice"}],
+                imminent_minutes=10,
+                soon_minutes=5,
+            )
+        )
+
+
+def test_a_trip_runs_once_its_time_has_come_unless_told_otherwise():
+    plain = departure().profiles["hall"].faces["back"].options
+    door = Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[{"entity_id": TRAVEL_TIME, "name": "Alice"}],
+            leave_now_icon="mdi:exit-run",
+        )
+    ).profiles["hall"].faces["back"].options
+
+    assert plain["leave_now_icon"] == "mdi:run-fast"
+    assert plain["departed_icon"] == "mdi:account-arrow-right-outline"
+    assert door["leave_now_icon"] == "mdi:exit-run"
+
+
+ROUTE_DETAILS = {
+    "free_flow_entity_id": "sensor.alice_free_flow",
+    "distance_entity_id": "sensor.alice_distance",
+    "destination_entity_id": "sensor.alice_destination",
+    "destination_attribute": "address",
+    "calendar_entity_id": "calendar.alice",
+    "checked_entity_id": "input_datetime.alice_checked",
+}
+
+
+def test_everything_a_routes_window_reads_is_subscribed_and_none_of_it_is_a_control():
+    dashboard = Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[{"entity_id": TRAVEL_TIME, "name": "Alice", **ROUTE_DETAILS}],
+        )
+    )
+    details = {value for key, value in ROUTE_DETAILS.items() if key.endswith("_entity_id")}
+
+    assert details <= dashboard.allowed_entities
+
+    for entity_id in details:
+        assert not dashboard.may_toggle(entity_id)
+        assert not dashboard.may_set(entity_id)
+
+
+def test_a_routes_window_shows_only_what_it_is_given():
+    route = departure().profiles["hall"].faces["back"].options["travel_times"][1]
+
+    assert all(route[key] is None for key in ROUTE_DETAILS)
+
+
+SEND_EVENT = "CUBE_SEND_ROUTE"
+
+
+def test_a_departure_face_may_fire_the_event_that_sends_a_route_and_no_other():
+    plain = departure()
+    sending = Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[{"entity_id": COMMUTE_TIME, "name": "Commute", "person_entity_id": TRAVELLER}],
+            send_event=SEND_EVENT,
+        )
+    )
+
+    assert not plain.may_fire(SEND_EVENT)
+    assert sending.may_fire(SEND_EVENT)
+    assert not sending.may_fire("SOMETHING_ELSE")
+
+
+def test_any_route_may_name_who_takes_it():
+    dashboard = Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[{"entity_id": COMMUTE_TIME, "name": "Commute", "person_entity_id": TRAVELLER}],
+        )
+    )
+
+    assert TRAVELLER in dashboard.allowed_entities
+
+
+def test_a_route_sent_to_a_phone_opens_in_apple_maps_unless_told_otherwise():
+    plain = departure().profiles["hall"].faces["back"].options
+    google = Dashboard.model_validate(
+        departure_face(map=TRAFFIC_CAMERA, travel_times=[{"entity_id": TRAVEL_TIME, "name": "Alice"}], maps="google")
+    ).profiles["hall"].faces["back"].options
+
+    assert plain["maps"] == "apple"
+    assert google["maps"] == "google"
+
+
+def test_a_route_opens_only_in_maps_the_panel_knows():
+    with pytest.raises(ValidationError, match="maps"):
+        Dashboard.model_validate(
+            departure_face(map=TRAFFIC_CAMERA, travel_times=[{"entity_id": TRAVEL_TIME, "name": "Alice"}], maps="bing")
+        )

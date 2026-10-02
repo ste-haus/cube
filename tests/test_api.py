@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
@@ -499,3 +500,59 @@ def test_a_colour_off_the_wheel_is_refused(settings, colour):
 
     assert response.status_code == UNPROCESSABLE
     assert calls == []
+
+
+# Matches the first route of `profiles.default.faces.back.options.travel_times` in the sample config.
+SAMPLE_TRAVEL_TIME = "sensor.example_travel_time_alice"
+TRAVEL_HISTORY = [
+    {"entity_id": SAMPLE_TRAVEL_TIME, "state": "31", "last_changed": "2026-10-01T22:31:00+00:00"},
+    {"state": "34", "last_changed": "2026-10-01T22:41:00+00:00"},
+]
+UPSTREAM_FAILED = 502
+UNPROCESSABLE = 422
+
+
+def test_a_dashboard_entitys_history_is_relayed_bare(settings):
+    asked: list[str] = []
+
+    async def history(entity_id: str, start):
+        asked.append(entity_id)
+        return TRAVEL_HISTORY
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.rest.history = history
+
+        response = client.get(f"/api/history/{SAMPLE_TRAVEL_TIME}")
+
+    assert response.status_code == OK
+    assert asked == [SAMPLE_TRAVEL_TIME]
+    assert response.json() == {
+        "states": [{"state": entry["state"], "last_changed": entry["last_changed"]} for entry in TRAVEL_HISTORY]
+    }
+
+
+def test_history_reaches_no_further_than_the_dashboard(settings):
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/api/history/sensor.not_on_the_dashboard")
+
+    assert response.status_code == NOT_FOUND
+
+
+@pytest.mark.parametrize("hours", [0, 25])
+def test_history_looks_back_a_bounded_while(settings, hours):
+    with TestClient(create_app(settings)) as client:
+        response = client.get(f"/api/history/{SAMPLE_TRAVEL_TIME}", params={"hours": hours})
+
+    assert response.status_code == UNPROCESSABLE
+
+
+def test_history_home_assistant_cannot_give_is_an_upstream_failure(settings):
+    async def history(entity_id: str, start):
+        raise httpx.ConnectError("down")
+
+    with TestClient(create_app(settings)) as client:
+        client.app.state.hub.rest.history = history
+
+        response = client.get(f"/api/history/{SAMPLE_TRAVEL_TIME}")
+
+    assert response.status_code == UPSTREAM_FAILED

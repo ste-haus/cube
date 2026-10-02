@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { TAP_SLOP_PX } from "../lib/cube.svelte";
   import HueWindow from "./HueWindow.svelte";
   import Icon from "../lib/Icon.svelte";
   import { Breath } from "../lib/breath.svelte";
@@ -31,7 +32,6 @@
    * following the handle while it is dragged, the way the floorplan draws a light's brightness.
    */
 
-  const TAP_SLOP_PX = 10;
   const PRIMARY_BUTTON = 0;
   const PERCENT = 100;
 

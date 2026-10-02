@@ -281,6 +281,41 @@ export interface GuestFaceOptions {
   alarm: Alarm | null;
 }
 
+/** A route's minutes, read below nought while nobody is keeping the route up to date. */
+export interface TravelTime {
+  entity_id: string;
+  name: string;
+  /** A sensor holding when to leave, as a Unix timestamp, for a route tied to a particular trip. */
+  departure_entity_id: string | null;
+  /** Who takes the trip; while they are not home, it is not drawn as due. */
+  person_entity_id: string | null;
+  /** The rest are details of the route, each left unshown when unset. */
+  free_flow_entity_id: string | null;
+  distance_entity_id: string | null;
+  destination_entity_id: string | null;
+  destination_attribute: string | null;
+  calendar_entity_id: string | null;
+  checked_entity_id: string | null;
+}
+
+export type MapsLink = "apple" | "google";
+
+export interface DepartureFaceOptions {
+  map: Camera;
+  travel_times: TravelTime[];
+  /** Minutes before a trip's time to leave that it is imminent, and that it is soon. */
+  imminent_minutes: number;
+  soon_minutes: number;
+  /** What a trip shows in place of its countdown once its time to leave has come. */
+  leave_now_icon: string;
+  /** What a trip shows instead, in grey, once its time has come and its person has gone. */
+  departed_icon: string;
+  /** An event a route's window fires to send the route to its person's phone; null, no button. */
+  send_event: string | null;
+  /** Which maps a route sent to a phone opens in, carried with the event. */
+  maps: MapsLink;
+}
+
 export interface Face {
   content: string;
   label: string;
@@ -314,6 +349,26 @@ export interface Labels {
   master_warning: string;
   master_caution: string;
   alert_cleared: string;
+  travel: string;
+  forecast: string;
+  travel_idle: string;
+  travel_more: string;
+  travel_drive: string;
+  travel_in_traffic: string;
+  travel_distance: string;
+  travel_destination: string;
+  travel_checked: string;
+  travel_checked_note: string;
+  travel_all_day: string;
+  travel_countdown: string;
+  travel_away: string;
+  travel_send: string;
+  travel_sent: string;
+  travel_send_failed: string;
+  leave_by: string;
+  minutes: string;
+  leave_now: string;
+  departed: string;
 }
 
 export interface Theme {
@@ -378,6 +433,12 @@ export interface EntityState {
   attributes: Record<string, unknown>;
   last_changed: string | null;
   last_updated: string | null;
+}
+
+/** One recorded state of an entity, and when it began. */
+export interface HistoryState {
+  state: string | null;
+  last_changed: string | null;
 }
 
 export interface AgendaEvent {

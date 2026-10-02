@@ -24,9 +24,51 @@ profiles:
       front:
         content: dashboard
         label_strip: false
+      # What to look at on the way out: the house's header and the clock, a traffic map, how long
+      # the trips under way will take, and the `fuel` gauges below. `map` is a camera, written as
+      # on a camera face. A travel time is a sensor in minutes that reads below nought while its
+      # route is not being kept up to date, and only the routes reading nought or more are shown,
+      # two at a time, trips first; a sideways swipe brings in the rest. One tied to a particular trip names `departure_entity_id`, a sensor holding
+      # when to leave as a Unix timestamp; one that is always there, like a commute, names none.
+      # A commute shows how long it takes; a trip counts down to when to leave instead, from below
+      # nought to `leave_now_icon`, breathing in the primary colour from `soon_minutes` before that and pulsing in the
+      # secondary from `imminent_minutes` before it, or once it has gone. A trip may name
+      # `person_entity_id`, who takes it; while they are not home it keeps its countdown but
+      # stays grey, and once its time has come shows `departed_icon` instead.
       back:
-        content: blank
-        label: back
+        content: departure
+        label: Departure
+        label_strip: false
+        options:
+          map:
+            entity_id: camera.example_traffic
+            title: Traffic
+          travel_times:
+            - entity_id: sensor.example_travel_time_alice
+              name: Alice
+              departure_entity_id: sensor.example_departure_time_alice
+              person_entity_id: person.example_alice
+              # Read only by the window a tap on the route opens; each is left out when unset.
+              free_flow_entity_id: sensor.example_free_flow_alice
+              distance_entity_id: sensor.example_distance_alice
+              destination_entity_id: sensor.example_destination_alice
+              destination_attribute: address
+              calendar_entity_id: calendar.example_alice
+              checked_entity_id: input_datetime.example_checked_alice
+            - entity_id: sensor.example_travel_time_bob
+              name: Bob
+              departure_entity_id: sensor.example_departure_time_bob
+            - entity_id: sensor.example_travel_time_home_to_work
+              name: Commute
+          imminent_minutes: 5
+          soon_minutes: 15
+          leave_now_icon: mdi:run-fast
+          # A trip that names a person is sent to their phone by a tap on its event, which fires this
+          # with the route, the person, and the destination. Unset, nothing sends.
+          send_event: CUBE_SEND_ROUTE
+          # Which maps the link on the phone opens in, sent with the event: apple (the default) or google.
+          maps: apple
+          departed_icon: mdi:account-arrow-right-outline
       left:
         content: blank
         label: left

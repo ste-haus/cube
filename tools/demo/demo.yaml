@@ -9,8 +9,40 @@ profiles:
         content: dashboard
         label_strip: false
       back:
-        content: blank
-        label: back
+        content: departure
+        label: Departure
+        label_strip: false
+        options:
+          map:
+            entity_id: camera.example_traffic
+            title: Traffic
+          travel_times:
+            - entity_id: sensor.example_travel_time_alice
+              name: Alice
+              departure_entity_id: sensor.example_departure_time_alice
+              person_entity_id: person.example_alice
+              free_flow_entity_id: sensor.example_free_flow_alice
+              distance_entity_id: sensor.example_distance_alice
+              destination_entity_id: sensor.example_destination_alice
+              destination_attribute: address
+              calendar_entity_id: calendar.example_alice
+              checked_entity_id: input_datetime.example_checked_alice
+            - entity_id: sensor.example_travel_time_bob
+              name: Bob
+              departure_entity_id: sensor.example_departure_time_bob
+              person_entity_id: person.example_bob
+              free_flow_entity_id: sensor.example_free_flow_bob
+              distance_entity_id: sensor.example_distance_bob
+              destination_entity_id: sensor.example_destination_bob
+              destination_attribute: address
+              calendar_entity_id: calendar.example_bob
+              checked_entity_id: input_datetime.example_checked_bob
+            - entity_id: sensor.example_travel_time_home_to_work
+              name: Commute
+              free_flow_entity_id: sensor.example_free_flow_home_to_work
+              distance_entity_id: sensor.example_distance_home_to_work
+              checked_entity_id: input_datetime.example_checked_home_to_work
+          send_event: CUBE_SEND_ROUTE
       left:
         content: blank
         label: left

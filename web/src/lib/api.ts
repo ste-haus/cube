@@ -1,5 +1,5 @@
 import type { HueSaturation, XyPoint } from "./hue";
-import type { AgendaEvent, DashboardConfig, ForecastDay, ForecastHour } from "./types";
+import type { AgendaEvent, DashboardConfig, ForecastDay, ForecastHour, HistoryState } from "./types";
 
 const API_ROOT = "/api";
 const FACE_ROOT = "/faces";
@@ -48,6 +48,17 @@ export async function fetchForecast(): Promise<{ days: ForecastDay[]; hours: For
   return { days: body.days ?? [], hours: body.hours ?? [] };
 }
 
+export async function fetchHistory(entityId: string): Promise<HistoryState[]> {
+  const response = await fetch(`${API_ROOT}/history/${encodeURIComponent(entityId)}`);
+  if (!response.ok) {
+    throw new Error(`Could not load the history of ${entityId}: ${response.status}`);
+  }
+
+  const body = await response.json();
+
+  return body.states ?? [];
+}
+
 export async function toggle(entityId: string): Promise<void> {
   const response = await fetch(`${API_ROOT}/toggle`, {
     method: "POST",
@@ -73,11 +84,14 @@ export async function setValue(entityId: string, value: number | string | HueSat
 
 /** Fires a Home Assistant event, if the config allows this dashboard to fire it. */
 export async function fireEvent(eventType: string, eventData: Record<string, unknown> = {}): Promise<void> {
-  await fetch(`${API_ROOT}/event`, {
+  const response = await fetch(`${API_ROOT}/event`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ event_type: eventType, event_data: eventData }),
   });
+  if (!response.ok) {
+    throw new Error(`Could not fire ${eventType}: ${response.status}`);
+  }
 }
 
 export function streamUrl(): string {

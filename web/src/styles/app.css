@@ -135,6 +135,39 @@
   --weather-summary-size: 1.28rem;
   --gauge-value-size: 3.2rem;
   --gauge-name-size: 1.06rem;
+  --travel-minutes-size: 8.4rem;
+  /* How far a trip that is soon fades at the bottom of each breath, about as far as a lit caution
+   * dims, and how far an imminent one fades at each pulse. */
+  --travel-breathe-opacity: 0.55;
+  --travel-pulse-opacity: 0.3;
+  --travel-pulse-glow: 0.6rem;
+  /* The map is a square picture held to the column's height, so it draws narrower than 46vw
+   * anyway; the rail takes the rest, room for two routes at full size. */
+  --departure-map-width: 46vw;
+  --departure-rail-width: 34vw;
+  /* How far in from the rail's edges the fuel gauges stand, so they sit under the routes rather
+   * than outsizing them. */
+  --departure-gauges-inset: 3vw;
+  --departure-forecast-height: 30vh;
+  --departure-gap: 2vw;
+  --travel-name-size: 1.9rem;
+  --travel-route-padding: 0.4rem 0;
+  --travel-more-size: 2.4rem;
+  /* How quickly the send mark's phone fades across to its ticked one, and back. */
+  --travel-send-fade: 250ms;
+  /* How far the reticle round a held event stands off it, as the floorplan's does off a light. */
+  --travel-reticle-reach: 7px;
+  --travel-more-reach: 0.6rem;
+  --travel-window-width: 36vw;
+  --travel-window-padding: 1.2rem 1.6rem 1.6rem;
+  --travel-window-event-size: 2rem;
+  /* How far the unit stands off the figure, and the room kept either side of the digits for the
+   * sign and the unit to hang into: as wide as the minus sign, the wider of the two. */
+  --travel-unit-indent: 0.15em;
+  --travel-unit-room: 4.8rem;
+  /* How wide an outline pares a travel icon down with: half of it eats into each edge. */
+  --travel-icon-pare: 0.05em;
+  --travel-detail-size: 1.6rem;
   /* The arc carries the primary colour undiluted, which reads brighter than anything
    * around it. Dimming the stroke settles it into the panel without touching the colour. */
   --gauge-dial-opacity: 0.75;
@@ -422,6 +455,105 @@ body {
   flex: 0 0 var(--guest-forecast-height);
   min-height: 0;
   height: auto;
+}
+
+/*
+ * The departure face's top is the dashboard's, on the dashboard's own tracks, so turning between
+ * the two moves nothing that is on both: the clock down the left, the header's indicators across
+ * the top, and the weather now at the head of the right-hand column, pulled up as it is there.
+ * Under them, the map and the rail beside it are one block across the whole face, against the top
+ * and centred, rather than spread over the dashboard's three columns.
+ */
+.dashboard.departure-face {
+  grid-template-rows: minmax(0, var(--dashboard-header-height)) auto 1fr;
+  grid-template-areas:
+    "left header header"
+    "left . weather"
+    "main main main";
+}
+
+/* Laid out as the dashboard's right-hand column is, which is where its weather sits. */
+.departure-face__weather {
+  grid-area: weather;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The forecast is headed as the travel card is, and gives up height before anything above it. */
+.departure-face__forecast {
+  display: flex;
+  flex: 1 1 var(--departure-forecast-height);
+  flex-direction: column;
+  min-height: 0;
+}
+
+.departure-face__forecast > .forecast-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+/* The block stops short of the face map's line at the foot of the panel, so the map never runs
+ * down behind the dots. */
+.departure-face__main {
+  grid-area: main;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--departure-gap);
+  min-height: 0;
+  padding-bottom: calc(
+    var(--announcement-axis) + var(--face-map-height) / 2 + var(--panel-gap) - var(--panel-padding)
+  );
+}
+
+.departure-face__map {
+  display: flex;
+  flex: 0 1 var(--departure-map-width);
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.departure-face__map > .camera {
+  flex: 0 1 auto;
+}
+
+/* The map's heading reads from the left, and the rail's from the right, so the two face apart
+ * across the gap between them. */
+.departure-face__map .panel-title {
+  text-align: left;
+}
+
+.departure-face__rail > .gauges {
+  padding-inline: var(--departure-gauges-inset);
+}
+
+.departure-face__rail {
+  display: flex;
+  flex: 0 0 var(--departure-rail-width);
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--rail-gap);
+}
+
+@media (max-width: 600px) {
+  .dashboard.departure-face {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "left"
+      "header"
+      "weather"
+      "main";
+  }
+
+  .departure-face__main {
+    flex-direction: column;
+  }
 }
 
 /* Section headings, uppercased over a rule, as on the dashboard this replaces. */

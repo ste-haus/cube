@@ -457,7 +457,7 @@ light:
 
 ### labels
 
-Section headings, the horizon's two captions, where the hourly forecast starts, the guest face's network and alarm cards, the two master lights, and the tag on a cleared alert, in case yours should not read as they do here.
+Section headings, the horizon's two captions, where the hourly forecast starts, the guest face's network and alarm cards, the departure face's travel card, the two master lights, and the tag on a cleared alert, in case yours should not read as they do here.
 
 ```yaml
 labels:
@@ -475,6 +475,26 @@ labels:
   master_warning: Master Warning
   master_caution: Master Caution
   alert_cleared: ACK
+  travel: Travel
+  forecast: Forecast
+  travel_idle: No trips
+  travel_more: More trips
+  travel_drive: Drive
+  travel_in_traffic: in traffic
+  travel_distance: Distance
+  travel_destination: Destination
+  travel_checked: Checked
+  travel_checked_note: checked
+  travel_all_day: All day
+  travel_countdown: T
+  travel_away: Away
+  travel_send: Send to phone
+  travel_sent: Sent
+  travel_send_failed: Not sent
+  leave_by: Leave by
+  minutes: min
+  leave_now: Now
+  departed: Gone
 ```
 
 ### What the panel may switch
