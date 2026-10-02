@@ -93,7 +93,7 @@ A hold that opens something rather than switching it swells what is held for the
 
 Something too big to swell, like a floorplan light that fills its room, has the reticle close in on it over the hold instead, the lock-on stretched to the hold's length, and its window flies out of the reticle's corners. The hold's length is `COLOUR_HOLD_MS` in `src/lib/hue.ts`, shared by both.
 
-Sending a trip to a phone is held the same way, the reticle closing in on the trip's event over `COLOUR_HOLD_MS`; when the corners meet it sends, and they breathe until Home Assistant answers. The reticle is `Reticle` in `src/cards/Reticle.svelte`, wherever it appears: the holder places it, and it draws the corners, the lock-on, the hold, the breath, and the release.
+A route on the departure face's travel card opens its window the same way, the reticle closing in on the card and the window flying out of it, since a card half the rail wide is too big to swell. Sending a trip to a phone is held the same way too, the reticle closing in on the trip's event over `COLOUR_HOLD_MS`; when the corners meet it sends, and they breathe until Home Assistant answers. The reticle is `Reticle` in `src/cards/Reticle.svelte`, wherever it appears: the holder places it, and it draws the corners, the lock-on, the hold, the breath, and the release.
 
 ### Icons ease between their colours
 
