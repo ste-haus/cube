@@ -225,6 +225,9 @@
   /* The room light's colour window: the wheel, the white in its middle, and the marker. */
   --hue-window-padding: 2.5rem;
   --hue-wheel-size: 26rem;
+  /* As wide as the wheel and its padding, so a long name in the band is cut short rather than
+   * widening the window. */
+  --hue-window-width: calc(var(--hue-wheel-size) + 2 * var(--hue-window-padding));
   --hue-ring-feather: 0.5%;
   --hue-default-inset: 22%;
   --hue-chosen-weight: 0.25rem;

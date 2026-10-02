@@ -63,6 +63,8 @@ A new window is built on `PanelWindow` in `src/cards/PanelWindow.svelte`, which 
 
 Its band is one of two. `quiet` is a dark strip with light type, for a closer look at something: the camera window. `solid` is drawn the way a lit master's list is, a band with dark type at the heading's size, grey (`--color-muted`) unless the window's control has a colour of its own to show, when the band is that colour (`tint`), with light type over a dark one: the colour window's band is the light's colour, following the marker as it is dragged. Neither glints; a glint on a band is an alert's.
 
+A band's words that come from Home Assistant, like the colour window's light name, can run to any length, so the window takes a fixed `width` from its body and the heading ends in an ellipsis rather than wrapping or widening the window.
+
 A window whose whole job is one choice closes itself once it is made, with `close()`, the same fold back into its origin as a tap on the glass: the colour window, on letting go of the ring, tapping its middle, or setting its brightness bar.
 
 A mark dragged over something the finger hides, like the colour ring, throws a wide glow of its own colour while it is held, breathing at the glow's pace, so what is under the finger still shows round it.
