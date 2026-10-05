@@ -326,6 +326,8 @@ export interface DepartureFaceOptions {
   send_event: string | null;
   /** Which maps a route sent to a phone opens in, carried with the event. */
   maps: MapsLink;
+  /** A sensor whose `incidents` attribute lists the traffic incidents to raise a banner for. */
+  incidents_entity_id: string | null;
 }
 
 export interface Face {
@@ -381,6 +383,14 @@ export interface Labels {
   minutes: string;
   leave_now: string;
   departed: string;
+  incidents: string;
+  /** The banner's tail for roads it has no room to name, with `{count}` in it. */
+  incidents_other: string;
+  incidents_others: string;
+  incidents_unnamed: string;
+  incidents_closed: string;
+  incidents_since: string;
+  incidents_until: string;
 }
 
 export interface Theme {

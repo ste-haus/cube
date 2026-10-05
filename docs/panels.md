@@ -251,6 +251,7 @@ faces:
         - entity_id: sensor.travel_time_home_to_work
           name: Home to work
           short_name: Work
+      incidents_entity_id: sensor.traffic_incidents
 ```
 
 | Option | Holds |
@@ -263,6 +264,7 @@ faces:
 | `departed_icon` | What a trip shows instead, in grey, once its time to leave has come and its person is not home, `mdi:account-arrow-right-outline` unless you say otherwise |
 | `imminent_minutes`, `soon_minutes` | How close a trip's time to leave is when it is imminent, and when it is soon: 5 and 15 unless you say otherwise. A time already gone is imminent |
 | `slower_percent`, `much_slower_percent` | How far over its usual time, in percent, a route that is always there has to be before it is slower, and much slower: 10 and 20 unless you say otherwise. Only a route with a usual time to read is judged by these |
+| `incidents_entity_id` | A sensor whose `incidents` attribute lists traffic incidents, to raise a banner over the map for while there are any; see below. Unset, there is no banner |
 | `traffic_slower_minutes`, `traffic_slower_percent`, `traffic_much_slower_minutes`, `traffic_much_slower_percent` | What traffic has to add over a route's free-flow minutes, both in minutes and in percent, before a route that is always there is slower, and much slower, when it has no usual time to read: more than 8 minutes and 40%, and more than 15 minutes and 75%, unless you say otherwise. Needing both keeps a few minutes on a short route, and a small share of a long one, from counting. A route without `free_flow_entity_id` is never judged by these |
 
 Only the routes reading nought or more are shown, two side by side: the trips first, then the routes that are always there, each in the order written. With more than two, a chevron at the right says so, and a sideways swipe across them, or a tap on the chevron, slides the pair one route along, round from the last to the first in either direction; it goes back to the first pair a minute after it was last swiped, and an upward or downward swipe still turns the cube. A route that is always there to be read, like a commute, names no departure sensor and shows its name and how many minutes it takes. A trip, one naming a departure sensor that has a time, shows its name, a countdown in whole minutes to when it is time to leave, below nought as a launch counts ("−11" is eleven minutes to go, and the last part-minute is "−1"), then `leave_now_icon` once that time has come, which `labels.leave_now` names to a screen reader, and "Leave by" and that time on a 24-hour clock; while its departure sensor has no time it shows its travel minutes like a commute. Once leaving is soon, the countdown and the time breathe slowly in the primary colour, and once it is imminent or gone they pulse, faster and deeper, in the secondary. A route with no departure sensor takes the same colours from its usual time instead: once its minutes are more than `slower_percent` over what `usual_entity_id` reads, they breathe in the primary colour, and once they are more than `much_slower_percent` over, they pulse in the secondary. While it has no usual time to read (none named, or its sensor unknown), it goes by what traffic adds over `free_flow_entity_id` instead, past the `traffic_` thresholds; a usual time that says the route is as quick as ever is believed even when traffic adds a good deal, since the usual time already counts the traffic usual at that hour. With neither to go by it never changes colour. A trip never takes its colour from a usual time, even while its departure sensor has no time. Nor does a trip whose person is somewhere other than `home` ever change colour: they have left already or are leaving from somewhere else (a person Home Assistant cannot place is taken to be home, so a tracker that drops out never silences a late trip), so it keeps its countdown and stays grey, and once its time has come it shows `departed_icon` in grey, which `labels.departed` names to a screen reader, rather than `leave_now_icon`. A route that is unknown or unavailable counts as no trip. With none under way the card says `labels.travel_idle` in grey. The card's heading is `labels.travel`, the unit after the minutes `labels.minutes`, and the departure's label `labels.leave_by`.
@@ -281,6 +283,23 @@ When the face has a `send_event`, a trip names a person, and the event's locatio
 | `checked_entity_id` | When the route's time was last asked for: an `input_datetime`, a timestamp sensor, or a local date and time. A stamp at the epoch reads as never, and is left out |
 
 A tap anywhere closes it. The window's words are `labels.travel_drive`, `travel_in_traffic`, `travel_distance`, `travel_destination`, `travel_checked`, `travel_checked_note`, `travel_away`, `travel_send` (what a screen reader calls the event that sends), `travel_sent` (what it calls the tick), and `travel_send_failed` (what it calls the crossed-out phone).
+
+While `incidents_entity_id` lists any incidents, a band slides down between the map's heading and the map, and slides back up once the list is empty. It reads `labels.incidents`, a colon, and the roads the incidents are on, worst first and each once, up to three of them; any more roads are counted after them as `labels.incidents_other` or `labels.incidents_others`, with `{count}` replaced: "Active incidents: I-135, K-96, US-54, and 2 others". An incident's road is its `road`, or failing that its `location`, its `summary`, or `labels.incidents_unnamed`. The band takes the worst incident's colour: the primary colour for `minor`, the secondary for `major`, and for `critical` the master warning's red (`mcw.warning_color`, its default even without an `mcw` block); a criticality it does not know counts as minor. Its type is dark, or light over a colour too dark for dark type to read on. Tapping it opens a window out of it, its band and brackets in the same colour and its band giving how many there are, listing every incident worst first: an icon for its `type` in its own criticality's colour, its road and `direction`, its `criticality`, its `description` (or `summary`), its `location`, and `labels.incidents_closed` if `road_closed`, then when it began and is due to end after `labels.incidents_since` and `labels.incidents_until`, as a time of day if today and with the date if not. Every field is optional. A line too long for the window travels back and forth to show the rest. The window closes at a tap anywhere, a minute after it was last touched, or as soon as the last incident clears. The shape is what the HERE Traffic incidents in Home Assistant hold, each one a record like:
+
+```yaml
+incidents:
+  - id: "1234567890"
+    type: accident          # accident, construction, congestion, roadClosure, laneRestriction, …
+    criticality: major      # minor, major, or critical
+    road: I-135
+    direction: NB
+    summary: Crash on I-135
+    description: Crash on I-135 at the 21st St exit. Right lane blocked.
+    location: I-135 near 21st St
+    road_closed: false
+    start_time: "2026-10-05T15:40:00Z"
+    end_time: "2026-10-05T17:00:00Z"
+```
 
 Everything a departure face reads is added to the allowlist, and it switches nothing.
 

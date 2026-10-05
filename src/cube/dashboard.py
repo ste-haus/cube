@@ -600,6 +600,22 @@ class Labels(BaseModel):
     minutes: str = Field(default="min", description="The unit after a route's travel time")
     leave_now: str = Field(default="Now", description="What a trip's icon is called once its time to leave has come")
     departed: str = Field(default="Gone", description="What a trip's icon is called once its person has left")
+    incidents: str = Field(
+        default="Active incidents",
+        description="The departure face's incident banner, before the roads, and its window's band",
+    )
+    incidents_other: str = Field(
+        default="and {count} other",
+        description="The incident banner's tail for one road it has no room to name; `{count}` is replaced",
+    )
+    incidents_others: str = Field(
+        default="and {count} others",
+        description="The incident banner's tail for the roads it has no room to name; `{count}` is replaced",
+    )
+    incidents_unnamed: str = Field(default="Unnamed road", description="An incident with no road or location")
+    incidents_closed: str = Field(default="Closed", description="An incident's window: a road that is closed")
+    incidents_since: str = Field(default="Since", description="An incident's window: before when it began")
+    incidents_until: str = Field(default="Until", description="An incident's window: before when it is due to end")
 
 
 BLANK_FACE_CONTENT = "blank"
@@ -1174,6 +1190,10 @@ class DepartureFaceOptions(CameraFaceOptions):
         default=DEFAULT_DEPARTED_ICON,
         description="What a trip shows instead, in grey, once its time has come and its person has gone",
     )
+    incidents_entity_id: str | None = Field(
+        default=None,
+        description="A sensor whose `incidents` attribute lists the traffic incidents to raise a banner over the map for",
+    )
 
     @model_validator(mode="after")
     def require_soon_before_imminent(self) -> Self:
@@ -1205,7 +1225,9 @@ class DepartureFaceOptions(CameraFaceOptions):
 
     @property
     def entities(self) -> list[str]:
-        return [entity_id for travel in self.travel_times for entity_id in travel.entities]
+        routes = [entity_id for travel in self.travel_times for entity_id in travel.entities]
+
+        return routes + ([self.incidents_entity_id] if self.incidents_entity_id else [])
 
     @property
     def events(self) -> list[str]:

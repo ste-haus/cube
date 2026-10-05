@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
   import { cameraSnapshotUrl } from "../lib/api";
   import { faceVisibility, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { go2rtcServer, playStream } from "../lib/go2rtc";
@@ -9,8 +10,11 @@
   const MS_PER_SECOND = 1000;
   const GO2RTC: StreamType = "go2rtc";
 
-  /** `expanded` is the camera drawn inside its own window: no title, and nothing to tap. */
-  let { camera, expanded = false }: { camera: Camera; expanded?: boolean } = $props();
+  /**
+   * `expanded` is the camera drawn inside its own window: no title, and nothing to tap. `banner`
+   * is something the caller lays between the title and the picture.
+   */
+  let { camera, expanded = false, banner }: { camera: Camera; expanded?: boolean; banner?: Snippet } = $props();
 
   const visibility = faceVisibility();
   const server = go2rtcServer();
@@ -138,6 +142,7 @@
   {#if camera.title && !expanded}
     <h2 class="panel-title panel-title--right">{camera.title}</h2>
   {/if}
+  {@render banner?.()}
   {#if live}
     <video
       class="camera__frame"

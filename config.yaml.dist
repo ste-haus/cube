@@ -69,6 +69,11 @@ profiles:
           # Which maps the link on the phone opens in, sent with the event: apple (the default) or google.
           maps: apple
           departed_icon: mdi:account-arrow-right-outline
+          # A sensor whose `incidents` attribute lists traffic incidents: while there are any, a
+          # band naming their roads slides down over the map in the worst one's colour (primary for
+          # minor, secondary for major, `mcw.warning_color` for critical), and a tap on it lists
+          # them. Unset, no band.
+          incidents_entity_id: sensor.example_traffic_incidents
       left:
         content: blank
         label: left

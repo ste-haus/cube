@@ -457,7 +457,7 @@ light:
 
 ### labels
 
-Section headings, the horizon's two captions, where the hourly forecast starts, the guest face's network and alarm cards, the departure face's travel card, the two master lights, and the tag on a cleared alert, in case yours should not read as they do here.
+Section headings, the horizon's two captions, where the hourly forecast starts, the guest face's network and alarm cards, the departure face's travel card and incident banner, the two master lights, and the tag on a cleared alert, in case yours should not read as they do here.
 
 ```yaml
 labels:
@@ -495,6 +495,13 @@ labels:
   minutes: min
   leave_now: Now
   departed: Gone
+  incidents: Active incidents
+  incidents_other: and {count} other
+  incidents_others: and {count} others
+  incidents_unnamed: Unnamed road
+  incidents_closed: Closed
+  incidents_since: Since
+  incidents_until: Until
 ```
 
 ### What the panel may switch

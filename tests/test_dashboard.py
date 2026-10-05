@@ -1107,6 +1107,7 @@ DEPARTURE_TIME = "sensor.departure_time_alice"
 COMMUTE_TIME = "sensor.travel_time_commute"
 TRAVELLER = "person.alice"
 TRAFFIC_CAMERA = "camera.traffic"
+TRAFFIC_INCIDENTS = "sensor.traffic_incidents"
 
 
 def departure_face(**options) -> dict:
@@ -1140,6 +1141,23 @@ def test_a_departure_face_controls_nothing():
     for entity_id in (TRAVEL_TIME, DEPARTURE_TIME, TRAVELLER, COMMUTE_TIME, TRAFFIC_CAMERA):
         assert not dashboard.may_toggle(entity_id)
         assert not dashboard.may_set(entity_id)
+
+
+def test_a_departure_faces_incidents_are_subscribed_and_not_controlled():
+    dashboard = Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[{"entity_id": COMMUTE_TIME, "name": "Commute"}],
+            incidents_entity_id=TRAFFIC_INCIDENTS,
+        )
+    )
+
+    assert TRAFFIC_INCIDENTS in dashboard.allowed_entities
+    assert not dashboard.may_toggle(TRAFFIC_INCIDENTS)
+
+
+def test_a_departure_face_has_no_incidents_unless_named():
+    assert departure().profiles["hall"].faces["back"].options["incidents_entity_id"] is None
 
 
 def test_a_departure_faces_map_may_be_a_bare_camera():

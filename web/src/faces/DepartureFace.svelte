@@ -3,6 +3,7 @@
   import Clock from "../cards/Clock.svelte";
   import Forecast from "../cards/Forecast.svelte";
   import Gauges from "../cards/Gauges.svelte";
+  import IncidentBanner from "../cards/IncidentBanner.svelte";
   import Indicators from "../cards/Indicators.svelte";
   import Transcript from "../cards/Transcript.svelte";
   import TravelTimes from "../cards/TravelTimes.svelte";
@@ -11,6 +12,7 @@
   import WeatherExtremes from "../cards/WeatherExtremes.svelte";
   import { faceVisibility } from "../lib/cube.svelte";
   import { forecast } from "../lib/forecast.svelte";
+  import { DEFAULT_CRITICAL_COLOUR } from "../lib/incidents";
   import type { DashboardConfig, DepartureFaceOptions } from "../lib/types";
 
   /*
@@ -22,7 +24,8 @@
    *
    * Under them, the traffic map and, beside it, the travel times with the dashboard's own fuel
    * gauges straight under them and the forecast under those stand together as one block, against
-   * the top and centred across the face.
+   * the top and centred across the face. While there are traffic incidents, a band naming their
+   * roads drops down between the map's heading and the map.
    *
    * The announcement and its overlay are here as on the dashboard, since the house speaks to
    * whoever is looking at the panel, whichever face that is.
@@ -64,7 +67,17 @@
 
   <div class="departure-face__main">
     <div class="departure-face__map">
-      <Camera camera={options.map} />
+      <Camera camera={options.map}>
+        {#snippet banner()}
+          {#if options.incidents_entity_id}
+            <IncidentBanner
+              entityId={options.incidents_entity_id}
+              criticalColour={config.mcw?.warning_color ?? DEFAULT_CRITICAL_COLOUR}
+              labels={config.labels}
+            />
+          {/if}
+        {/snippet}
+      </Camera>
     </div>
 
     <div class="departure-face__rail">
