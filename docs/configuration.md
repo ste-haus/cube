@@ -198,10 +198,34 @@ notices:
 | `icon_attribute` | `icon` | Attribute holding the glyph |
 | `icon` | — | A fixed glyph, which wins over the attribute |
 | `nominal_state` | — | Makes it state-driven instead of on/off |
+| `window` | — | What a tap on the row opens; see below |
 
 Setting `nominal_state` switches the row to the same behaviour as a status indicator: shown whenever the entity is off that state, coloured by `state_colors`, blinking for anything in `pulsing_states`.
 
 The entity supplying a notice needs a `message` attribute. A notice with no message is not drawn, which is the usual reason one is missing.
+
+A notice naming a `window` opens it out of its row when tapped, and the row hides while it is open. A press that moves is the cube's swipe, not a tap. Each kind of window names itself with `type`, and a `type` the panel does not know is refused when the config loads.
+
+| `type` | Fields | Opens |
+|---|---|---|
+| `incidents` | `entity_id`, a sensor whose `incidents` attribute lists traffic incidents | The departure face's [incident window](panels.md#the-departure-face), in the worst incident's colour |
+
+```yaml
+notices:
+  - entity_id: sensor.traffic_incident_severity
+    message_attribute: note
+    icon: mdi:car-brake-alert
+    nominal_state: Clear
+    state_colors:
+      Minor: var(--color-primary)
+      Major: var(--color-secondary)
+      Critical: "#ff3030"
+    window:
+      type: incidents
+      entity_id: sensor.traffic_incidents
+```
+
+A notice's colour is still its own `state_colors`; the window takes its colour from the incidents, as the departure face's band does, so the two agree as long as the sensor ranks them the same way.
 
 ### agenda
 

@@ -9,7 +9,7 @@ import logging
 import re
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 
 import yaml
 from pydantic import (
@@ -168,13 +168,29 @@ class StatusIndicator(Reading):
     pulsing_states: list[str] = Field(default_factory=list)
 
 
+class IncidentsWindow(BaseModel):
+    """A notice's window listing traffic incidents, as the departure face's incident band opens."""
+
+    type: Literal["incidents"]
+    entity_id: str = Field(description="A sensor whose `incidents` attribute lists the incidents")
+
+    @property
+    def entities(self) -> list[str]:
+        return [self.entity_id]
+
+
+# What a tapped notice may open. Each kind names itself with `type`; a new kind joins this union.
+NoticeWindow = IncidentsWindow
+
+
 class Notice(BaseModel):
     """A notice row.
 
     `conditional` notices render only while their entity is `on`; unconditional ones always
     render. Setting `nominal_state` instead switches the row to a state-driven notice, shown
     whenever the entity is off that state and coloured by whichever state it is in. Either way
-    the text and icon come from the entity's attributes.
+    the text and icon come from the entity's attributes. A notice naming a `window` opens it out
+    of the row when tapped.
     """
 
     entity_id: str
@@ -187,6 +203,11 @@ class Notice(BaseModel):
     nominal_state: str | None = None
     state_colors: dict[str, str] = Field(default_factory=dict)
     pulsing_states: list[str] = Field(default_factory=list)
+    window: NoticeWindow | None = Field(default=None, description="What a tap on the notice opens")
+
+    @property
+    def entities(self) -> list[str]:
+        return [self.entity_id, *(self.window.entities if self.window else [])]
 
 
 class Side(StrEnum):
@@ -1630,7 +1651,7 @@ class Dashboard(BaseModel):
                 entities.add(indicator.bearing.entity_id)
 
         for notice in self.notices:
-            entities.add(notice.entity_id)
+            entities.update(notice.entities)
 
         for calendar in self.agenda.calendars:
             entities.add(calendar.entity_id)

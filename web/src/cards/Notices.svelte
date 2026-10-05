@@ -1,15 +1,19 @@
 <script lang="ts">
+  import { TAP_SLOP_PX } from "../lib/cube.svelte";
   import Icon from "../lib/Icon.svelte";
+  import type { Box } from "../lib/picture";
   import { STATE_ON, ha } from "../lib/state.svelte";
   import { agenda as store } from "../lib/agenda.svelte";
-  import type { Calendar, Notice } from "../lib/types";
+  import type { Calendar, DashboardConfig, Notice } from "../lib/types";
   import { wipeIn, wipeOut } from "../lib/wipe";
+  import NoticeWindow from "./NoticeWindow.svelte";
 
   let {
     notices,
     title,
     calendars = [],
-  }: { notices: Notice[]; title: string; calendars?: Calendar[] } = $props();
+    config,
+  }: { notices: Notice[]; title: string; calendars?: Calendar[]; config: DashboardConfig } = $props();
 
   const EXTRA = "extra";
 
@@ -63,13 +67,56 @@
       })
       .filter(({ notice, message }) => !!message && shown(notice)),
   );
+
+  /*
+   * A notice naming a window opens it out of its row when tapped, and the row hides while it is
+   * open so the brackets read as lifting it out of the list. A press that moved further than a
+   * tap is the cube's swipe, not a tap.
+   */
+  let opened = $state<{ notice: Notice; from: Box } | null>(null);
+  let away = $state<string | null>(null);
+  let pressedAt: { x: number; y: number } | null = null;
+
+  function press(event: PointerEvent): void {
+    pressedAt = { x: event.clientX, y: event.clientY };
+  }
+
+  function open(notice: Notice, event: MouseEvent): void {
+    const moved = pressedAt ? Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) : 0;
+    pressedAt = null;
+
+    if (!notice.window || opened !== null || moved > TAP_SLOP_PX || !(event.currentTarget instanceof HTMLElement)) {
+      return;
+    }
+
+    const box = event.currentTarget.getBoundingClientRect();
+    opened = { notice, from: { left: box.left, top: box.top, width: box.width, height: box.height } };
+    away = notice.entity_id;
+  }
+
+  function closed(): void {
+    opened = null;
+    away = null;
+  }
 </script>
 
 <section class="notices">
   <h2 class="panel-title">{title}</h2>
   <ul class="notices__list">
     {#each visible as { notice, message, icon, color, pulsing } (notice.entity_id)}
-      <li class="notices__item" class:notices__item--pulsing={pulsing} style:color in:wipeIn out:wipeOut>
+      <!-- A wall panel has no keyboard; the row is tapped. -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+      <li
+        class="notices__item"
+        class:notices__item--pulsing={pulsing}
+        class:notices__item--opens={notice.window !== null}
+        class:notices__item--away={away === notice.entity_id}
+        style:color
+        in:wipeIn
+        out:wipeOut
+        onpointerdown={notice.window ? press : undefined}
+        onclick={notice.window ? (event) => open(notice, event) : undefined}
+      >
         <Icon name={icon} />
         <span>{message}</span>
       </li>
@@ -90,6 +137,16 @@
   </ul>
 </section>
 
+{#if opened?.notice.window}
+  <NoticeWindow
+    window={opened.notice.window}
+    {config}
+    from={opened.from}
+    onlanding={() => (away = null)}
+    onclose={closed}
+  />
+{/if}
+
 <style>
   .notices__list {
     margin: 0;
@@ -104,6 +161,15 @@
     padding: 0.32em 0;
     font-size: var(--notice-size);
     line-height: 1.35;
+  }
+
+  .notices__item--opens {
+    cursor: pointer;
+  }
+
+  /* Hidden while its window is open, so the brackets read as lifting it out of the list. */
+  .notices__item--away {
+    visibility: hidden;
   }
 
   .notices__item--pulsing {

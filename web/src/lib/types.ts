@@ -55,7 +55,18 @@ export interface Notice {
   nominal_state: string | null;
   state_colors: Record<string, string>;
   pulsing_states: string[];
+  /** What a tap on the notice opens, if anything. */
+  window: NoticeWindow | null;
 }
+
+/** A notice's window listing traffic incidents. */
+export interface IncidentsNoticeWindow {
+  type: "incidents";
+  entity_id: string;
+}
+
+/** What a tapped notice may open, told apart by `type`. */
+export type NoticeWindow = IncidentsNoticeWindow;
 
 export type Side = "left" | "right" | "extra";
 
