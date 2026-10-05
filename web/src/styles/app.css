@@ -168,6 +168,14 @@
   /* How wide an outline pares a travel icon down with: half of it eats into each edge. */
   --travel-icon-pare: 0.05em;
   --travel-detail-size: 1.6rem;
+  /* The incident banner over the traffic map, and the window it opens. */
+  --incident-banner-size: 1.3rem;
+  --incident-banner-padding: 0.5rem 1rem;
+  --incident-banner-gap: 0.8rem;
+  --incidents-window-width: 46vw;
+  --incidents-window-height: 62vh;
+  /* How long a line too long for the incidents window takes to travel to its end, and as long back. */
+  --incident-marquee-duration: 9s;
   /* The arc carries the primary colour undiluted, which reads brighter than anything
    * around it. Dimming the stroke settles it into the panel without touching the colour. */
   --gauge-dial-opacity: 0.75;
