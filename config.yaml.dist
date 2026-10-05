@@ -334,6 +334,19 @@ notices:
     pulsing_states:
       - Unsafe
       - Dangerous
+  # A notice that opens a window when tapped: here, every traffic incident, as the departure
+  # face's incident band does. `window.type` names the kind of window.
+  - entity_id: sensor.example_traffic_incident_severity
+    message_attribute: note
+    icon: mdi:car-brake-alert
+    nominal_state: Clear
+    state_colors:
+      Minor: var(--color-primary)
+      Major: var(--color-secondary)
+      Critical: "#ff3030"
+    window:
+      type: incidents
+      entity_id: sensor.example_traffic_incidents
   - entity_id: sensor.example_notice_always
     conditional: false
   - entity_id: sensor.example_notice_holiday

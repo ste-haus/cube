@@ -41,7 +41,7 @@
 
   <div class="dashboard__left">
     <Clock clock={config.clock} />
-    <Notices notices={config.notices} title={config.labels.notices} calendars={config.agenda.calendars} />
+    <Notices notices={config.notices} title={config.labels.notices} calendars={config.agenda.calendars} {config} />
     <Agenda
       agenda={config.agenda}
       title={config.labels.agenda}

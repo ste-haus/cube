@@ -1377,3 +1377,27 @@ def test_a_route_opens_only_in_maps_the_panel_knows():
         Dashboard.model_validate(
             departure_face(map=TRAFFIC_CAMERA, travel_times=[{"entity_id": TRAVEL_TIME, "name": "Alice"}], maps="bing")
         )
+
+
+INCIDENT_SEVERITY = "sensor.traffic_incident_severity"
+INCIDENTS = "sensor.traffic_incidents"
+
+
+def notice_dashboard(**notice) -> Dashboard:
+    return Dashboard.model_validate(profiles() | {"notices": [{"entity_id": INCIDENT_SEVERITY, **notice}]})
+
+
+def test_a_notices_window_is_subscribed_and_not_controlled():
+    dashboard = notice_dashboard(window={"type": "incidents", "entity_id": INCIDENTS})
+
+    assert {INCIDENT_SEVERITY, INCIDENTS} <= dashboard.allowed_entities
+    assert not dashboard.may_toggle(INCIDENTS)
+
+
+def test_a_notice_opens_nothing_unless_it_names_a_window():
+    assert notice_dashboard().notices[0].window is None
+
+
+def test_a_notices_window_must_be_a_kind_the_panel_knows():
+    with pytest.raises(ValidationError):
+        notice_dashboard(window={"type": "camera", "entity_id": INCIDENTS})
