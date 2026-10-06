@@ -29,8 +29,7 @@ camera.driveway                   # the whole thing, when there is nothing to ad
 | `title` | Labels the frame; leave it out and the frame carries no label |
 | `stream_type` | `polling`, the default, for stills; or `go2rtc` for live video — see [Live video](#live-video) |
 | `polling_interval` | Seconds between stills for a polled camera; defaults to sixty |
-| `rtsp` | For `go2rtc`: an RTSP URL for go2rtc to play |
-| `stream` | For `go2rtc` without `rtsp`: a stream go2rtc already has, by name; defaults to the entity's object id |
+| `stream` | For `go2rtc`: a stream go2rtc already has, by name; defaults to the entity's object id |
 
 A polled camera asks for its next still only once the last has arrived, so one slower to answer than its interval sets its own pace rather than queuing requests behind it. Sixty seconds suits what most still cameras are — a traffic image, a file something rewrites every so often — and a camera worth watching as it happens is worth streaming instead.
 
@@ -101,6 +100,10 @@ faces:
 
 The column is the same share of the width however many cameras are in it, so the hero frame is the size it is on every panel drawing this face rather than a size that depends on how many cameras came with it. `side` may be left out entirely, and then the hero takes the whole face.
 
+## Popping a camera up
+
+A camera can also come up over every face while a sensor is on, a porch camera while someone is at the door: see [`popups`](configuration.md#popups).
+
 ## Live video
 
 A camera with `stream_type: go2rtc` plays live H.264 from [go2rtc](https://github.com/AlexxIT/go2rtc) instead of polling stills. The tablet decodes it in hardware, which costs it less than a JPEG a second decoded in software, and the picture moves.
@@ -118,18 +121,16 @@ profiles:
           hero:
             entity_id: camera.front_door
             stream_type: go2rtc
-            rtsp: rtsp://frigate.example:8554/front_door
+            stream: front_door
 ```
 
-With `rtsp`, go2rtc plays that URL itself, so it needs no stream set up for the camera — a go2rtc run for the panels needs nothing configured but its API. Without it, go2rtc is asked for a stream it already has, named by `stream` or the entity's object id. A camera naming `rtsp` has to be `go2rtc`: the load refuses an `rtsp` on a polled camera rather than quietly ignoring it.
+go2rtc is asked for a stream it already has, named by `stream`, or by the entity's object id when `stream` is left out.
 
 The panel plays the stream from go2rtc directly rather than through cube, which puts three requirements on go2rtc:
 
 - **Reachable from the tablets**, not only from wherever cube runs, and without a login in front of it. Frigate's own address usually has one; go2rtc's API port does not.
 - **Allowing the panel's origin.** go2rtc refuses cross-origin websockets by default, and every panel is cross-origin to it. Set `api: origin: "*"` in go2rtc's config — under `go2rtc:` in Frigate's, if it is Frigate's go2rtc.
 - **Secure if the panel is.** A page served over https may not open a plain socket. An `https://` `url` is played over a secure one.
-
-go2rtc takes an RTSP URL from a client as a source, but not a command: `exec:` and the like only come from its own config, so a go2rtc that takes URLs is not a way to run anything on it.
 
 A stream is torn down — socket closed, decoder released — the moment its face is turned away, and brought back when the face returns, with a fresh still standing in until the first frame arrives. One that drops, stalls, or fails to start comes back on its own, no more often than every few seconds.
 

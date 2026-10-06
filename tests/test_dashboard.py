@@ -8,6 +8,7 @@ from cube.dashboard import (
     DEFAULT_ALARM_MINUTE_STEP,
     DEFAULT_CUBE_FACE,
     DEFAULT_FORECAST_DAYS,
+    DEFAULT_POPUP_RATIO,
     DEFAULT_PROFILE_KEY,
     DEFAULT_WIND_GUST_THRESHOLD,
     NO_FACE_ENTITY,
@@ -63,6 +64,10 @@ def test_allowlist_covers_every_referenced_entity(dashboard):
     assert dashboard.transcript.entity_id in allowed
     assert dashboard.mcw.warning_entity_id in allowed
     assert dashboard.mcw.caution_entity_id in allowed
+
+    for popup in dashboard.popups:
+        assert popup.entity_id in allowed
+        assert popup.camera.entity_id in dashboard.camera_entities
 
 
 def test_only_controls_are_toggleable(dashboard):
@@ -618,6 +623,55 @@ def test_a_face_the_config_never_names_reaches_no_camera():
     assert dashboard.profiles["gb"].faces["left"].cameras == []
 
 
+PORCH_ACTIVITY = "binary_sensor.porch_activity"
+
+
+def with_popup(document: dict, **camera) -> dict:
+    document["popups"] = [{"entity_id": PORCH_ACTIVITY, "camera": {"entity_id": FRONT_DOOR, **camera}}]
+
+    return document
+
+
+def test_a_popup_reaches_its_sensor_and_its_camera():
+    dashboard = Dashboard.model_validate(with_popup(profiles()))
+
+    assert PORCH_ACTIVITY in dashboard.allowed_entities
+    assert FRONT_DOOR in dashboard.camera_entities
+    assert FRONT_DOOR in dashboard.allowed_entities
+
+
+def test_a_popup_camera_may_be_a_bare_entity_id():
+    document = profiles()
+    document["popups"] = [{"entity_id": PORCH_ACTIVITY, "camera": FRONT_DOOR}]
+
+    dashboard = Dashboard.model_validate(document)
+
+    assert dashboard.popups[0].camera.entity_id == FRONT_DOOR
+    assert dashboard.popups[0].ratio == DEFAULT_POPUP_RATIO
+
+
+def test_a_popup_streaming_from_go2rtc_needs_a_go2rtc():
+    with pytest.raises(ValidationError, match="no `go2rtc` block"):
+        Dashboard.model_validate(with_popup(profiles(), stream_type="go2rtc"))
+
+
+def test_every_panel_shows_the_popups_unless_told_not_to():
+    dashboard = Dashboard.model_validate(profiles(lr={"media_player": SPEAKER}))
+
+    assert dashboard.profiles["default"].popups is True
+    assert dashboard.profiles["lr"].popups is True
+
+
+def test_a_panel_declining_the_popups_passes_that_on():
+    dashboard = Dashboard.model_validate(
+        profiles(gb={"popups": False}, gb2={"inherits": "gb"}, gb3={"inherits": "gb", "popups": True}),
+    )
+
+    assert dashboard.profiles["gb"].popups is False
+    assert dashboard.profiles["gb2"].popups is False
+    assert dashboard.profiles["gb3"].popups is True
+
+
 def test_a_camera_grid_must_hold_a_camera():
     with pytest.raises(ValidationError, match="options it cannot draw with"):
         Dashboard.model_validate(camera_grid([]))
@@ -701,21 +755,9 @@ def test_a_go2rtc_camera_loads_once_go2rtc_is_named():
 RTSP_URL = "rtsp://frigate.example:8554/front_door_stream"
 
 
-def test_a_go2rtc_camera_with_an_rtsp_url_hands_go2rtc_the_url():
-    """go2rtc takes a URL as the source directly, so it needs no stream set up for the camera."""
-
-    assert Camera(entity_id=FRONT_DOOR, stream_type="go2rtc", rtsp=RTSP_URL).stream == RTSP_URL
-
-
-def test_an_rtsp_url_wins_over_a_stream_name():
-    camera = Camera(entity_id=FRONT_DOOR, stream_type="go2rtc", stream="porch", rtsp=RTSP_URL)
-
-    assert camera.stream == RTSP_URL
-
-
-def test_an_rtsp_url_on_a_polled_camera_is_refused_rather_than_ignored():
-    with pytest.raises(ValidationError, match="set `stream_type: go2rtc`"):
-        Camera(entity_id=FRONT_DOOR, rtsp=RTSP_URL)
+def test_an_rtsp_url_is_refused_rather_than_ignored():
+    with pytest.raises(ValidationError, match="no longer read"):
+        Camera(entity_id=FRONT_DOOR, stream_type="go2rtc", rtsp=RTSP_URL)
 
 
 def test_the_visualizer_defaults_to_bars():

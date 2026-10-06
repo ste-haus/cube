@@ -160,8 +160,14 @@ export interface Camera {
   title: string | null;
   stream_type: StreamType;
   polling_interval: number;
-  rtsp: string | null;
   stream: string | null;
+}
+
+/** A camera that comes up over whatever face is showing, while its sensor is on. */
+export interface Popup {
+  entity_id: string;
+  camera: Camera;
+  ratio: number;
 }
 
 export interface Go2rtc {
@@ -355,6 +361,7 @@ export interface Profile {
   floorplan: string | null;
   default_face: FaceName;
   face_entity: string | null;
+  popups: boolean;
   media_player: string | null;
   faces: Record<string, Face>;
 }
@@ -445,6 +452,7 @@ export interface DashboardConfig {
   transcript: Transcript | null;
   visualizer: Visualizer | null;
   mcw: Mcw | null;
+  popups: Popup[];
   events: string[];
   item_count_entities: string[];
 }

@@ -4,6 +4,7 @@
   import { ha } from "./lib/state.svelte";
   import CubeFace from "./faces/CubeFace.svelte";
   import MasterCaution from "./cards/MasterCaution.svelte";
+  import Popups from "./cards/Popups.svelte";
   import type { DashboardConfig } from "./lib/types";
 
   const BLANK_CONTENT = "blank";
@@ -51,6 +52,10 @@
     {/if}
   {/each}
 </div>
+
+{#if config.profile.popups && config.popups.length > 0}
+  <Popups popups={config.popups} />
+{/if}
 
 {#if config.mcw}
   <MasterCaution mcw={config.mcw} labels={config.labels} />

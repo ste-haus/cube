@@ -138,6 +138,8 @@ profiles:
   example-guest:
     name: Example Guest Room
     floorplan: upstairs
+    # Nobody staying here needs the porch camera lighting the room up at night.
+    popups: false
     media_player: media_player.example_guest_speaker
     faces:
       front:
@@ -200,11 +202,11 @@ profiles:
       right:
         content: camera-hero
         options:
-          # Live: go2rtc plays the RTSP URL itself, so it needs nothing set up for the camera.
+          # Live: go2rtc plays the stream it has by this name.
           hero:
             entity_id: camera.example_front_door
             stream_type: go2rtc
-            rtsp: rtsp://go2rtc.example:8554/example_front_door
+            stream: example_front_door
           side:
             - camera.example_driveway
             - camera.example_back_yard
@@ -495,6 +497,18 @@ mcw:
   caution_entity_id: binary_sensor.master_caution
   clear_event: MCW_CLEAR
   hold_seconds: 1
+
+# Cameras that come up over whatever face is showing while a binary sensor is `on`, and fold
+# away when it goes off. A tap on the glass around one puts it away until its sensor has gone off
+# and on again. `camera` is written as on a camera face; `ratio` is the picture's width over its
+# height, 16:9 unless it says. A profile with `popups: false` shows none, and passes that on.
+popups:
+  - entity_id: binary_sensor.example_porch_activity
+    camera:
+      entity_id: camera.example_front_door
+      title: Front Door
+      stream_type: go2rtc
+      stream: example_front_door
 
 # Home Assistant events a panel may fire, through pyscript.fire_event. Anything not listed is
 # refused, except an event a section above fires itself, such as mcw's clear_event.

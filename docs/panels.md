@@ -69,6 +69,7 @@ A panel states only what makes it different. Everything else comes from the prof
 | `floorplan` | The level this panel opens on, and returns to | Yes |
 | `default_face` | The cube face this panel opens on, and returns to; `front` when absent | Yes |
 | `face_entity` | An entity whose state names the face this panel should be on right now; empty or unrecognised falls back to `default_face`. `default` follows nothing, whatever the parent follows | Yes |
+| `popups` | Whether the [popups](configuration.md#popups) come up on this panel; `true` when no profile in the chain says | Yes |
 | `media_player` | The speaker whose announcements raise the overlay | **No** |
 | `inherits` | The profile to start from; `default` when absent | — |
 | `faces` | What sits on each of the six faces, merged by face name | Yes |

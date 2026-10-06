@@ -72,6 +72,8 @@ A mark dragged over something the finger hides, like the colour ring, throws a w
 
 A window of things to look at closes at a tap anywhere. A window of things to press (`interactive`) closes only at a tap on the glass around it.
 
+A window nobody at the panel asked for, a popup raised by a sensor, has nothing to come out of, so it comes out of the middle of the screen and folds back into it. It sits beside the cube, as the masters do, rather than on a face, so it is the same on every side. Since the tap that meets it was likely meant for the face under it, it closes only at a tap on the glass around it, as an `interactive` window does, and its sensor going off folds it away the same way. `Popups` in `src/cards/Popups.svelte` is the example.
+
 ### Rows wipe left to right, both ways
 
 A row that comes or goes wipes across left to right, arriving and leaving alike, like a readout being written and then struck through. An arriving row opens its room first and then wipes in; a leaving one wipes out and then closes its room, so the rows below slide instead of jumping. Use `wipeIn` and `wipeOut` from `src/lib/wipe.ts`; the notices list is the example.
