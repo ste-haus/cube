@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { LIVE_OFFSET_SECONDS, MAX_LAG_SECONDS, catchUp, offeredCodecs, streamSocketUrl } from "../go2rtc";
+import {
+  LIVE_OFFSET_SECONDS,
+  MAX_LAG_SECONDS,
+  STALL_MS,
+  catchUp,
+  judgePlayback,
+  offeredCodecs,
+  streamSocketUrl,
+} from "../go2rtc";
 
 describe("offeredCodecs", () => {
   it("offers only what the tablet says it can play", () => {
@@ -67,5 +75,26 @@ describe("catchUp", () => {
 
     expect(target).not.toBeNull();
     expect(target as number).toBeLessThan(end);
+  });
+});
+
+describe("judgePlayback", () => {
+  const MOMENT_MS = 1;
+
+  it("leaves a picture alone while it plays", () => {
+    expect(judgePlayback(false, true, 0)).toBe("fine");
+  });
+
+  it("asks a paused picture with video waiting to play", () => {
+    expect(judgePlayback(true, true, 0)).toBe("resume");
+  });
+
+  it("starts over a picture that has stopped moving, paused or not", () => {
+    expect(judgePlayback(false, true, STALL_MS + MOMENT_MS)).toBe("stuck");
+    expect(judgePlayback(true, true, STALL_MS + MOMENT_MS)).toBe("stuck");
+  });
+
+  it("does not judge a picture with nothing buffered to play", () => {
+    expect(judgePlayback(true, false, STALL_MS + MOMENT_MS)).toBe("fine");
   });
 });
