@@ -43,12 +43,12 @@ const KEEP_SECONDS = 10;
 const RECONNECT_MS = 5000;
 
 /*
- * How long a stream may go without a fragment before it is presumed dead. A camera that drops
- * off the network does not always close the socket or say so; go2rtc can sit on it waiting,
- * and the tile would wait with it. At fifteen frames a second a live stream is never quiet for
- * anything like this long.
+ * How long a stream may go without a fragment, or a picture with video to play without playing
+ * it, before it is presumed dead. A camera that drops off the network does not always close the
+ * socket or say so; go2rtc can sit on it waiting, and the tile would wait with it. At fifteen
+ * frames a second a live stream is never quiet for anything like this long.
  */
-const STALL_MS = 10000;
+export const STALL_MS = 10000;
 const STALL_CHECK_MS = 2000;
 
 /** Where a live camera streams from, published by the face so a card need not be handed it. */
@@ -98,6 +98,31 @@ export function catchUp(currentTime: number, bufferedEnd: number): number | null
   return bufferedEnd - currentTime > MAX_LAG_SECONDS ? bufferedEnd - LIVE_OFFSET_SECONDS : null;
 }
 
+/** What the watchdog should do about a picture: leave it, ask it to play, or start it over. */
+export type Playback = "fine" | "resume" | "stuck";
+
+/**
+ * Whether a picture is playing the video it has been given.
+ *
+ * Fragments arriving say nothing about whether they are being shown. The browser pauses a video
+ * on its own — a page hidden behind the kiosk's screensaver or with the screen off, a `play()` it
+ * would not honour while the page was hidden — and nothing un-pauses it, so the tile holds one
+ * frame while the stream behind it runs on. A picture that is paused is asked to play; one that
+ * has gone the stall time without moving forward, paused or not, is started over. With nothing
+ * buffered there is nothing it could be playing, and that is the fragment watchdog's business.
+ */
+export function judgePlayback(paused: boolean, buffered: boolean, stillForMs: number): Playback {
+  if (!buffered) {
+    return "fine";
+  }
+
+  if (stillForMs > STALL_MS) {
+    return "stuck";
+  }
+
+  return paused ? "resume" : "fine";
+}
+
 /**
  * Plays a go2rtc stream into a video element until the function it returns is called.
  *
@@ -116,9 +141,70 @@ export function playStream(video: HTMLVideoElement, server: string, stream: stri
   let retry: number | null = null;
   let attemptedAt = 0;
   let heardAt = 0;
+  let advancedAt = 0;
+  let playedTo = 0;
 
+  /* Closing the socket is what schedules the reconnect, so with no socket open — the source never
+   * opened, or the last one is already closed — there is nothing to close and it is asked for
+   * directly. */
   function restart(): void {
-    socket?.close();
+    if (socket !== null && socket.readyState <= WebSocket.OPEN) {
+      socket.close();
+    } else {
+      reconnectLater();
+    }
+  }
+
+  /* Back to live before playing, so a picture that was paused shows the camera now rather than
+   * playing out what it missed. */
+  function resume(): void {
+    const ranges = video.buffered;
+
+    if (ranges.length > 0) {
+      const target = catchUp(video.currentTime, ranges.end(ranges.length - 1));
+      if (target !== null) {
+        video.currentTime = target;
+      }
+    }
+
+    video.play().catch(() => {
+      // Asked again at the next check, and started over if it never does.
+    });
+  }
+
+  /* Only time the picture spends playing counts as moving: a seek while paused moves
+   * `currentTime` too, and would hide a picture that is going nowhere. */
+  function checkPlayback(now: number): void {
+    const buffered = video.buffered.length > 0;
+
+    if (!buffered || (!video.paused && video.currentTime !== playedTo)) {
+      advancedAt = now;
+    }
+
+    playedTo = video.currentTime;
+
+    const verdict = judgePlayback(video.paused, buffered, now - advancedAt);
+
+    if (verdict === "stuck") {
+      advancedAt = now;
+      restart();
+    } else if (verdict === "resume") {
+      resume();
+    }
+  }
+
+  /* A page coming back from behind the screensaver plays again at once rather than at the next
+   * check, and the time it spent hidden does not count against it. */
+  function returned(): void {
+    if (document.hidden) {
+      return;
+    }
+
+    advancedAt = Date.now();
+
+    if (video.paused) {
+      resume();
+    }
   }
 
   /* No sooner than the interval after the last attempt, so a source that is down is asked
@@ -139,6 +225,7 @@ export function playStream(video: HTMLVideoElement, server: string, stream: stri
   function connect(): void {
     attemptedAt = Date.now();
     heardAt = attemptedAt;
+    advancedAt = attemptedAt;
 
     const source = new MediaSource();
     const queue: ArrayBuffer[] = [];
@@ -187,6 +274,10 @@ export function playStream(video: HTMLVideoElement, server: string, stream: stri
       () => {
         URL.revokeObjectURL(objectUrl);
 
+        if (stopped) {
+          return;
+        }
+
         const current = new WebSocket(streamSocketUrl(server, stream));
         current.binaryType = "arraybuffer";
         socket = current;
@@ -230,19 +321,27 @@ export function playStream(video: HTMLVideoElement, server: string, stream: stri
     });
   }
 
+  /* A hidden page is not judged on its picture: the browser will not play it there, and starting
+   * it over would only fail the same way. */
   const watchdog = window.setInterval(() => {
-    if (Date.now() - heardAt > STALL_MS) {
+    const now = Date.now();
+
+    if (now - heardAt > STALL_MS) {
       restart();
+    } else if (!document.hidden) {
+      checkPlayback(now);
     }
   }, STALL_CHECK_MS);
 
   video.addEventListener("error", restart);
+  document.addEventListener("visibilitychange", returned);
   connect();
 
   return () => {
     stopped = true;
     window.clearInterval(watchdog);
     video.removeEventListener("error", restart);
+    document.removeEventListener("visibilitychange", returned);
 
     if (retry !== null) {
       window.clearTimeout(retry);
