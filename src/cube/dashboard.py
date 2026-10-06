@@ -268,8 +268,9 @@ class GaugeRow(BaseModel):
     unit: str = ""
 
 
-RTSP_WITHOUT_GO2RTC_MESSAGE = (
-    "Camera `{camera}` names an `rtsp` stream but is polled; set `stream_type: go2rtc` to play it."
+RETIRED_RTSP_KEY = "rtsp"
+RETIRED_RTSP_MESSAGE = (
+    "Camera `{camera}` names an `rtsp` URL, which is no longer read; add the stream to go2rtc and name it with `stream`."
 )
 
 
@@ -292,33 +293,29 @@ class Camera(BaseModel):
         default=60.0,
         description="Seconds between stills for a polled camera on the face being looked at",
     )
-    rtsp: str | None = Field(
-        default=None,
-        description="An RTSP URL go2rtc plays as the source, so go2rtc needs nothing set up for it",
-    )
     stream: str | None = Field(
         default=None,
-        description="What go2rtc is asked to play: `rtsp` when given, else a stream it has by name",
+        description="The stream go2rtc already has that it is asked to play, by name",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def refuse_rtsp(cls, data: Any) -> Any:
+        """Refuses the retired `rtsp` key rather than ignoring it into a dark tile."""
+
+        if isinstance(data, dict) and RETIRED_RTSP_KEY in data:
+            raise ValueError(RETIRED_RTSP_MESSAGE.format(camera=data.get("entity_id")))
+
+        return data
 
     @model_validator(mode="after")
     def name_the_stream(self) -> Self:
-        """Settles what go2rtc is asked for, so the panel has one thing to hand it.
-
-        An RTSP URL goes to go2rtc as the source itself, which is what lets a go2rtc for the
-        panels run with no streams configured at all. Without one, go2rtc is asked for a stream
-        it already has, by the entity's object id unless the camera names another.
-        """
-
-        if self.rtsp is not None and self.stream_type != StreamType.GO2RTC:
-            raise ValueError(RTSP_WITHOUT_GO2RTC_MESSAGE.format(camera=self.entity_id))
+        """Settles what go2rtc is asked for: the stream the camera names, or its entity's object id."""
 
         if self.stream_type != StreamType.GO2RTC:
             return self
 
-        if self.rtsp is not None:
-            self.stream = self.rtsp
-        elif self.stream is None:
+        if self.stream is None:
             _, _, object_id = self.entity_id.partition(".")
             self.stream = object_id
 
@@ -673,6 +670,26 @@ def as_camera(value: Any) -> Any:
 
 CameraEntry = Annotated[Camera, BeforeValidator(as_camera)]
 CameraRow = Annotated[list[CameraEntry], Field(min_length=1)]
+
+# What a popup's window is shaped to until it is told otherwise: most cameras are 16:9.
+DEFAULT_POPUP_RATIO = 16 / 9
+
+
+class Popup(BaseModel):
+    """A camera that comes up over whatever face is showing, for as long as a sensor is on.
+
+    It belongs to no face, so it is the same on every one, and every panel shows it unless its
+    profile says `popups: false`. A tap on the glass around it puts it away until the sensor has
+    gone off and come on again.
+    """
+
+    entity_id: str = Field(description="A binary sensor: the camera is up while it is `on`")
+    camera: CameraEntry
+    ratio: float = Field(
+        default=DEFAULT_POPUP_RATIO,
+        gt=0,
+        description="The picture's width over its height, which the window is shaped to before it has a frame",
+    )
 
 
 class FaceOptions(BaseModel):
@@ -1336,6 +1353,9 @@ class Profile(BaseModel):
     One instance can serve several panels; the profile decides which cube faces they get,
     which face and floorplan level they open on, and which media player their visualizer follows.
 
+    `popups` is whether the panel shows the dashboard's popups, and is inherited, so a guest room
+    and every panel built on it can be kept quiet at once. Unset all the way up, it does.
+
     `face_entity` names an entity whose state is the face the panel should be showing right now,
     standing in for `default_face` while it holds one; an empty or unrecognised state leaves
     `default_face` in charge. The frontend reads it, so nothing here checks the state itself.
@@ -1351,6 +1371,7 @@ class Profile(BaseModel):
     floorplan: str | None = None
     default_face: str | None = None
     face_entity: str | None = None
+    popups: bool | None = None
     media_player: str | None = None
     inherits: str | None = None
     faces: dict[str, Face] = Field(default_factory=dict)
@@ -1374,6 +1395,9 @@ DEFAULT_CUBE_FACE = "front"
 NO_FACE_ENTITY = "default"
 
 DEFAULT_PROFILE_KEY = "default"
+
+# Whether a panel whose profile chain never says shows the popups.
+DEFAULT_SHOWS_POPUPS = True
 
 MISSING_DEFAULT_PROFILE_MESSAGE = f"No `{DEFAULT_PROFILE_KEY}` profile. Every panel inherits from it, so it must exist."
 DEFAULT_PROFILE_INHERITS_MESSAGE = f"The `{DEFAULT_PROFILE_KEY}` profile is the root and cannot inherit."
@@ -1430,6 +1454,7 @@ class Dashboard(BaseModel):
     transcript: Transcript | None = None
     visualizer: Visualizer | None = None
     mcw: Mcw | None = None
+    popups: list[Popup] = Field(default_factory=list)
     # Events a panel may fire, through pyscript. Anything else a panel asks for is refused.
     events: list[str] = Field(default_factory=list)
 
@@ -1542,6 +1567,9 @@ class Dashboard(BaseModel):
             if ancestor.face_entity is not None:
                 resolved.face_entity = ancestor.face_entity
 
+            if ancestor.popups is not None:
+                resolved.popups = ancestor.popups
+
             # By face name, so a child that names `front` owns that face outright and leaves
             # its siblings alone.
             resolved.faces.update(ancestor.faces)
@@ -1551,6 +1579,9 @@ class Dashboard(BaseModel):
 
         if resolved.face_entity == NO_FACE_ENTITY:
             resolved.face_entity = None
+
+        if resolved.popups is None:
+            resolved.popups = DEFAULT_SHOWS_POPUPS
 
         own = self.profiles[key]
         resolved.name = own.name or key
@@ -1605,6 +1636,7 @@ class Dashboard(BaseModel):
         cameras += [
             camera for profile in self.profiles.values() for face in profile.faces.values() for camera in face.cameras
         ]
+        cameras += [popup.camera for popup in self.popups]
 
         for camera in cameras:
             if camera.stream_type == StreamType.GO2RTC:
@@ -1614,12 +1646,13 @@ class Dashboard(BaseModel):
     def camera_entities(self) -> frozenset[str]:
         """Every camera a panel may ask for a frame from.
 
-        This is the snapshot endpoint's allowlist. A camera face puts cameras on a panel that
-        the dashboard's own camera card knows nothing about, so it is the union of both rather
-        than the single camera that card draws.
+        This is the snapshot endpoint's allowlist. A camera face or a popup puts cameras on a
+        panel that the dashboard's own camera card knows nothing about, so it is the union of all
+        of them rather than the single camera that card draws.
         """
 
         entities = {self.camera.entity_id} if self.camera else set()
+        entities.update(popup.camera.entity_id for popup in self.popups)
 
         for profile in self.profiles.values():
             for face in profile.faces.values():
@@ -1693,6 +1726,8 @@ class Dashboard(BaseModel):
 
         if self.mcw:
             entities.update(self.mcw.entity_for(tier) for tier in AlertTier)
+
+        entities.update(popup.entity_id for popup in self.popups)
 
         for profile in self.profiles.values():
             for face in profile.faces.values():

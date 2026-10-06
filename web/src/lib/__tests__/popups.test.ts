@@ -1,0 +1,86 @@
+import { describe, expect, it } from "vitest";
+
+import { dismissedAfterClose, popupToShow, stillDismissed } from "../popups";
+import type { Popup } from "../types";
+
+const PORCH = "binary_sensor.porch_activity";
+const DRIVEWAY = "binary_sensor.driveway_activity";
+const CAMERA = "camera.porch";
+const POLLING_INTERVAL = 1;
+const RATIO = 16 / 9;
+
+function popup(entityId: string): Popup {
+  return {
+    entity_id: entityId,
+    camera: {
+      entity_id: CAMERA,
+      title: null,
+      stream_type: "polling",
+      polling_interval: POLLING_INTERVAL,
+      stream: null,
+    },
+    ratio: RATIO,
+  };
+}
+
+const POPUPS = [popup(PORCH), popup(DRIVEWAY)];
+const NONE = new Set<string>();
+
+function on(...entityIds: string[]) {
+  return (entityId: string) => entityIds.includes(entityId);
+}
+
+describe("which popup is up", () => {
+  it("is none while every sensor is off", () => {
+    expect(popupToShow(POPUPS, on(), NONE)).toBeNull();
+  });
+
+  it("is the one whose sensor is on", () => {
+    expect(popupToShow(POPUPS, on(DRIVEWAY), NONE)?.entity_id).toBe(DRIVEWAY);
+  });
+
+  it("is the first the config lists when more than one is on", () => {
+    expect(popupToShow(POPUPS, on(DRIVEWAY, PORCH), NONE)?.entity_id).toBe(PORCH);
+  });
+
+  it("passes over one that has been put away", () => {
+    expect(popupToShow(POPUPS, on(DRIVEWAY, PORCH), new Set([PORCH]))?.entity_id).toBe(DRIVEWAY);
+    expect(popupToShow(POPUPS, on(PORCH), new Set([PORCH]))).toBeNull();
+  });
+});
+
+describe("what stays put away", () => {
+  it("keeps a popup away while its sensor is still on", () => {
+    expect(stillDismissed(new Set([PORCH]), on(PORCH))).toEqual(new Set([PORCH]));
+  });
+
+  it("forgets a popup once its sensor has gone off", () => {
+    expect(stillDismissed(new Set([PORCH, DRIVEWAY]), on(DRIVEWAY))).toEqual(new Set([DRIVEWAY]));
+  });
+});
+
+describe("what is put away when a window closes", () => {
+  const PORCH_POPUP = POPUPS[0];
+
+  it("puts away one tapped off while its sensor is on", () => {
+    expect(dismissedAfterClose(NONE, PORCH_POPUP, false, on(PORCH))).toEqual(new Set([PORCH]));
+  });
+
+  it("puts away nothing tapped off once its sensor has gone off", () => {
+    expect(dismissedAfterClose(NONE, PORCH_POPUP, false, on())).toEqual(NONE);
+  });
+
+  it("brings back one whose sensor came on again while it folded away", () => {
+    const dismissed = dismissedAfterClose(NONE, PORCH_POPUP, true, on(PORCH));
+
+    expect(popupToShow(POPUPS, on(PORCH), dismissed)?.entity_id).toBe(PORCH);
+  });
+
+  it("brings back one folded away for a popup listed before it, once that one has gone", () => {
+    const later = popup(DRIVEWAY);
+    const dismissed = dismissedAfterClose(NONE, later, true, on(PORCH, DRIVEWAY));
+
+    expect(popupToShow(POPUPS, on(PORCH, DRIVEWAY), dismissed)?.entity_id).toBe(PORCH);
+    expect(popupToShow(POPUPS, on(DRIVEWAY), dismissed)?.entity_id).toBe(DRIVEWAY);
+  });
+});

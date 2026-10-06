@@ -435,6 +435,27 @@ Holding a lit master for `hold_seconds` clears it: the panel fires `clear_event`
 
 `warning_color` and `caution_color` may name a colour from [`colors`](#colors). The two captions are `master_warning` and `master_caution` under [`labels`](#labels).
 
+### popups
+
+Cameras that come up over the panel while a binary sensor is `on`, whichever face is showing.
+
+```yaml
+popups:
+  - entity_id: binary_sensor.porch_activity
+    camera:
+      entity_id: camera.front_door
+      title: Front Door
+      stream_type: go2rtc
+      stream: front_door
+    ratio: 1.7778
+```
+
+`camera` is written the way a camera on a [camera face](cameras.md#naming-a-camera) is, bare entity id or block, and plays live the same way. `ratio` is the picture's width over its height, which the window is shaped to; it defaults to 16:9.
+
+When the sensor turns `on`, the camera's window opens out of the middle of the screen over whatever face is up, and folds back into it when the sensor goes off. A panel that loads while the sensor is already on opens it at once. The cube can still be turned under it by the face map, but not by a swipe, since the window is in the way. A tap on the glass around the window puts it away, and it stays away until the sensor has gone off and come on again; a tap on the picture does nothing, so a hand reaching for the face under it does not dismiss it by accident. One popup is up at a time: if two sensors are on, the first listed shows, and the next comes up once it has gone.
+
+A popup's sensor and camera are allowed through the proxy by being named here. Every panel shows the popups unless its profile sets `popups: false`, which is [inherited](panels.md), so a guest room and anything built on it can be kept out of it at once.
+
 ### visualizer
 
 A full-screen overlay while a media player is playing something matching.
