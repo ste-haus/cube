@@ -15,7 +15,7 @@
    * What goes in it, and the band's words, are the caller's. The band is either `quiet`, a dark
    * strip with light type, for a closer look at something, or `solid`, a grey band with dark type
    * drawn the way a lit master's is, for a control's window, and may be tinted with what the control
-   * is set to. Neither glints: that is for an alert.
+   * is set to. Neither glints unless the window is raised by an alert (`glint`), and then once.
    *
    * A window of things to look at closes at a tap anywhere. A window of things to press
    * (`interactive`) closes only at a tap on the glass around it.
@@ -33,6 +33,7 @@
     interactive = false,
     bracketColor = null,
     beat = null,
+    glint = false,
     header,
     children,
     onlanding,
@@ -56,6 +57,8 @@
      * in, so they keep time with whatever on the panel the window came out of.
      */
     beat?: { period: string; phase: string; low: string } | null;
+    /** A glint across the band once it is in, for a window raised by an alert. */
+    glint?: boolean;
     /** What the band says; with none, there is no band, and the body simply drops. */
     header?: Snippet;
     children: Snippet;
@@ -71,6 +74,7 @@
   const WIPE_MS = 200;
   const EXPAND_MS = 240;
   const HOLD_MS = 150;
+  const GLINT_MS = 1500;
   // How far into the flight home the origin shows again, so the brackets land on it.
   const LANDING_SHARE = 0.6;
   const MILLISECONDS = "ms";
@@ -163,6 +167,7 @@
   style:--window-expand="{EXPAND_MS}{MILLISECONDS}"
   style:--window-wipe="{WIPE_MS}{MILLISECONDS}"
   style:--window-pause="{HOLD_MS}{MILLISECONDS}"
+  style:--window-glint="{GLINT_MS}{MILLISECONDS}"
   use:portal
   onpointerdown={press}
   onclick={dismiss}
@@ -178,6 +183,7 @@
         <header
           class="panel-window__header panel-window__header--{band}"
           class:panel-window__header--light-type={tint !== null && lightType}
+          class:panel-window__header--glint={glint}
           style:--window-band={tint}
           bind:this={headerElement}
         >
@@ -325,9 +331,39 @@
       color var(--colour-fade) ease;
   }
 
+  /* One sweep across the band once it has wiped in, as a master's list glints, but the once: the
+   * window stays up for as long as its alert does, and a glint that kept coming would never end. */
+  .panel-window__header--glint {
+    --window-glint-strength: 0.3;
+
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-window__header--glint::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      rgb(255 255 255 / var(--window-glint-strength)) 50%,
+      transparent 60%
+    );
+    transform: translateX(-100%);
+    animation: window-glint var(--window-glint) ease-in-out calc(var(--window-fly) + var(--window-expand)) both;
+    pointer-events: none;
+  }
+
   /* A band tinted dark enough that dark type would not read on it. */
   .panel-window__header--light-type {
     color: var(--color-foreground);
+  }
+
+  @keyframes window-glint {
+    to {
+      transform: translateX(100%);
+    }
   }
 
   @keyframes window-fade {

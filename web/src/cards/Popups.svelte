@@ -13,6 +13,9 @@
    * comes out of the middle of the screen and folds back into it. A sensor going off folds it
    * away; a tap on the glass around it puts it away until the sensor has gone off and come on
    * again. One is up at a time, the first the config lists, since each covers the panel.
+   *
+   * Somebody at the door is something to act on now, so every popup is an alert: it says so in
+   * its band and brackets, and counts up from when its sensor came on.
    */
 
   let { popups }: { popups: Popup[] } = $props();
@@ -29,6 +32,8 @@
   let foldingAway = false;
 
   const wanted = $derived(popupToShow(popups, isOn, dismissed));
+
+  const since = $derived(shown ? ha.changedAt(shown.popup.entity_id) : null);
 
   $effect(() => {
     const kept = stillDismissed(dismissed, isOn);
@@ -76,6 +81,8 @@
     from={shown.from}
     ratio={shown.popup.ratio}
     sticky
+    alert
+    {since}
     onclose={closed}
   />
 {/if}

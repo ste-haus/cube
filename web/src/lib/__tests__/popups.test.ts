@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dismissedAfterClose, popupToShow, stillDismissed } from "../popups";
+import { dismissedAfterClose, popupToShow, stillDismissed, waitingLabel } from "../popups";
 import type { Popup } from "../types";
 
 const PORCH = "binary_sensor.porch_activity";
@@ -82,5 +82,23 @@ describe("what is put away when a window closes", () => {
 
     expect(popupToShow(POPUPS, on(PORCH, DRIVEWAY), dismissed)?.entity_id).toBe(PORCH);
     expect(popupToShow(POPUPS, on(DRIVEWAY), dismissed)?.entity_id).toBe(DRIVEWAY);
+  });
+});
+
+describe("waitingLabel", () => {
+  const since = new Date("2026-10-06T17:00:00Z");
+  const after = (seconds: number) => new Date(since.getTime() + seconds * 1000);
+
+  it("counts minutes and seconds while it is under the hour", () => {
+    expect(waitingLabel(since, after(42))).toBe("+0:42");
+    expect(waitingLabel(since, after(12 * 60 + 5))).toBe("+12:05");
+  });
+
+  it("adds the hours once it runs past one", () => {
+    expect(waitingLabel(since, after(3600 + 2 * 60 + 3))).toBe("+1:02:03");
+  });
+
+  it("never counts below nought, for a clock a little behind Home Assistant's", () => {
+    expect(waitingLabel(since, after(-3))).toBe("+0:00");
   });
 });
