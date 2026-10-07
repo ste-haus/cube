@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { Cube, FACES, FADE_MS, swipeable, type Direction, type FaceName } from "./lib/cube.svelte";
+  import { provideGo2rtc } from "./lib/go2rtc";
   import { ha } from "./lib/state.svelte";
   import CubeFace from "./faces/CubeFace.svelte";
   import MasterCaution from "./cards/MasterCaution.svelte";
@@ -21,6 +22,14 @@
 
   // The config is fetched once and never replaced, so the cube is built for its home face once.
   const cube = new Cube(untrack(() => config.profile.default_face));
+
+  /* Where a live camera streams from, published above the faces and the popups alike, so a camera
+   * plays live wherever it is drawn rather than only on a face. */
+  provideGo2rtc({
+    get url() {
+      return config.go2rtc?.url ?? null;
+    },
+  });
 
   $effect(() => {
     cube.follow(ha.state(config.profile.face_entity));
