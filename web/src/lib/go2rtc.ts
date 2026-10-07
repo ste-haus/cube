@@ -51,7 +51,7 @@ const RECONNECT_MS = 5000;
 export const STALL_MS = 10000;
 const STALL_CHECK_MS = 2000;
 
-/** Where a live camera streams from, published by the face so a card need not be handed it. */
+/** Where a live camera streams from, published by the cube so a card need not be handed it. */
 export interface Go2rtcServer {
   readonly url: string | null;
 }
