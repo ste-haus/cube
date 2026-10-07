@@ -472,8 +472,9 @@ export interface Mcw {
 export interface EntityState {
   state: string | null;
   attributes: Record<string, unknown>;
-  last_changed: string | null;
-  last_updated: string | null;
+  /** Seconds since the epoch, as Home Assistant's state stream gives them. */
+  last_changed: number | null;
+  last_updated: number | null;
 }
 
 /** One recorded state of an entity, and when it began. */

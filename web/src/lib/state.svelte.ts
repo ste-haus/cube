@@ -7,6 +7,7 @@ const UPDATE_MESSAGE = "update";
 const RECONNECT_MIN_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
 const RECONNECT_BACKOFF = 2;
+const MILLISECONDS_PER_SECOND = 1000;
 
 /**
  * The panel's view of Home Assistant.
@@ -63,6 +64,13 @@ class HomeAssistantState {
     const entity = this.entities[entityId];
 
     return (entity?.attributes?.[name] as T) ?? null;
+  }
+
+  /** When the entity's state last changed, or null when Home Assistant has not said. */
+  changedAt(entityId: string | null | undefined): Date | null {
+    const seconds = entityId ? this.entities[entityId]?.last_changed : null;
+
+    return typeof seconds === "number" ? new Date(seconds * MILLISECONDS_PER_SECOND) : null;
   }
 
   /** Reads a value that may live in the state or in one of the entity's attributes. */
