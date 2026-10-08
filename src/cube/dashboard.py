@@ -671,6 +671,25 @@ def as_camera(value: Any) -> Any:
 CameraEntry = Annotated[Camera, BeforeValidator(as_camera)]
 CameraRow = Annotated[list[CameraEntry], Field(min_length=1)]
 
+
+class MapCamera(Camera):
+    """One of a departure face's maps: shown while `visible_when` is on, or, last, whenever none is."""
+
+    visible_when: str | None = Field(
+        default=None,
+        description="Show this map while the entity is `on`; unset on the last, the one shown otherwise",
+    )
+
+
+def as_maps(value: Any) -> Any:
+    """Reads a single map as a list of one, which is what a face with nothing to swap in has."""
+
+    return value if isinstance(value, list) else [value]
+
+
+MapCameraEntry = Annotated[MapCamera, BeforeValidator(as_camera)]
+MapCameras = Annotated[list[MapCameraEntry], BeforeValidator(as_maps), Field(min_length=1)]
+
 # What a popup's window is shaped to until it is told otherwise: most cameras are 16:9.
 DEFAULT_POPUP_RATIO = 16 / 9
 
@@ -1050,6 +1069,9 @@ class GuestFaceOptions(FaceOptions):
         return controls
 
 
+MAP_FALLBACK_MESSAGE = (
+    "A departure face's `map` ends with the camera it shows when no other is on, the only one without `visible_when`."
+)
 USUAL_WITHOUT_DEPARTURE_MESSAGE = "`usual_entity_id` is for a route with no `departure_entity_id`; a trip is coloured by when to leave."
 
 
@@ -1167,7 +1189,7 @@ class DepartureFaceOptions(CameraFaceOptions):
     are.
     """
 
-    map: CameraEntry
+    map: MapCameras
     travel_times: list[TravelTime] = Field(min_length=1)
     send_event: str | None = Field(
         default=None,
@@ -1257,15 +1279,25 @@ class DepartureFaceOptions(CameraFaceOptions):
 
         return self
 
+    @model_validator(mode="after")
+    def require_a_map_to_fall_back_to(self) -> Self:
+        *swapped_in, fallback = self.map
+
+        if fallback.visible_when or any(camera.visible_when is None for camera in swapped_in):
+            raise ValueError(MAP_FALLBACK_MESSAGE)
+
+        return self
+
     @property
     def cameras(self) -> list[Camera]:
-        return [self.map]
+        return list(self.map)
 
     @property
     def entities(self) -> list[str]:
         routes = [entity_id for travel in self.travel_times for entity_id in travel.entities]
+        maps = [camera.visible_when for camera in self.map if camera.visible_when]
 
-        return routes + ([self.incidents_entity_id] if self.incidents_entity_id else [])
+        return routes + maps + ([self.incidents_entity_id] if self.incidents_entity_id else [])
 
     @property
     def events(self) -> list[str]:

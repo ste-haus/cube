@@ -163,6 +163,11 @@ export interface Camera {
   stream: string | null;
 }
 
+/** One of a departure face's maps: shown while `visible_when` is on; the last, with none, otherwise. */
+export interface MapCamera extends Camera {
+  visible_when: string | null;
+}
+
 /** A camera that comes up over whatever face is showing, while its sensor is on. */
 export interface Popup {
   entity_id: string;
@@ -322,7 +327,7 @@ export interface TravelTime {
 export type MapsLink = "apple" | "google";
 
 export interface DepartureFaceOptions {
-  map: Camera;
+  map: MapCamera[];
   travel_times: TravelTime[];
   /** Minutes before a trip's time to leave that it is imminent, and that it is soon. */
   imminent_minutes: number;

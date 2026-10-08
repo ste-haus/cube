@@ -1149,7 +1149,10 @@ DEPARTURE_TIME = "sensor.departure_time_alice"
 COMMUTE_TIME = "sensor.travel_time_commute"
 TRAVELLER = "person.alice"
 TRAFFIC_CAMERA = "camera.traffic"
+TRAVEL_CAMERA = "camera.travel"
+ROUTES_LIVE = "binary_sensor.travel_routes_live"
 TRAFFIC_INCIDENTS = "sensor.traffic_incidents"
+COMMUTE_ONLY = [{"entity_id": COMMUTE_TIME, "name": "Commute"}]
 
 
 def departure_face(**options) -> dict:
@@ -1205,8 +1208,50 @@ def test_a_departure_face_has_no_incidents_unless_named():
 def test_a_departure_faces_map_may_be_a_bare_camera():
     face = departure().profiles["hall"].faces["back"]
 
-    assert face.options["map"]["entity_id"] == TRAFFIC_CAMERA
+    assert [camera["entity_id"] for camera in face.options["map"]] == [TRAFFIC_CAMERA]
+    assert face.options["map"][0]["visible_when"] is None
     assert [camera.entity_id for camera in face.cameras] == [TRAFFIC_CAMERA]
+
+
+def swapped_maps() -> Dashboard:
+    return Dashboard.model_validate(
+        departure_face(
+            map=[{"entity_id": TRAVEL_CAMERA, "title": "Travel", "visible_when": ROUTES_LIVE}, TRAFFIC_CAMERA],
+            travel_times=COMMUTE_ONLY,
+        )
+    )
+
+
+def test_a_departure_faces_map_may_swap_in_another_while_its_entity_is_on():
+    face = swapped_maps().profiles["hall"].faces["back"]
+
+    assert [camera["entity_id"] for camera in face.options["map"]] == [TRAVEL_CAMERA, TRAFFIC_CAMERA]
+    assert face.options["map"][0]["visible_when"] == ROUTES_LIVE
+
+
+def test_every_map_a_departure_face_may_show_can_be_fetched():
+    assert {TRAVEL_CAMERA, TRAFFIC_CAMERA} <= swapped_maps().camera_entities
+
+
+def test_what_swaps_a_map_in_is_subscribed_and_not_controlled():
+    dashboard = swapped_maps()
+
+    assert ROUTES_LIVE in dashboard.allowed_entities
+    assert not dashboard.may_toggle(ROUTES_LIVE)
+
+
+def test_a_departure_faces_maps_end_with_one_to_fall_back_to():
+    swapped_in_last = [TRAFFIC_CAMERA, {"entity_id": TRAVEL_CAMERA, "visible_when": ROUTES_LIVE}]
+
+    with pytest.raises(ValidationError, match="shows when no other is on"):
+        Dashboard.model_validate(departure_face(map=swapped_in_last, travel_times=COMMUTE_ONLY))
+
+
+def test_only_the_last_of_a_departure_faces_maps_may_go_without_an_entity():
+    two_fallbacks = [TRAVEL_CAMERA, TRAFFIC_CAMERA]
+
+    with pytest.raises(ValidationError, match="shows when no other is on"):
+        Dashboard.model_validate(departure_face(map=two_fallbacks, travel_times=COMMUTE_ONLY))
 
 
 def test_a_route_leaves_whenever_unless_it_says_when():
