@@ -13,6 +13,8 @@
   import { faceVisibility } from "../lib/cube.svelte";
   import { forecast } from "../lib/forecast.svelte";
   import { DEFAULT_CRITICAL_COLOUR } from "../lib/incidents";
+  import { ha } from "../lib/state.svelte";
+  import { shownMap } from "../lib/travel";
   import type { DashboardConfig, DepartureFaceOptions } from "../lib/types";
 
   /*
@@ -22,10 +24,12 @@
    * The clock, the header's indicators, and the weather now with today's high and low are where
    * they are on the dashboard, so turning between the two moves none of them.
    *
-   * Under them, the traffic map and, beside it, the travel times with the dashboard's own fuel
+   * Under them, the map and, beside it, the travel times with the dashboard's own fuel
    * gauges straight under them and the forecast under those stand together as one block, against
    * the top and centred across the face. While there are traffic incidents, a band naming their
-   * roads drops down between the map's heading and the map.
+   * roads drops down between the map's heading and the map. The map is the first of `map` whose
+   * `visible_when` is on, else the last; a swap rebuilds the camera, so the one swapped out stops
+   * fetching and the one swapped in fetches at once.
    *
    * The announcement and its overlay are here as on the dashboard, since the house speaks to
    * whoever is looking at the panel, whichever face that is.
@@ -34,6 +38,7 @@
   let { config, options }: { config: DashboardConfig; options: DepartureFaceOptions } = $props();
 
   const visibility = faceVisibility();
+  const map = $derived(shownMap(options.map, (entityId) => ha.isOn(entityId)));
 
   /* The forecast is fetched per panel, so only while this face is being looked at. */
   $effect(() => {
@@ -67,17 +72,19 @@
 
   <div class="departure-face__main">
     <div class="departure-face__map">
-      <Camera camera={options.map}>
-        {#snippet banner()}
-          {#if options.incidents_entity_id}
-            <IncidentBanner
-              entityId={options.incidents_entity_id}
-              criticalColour={config.mcw?.warning_color ?? DEFAULT_CRITICAL_COLOUR}
-              labels={config.labels}
-            />
-          {/if}
-        {/snippet}
-      </Camera>
+      {#key map.entity_id}
+        <Camera camera={map}>
+          {#snippet banner()}
+            {#if options.incidents_entity_id}
+              <IncidentBanner
+                entityId={options.incidents_entity_id}
+                criticalColour={config.mcw?.warning_color ?? DEFAULT_CRITICAL_COLOUR}
+                labels={config.labels}
+              />
+            {/if}
+          {/snippet}
+        </Camera>
+      {/key}
     </div>
 
     <div class="departure-face__rail">

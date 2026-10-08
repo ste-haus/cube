@@ -1,5 +1,5 @@
 import { strftime } from "./format";
-import type { HistoryState, TravelTime } from "./types";
+import type { HistoryState, MapCamera, TravelTime } from "./types";
 
 /*
  * A travel time sensor reads below nought while its route is not being kept up to date, so a
@@ -345,4 +345,12 @@ export function samePlace(one: string | null, other: string | null): boolean {
   const plain = (place: string) => place.trim().replace(PLACE_GAP, PLACE_GAP_TO).toLowerCase();
 
   return Boolean(one && other) && plain(one as string) === plain(other as string);
+}
+
+/*
+ * The departure face's map: the first whose `visible_when` is on, else the last, which names
+ * none. The config refuses a list that does not end that way, so there is always one to show.
+ */
+export function shownMap(maps: MapCamera[], isOn: (entityId: string) => boolean): MapCamera {
+  return maps.find((map) => map.visible_when !== null && isOn(map.visible_when)) ?? maps[maps.length - 1];
 }

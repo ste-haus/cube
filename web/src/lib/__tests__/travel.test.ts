@@ -18,10 +18,11 @@ import {
   trafficSlowness,
   trendOf,
   samePlace,
+  shownMap,
   slowness,
   urgency,
 } from "../travel";
-import type { TravelTime } from "../types";
+import type { MapCamera, TravelTime } from "../types";
 
 const DETAILS = {
   short_name: null,
@@ -395,5 +396,30 @@ describe("beatPhase", () => {
   it("puts anything started at any moment at the page's point in the beat", () => {
     expect(beatPhase(900, 2000)).toBe("-200ms");
     expect(beatPhase(900, 2900)).toBe("-200ms");
+  });
+});
+
+describe("shownMap", () => {
+  const camera = (entity_id: string, visible_when: string | null): MapCamera => ({
+    entity_id,
+    visible_when,
+    title: null,
+    stream_type: "polling",
+    polling_interval: 60,
+    stream: null,
+  });
+  const travel = camera("camera.travel", "binary_sensor.travel_routes_live");
+  const traffic = camera("camera.traffic", null);
+
+  it("shows the map swapped in while its entity is on", () => {
+    expect(shownMap([travel, traffic], (id) => id === "binary_sensor.travel_routes_live")).toBe(travel);
+  });
+
+  it("falls back to the last while none is on", () => {
+    expect(shownMap([travel, traffic], () => false)).toBe(traffic);
+  });
+
+  it("shows a lone map whatever is on", () => {
+    expect(shownMap([traffic], () => true)).toBe(traffic);
   });
 });

@@ -26,7 +26,8 @@ profiles:
         label_strip: false
       # What to look at on the way out: the house's header and the clock, a traffic map, how long
       # the trips under way will take, and the `fuel` gauges below. `map` is a camera, written as
-      # on a camera face. A travel time is a sensor in minutes that reads below nought while its
+      # on a camera face, or a list of them where each but the last names `visible_when`: the first
+      # whose entity is on is shown, else the last. A travel time is a sensor in minutes that reads below nought while its
       # route is not being kept up to date, and only the routes reading nought or more are shown,
       # two at a time, trips first; a sideways swipe brings in the rest. One tied to a particular trip names `departure_entity_id`, a sensor holding
       # when to leave as a Unix timestamp; one that is always there, like a commute, names none.

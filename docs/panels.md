@@ -243,8 +243,11 @@ faces:
     label_strip: false
     options:
       map:
-        entity_id: camera.traffic
-        title: Traffic
+        - entity_id: camera.travel
+          title: Travel
+          visible_when: binary_sensor.travel_routes_live
+        - entity_id: camera.traffic
+          title: Traffic
       travel_times:
         - entity_id: sensor.travel_time_alice
           name: Alice
@@ -257,7 +260,7 @@ faces:
 
 | Option | Holds |
 |---|---|
-| `map` | A camera, written as on a [camera face](cameras.md); a bare entity id will do |
+| `map` | A camera, written as on a [camera face](cameras.md); a bare entity id will do. Or a list of them, each but the last naming `visible_when`, an entity: the face shows the first whose entity is `on`, and the last, which names none, otherwise |
 | `travel_times` | At least one route: `entity_id`, a sensor reading the trip's minutes, or anything below nought while nobody is keeping the route up to date; `name`; optionally `short_name`, what the card calls it when `name` is too long for it, while its window and `send_event` still say `name`; and, for a route tied to a particular trip, `departure_entity_id`, a sensor holding when to leave as a Unix timestamp, or anything else while that cannot be known, and optionally `person_entity_id`, who takes it. A person may only be named alongside a departure sensor; and, for a route with no departure sensor, optionally `usual_entity_id`, a sensor reading how many minutes the route usually takes around this time of day, anything else while that cannot be known |
 | `send_event` | An event a route's window fires to send the route to its person's phone, carrying `route`, `name`, `person`, `destination` (the destination entity's state), `label` (the place as the window shows it), and `maps`. The face may fire it without listing it under `events`. Unset, nothing sends |
 | `maps` | Which maps a route sent to a phone should open in, `apple` unless you say `google`; it rides along with `send_event` for Home Assistant to build the link from |
@@ -301,6 +304,8 @@ incidents:
     start_time: "2026-10-05T15:40:00Z"
     end_time: "2026-10-05T17:00:00Z"
 ```
+
+With more than one map, a map swapped in replaces the one before it, title and all, the moment its `visible_when` turns `on`, and the face goes back to the last when it turns off. The camera swapped out stops fetching, as one on a face turned away does, and the one swapped in fetches at once.
 
 Everything a departure face reads is added to the allowlist, and it switches nothing.
 
