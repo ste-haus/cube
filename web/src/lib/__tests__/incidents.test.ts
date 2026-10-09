@@ -7,6 +7,7 @@ import {
   incidentsOf,
   incidentsTitle,
   incidentTime,
+  incidentWhen,
   roadOf,
   typeName,
   wantsLightType,
@@ -230,12 +231,127 @@ describe("incidentTime", () => {
 
   it("gives the date for another day", () => {
     expect(incidentTime(new Date(2026, 8, 28, 22, 5).toISOString(), NOW)).toBe(
-      "28 Sep 22:05",
+      "Sep 28 22:05",
     );
   });
 
   it("gives nothing for nothing", () => {
     expect(incidentTime(null, NOW)).toBeNull();
     expect(incidentTime("soon", NOW)).toBeNull();
+  });
+});
+
+describe("incidentWhen", () => {
+  // A Monday.
+  const NOW = new Date(2026, 9, 5, 11, 22);
+  const WHEN_LABELS = {
+    minutes: "min",
+    incidents_hours: "hr",
+    incidents_today: "Today",
+    incidents_since: "Since",
+    incidents_until: "until",
+    incidents_range: "{start} to {end}",
+    incidents_clears_in: "Clears in ~{duration}",
+    incidents_clears_on: "Clears {day}",
+    incidents_cleared_at: "Should have cleared at {time}",
+    incidents_cleared_on: "Should have cleared {day}",
+    incidents_starts_in: "Starts in {duration}",
+    incidents_starts_on: "Starts {day}",
+    incidents_ongoing: "ongoing since {day}",
+  };
+
+  function when(start: Date | null, end: Date | null) {
+    const [only] = incidentsOf([
+      incident("I-135", "minor", {
+        start_time: start?.toISOString() ?? null,
+        end_time: end?.toISOString() ?? null,
+      }),
+    ]);
+
+    return incidentWhen(only, NOW, WHEN_LABELS);
+  }
+
+  const at = (day: number, hour: number, minute = 0) =>
+    new Date(2026, 9, day, hour, minute);
+
+  it("counts down one of a day or less, with its times", () => {
+    expect(when(at(5, 11, 0), at(5, 12, 37))).toBe(
+      "Clears in ~1 hr 15 min (11:00 to 12:37)",
+    );
+    expect(when(at(5, 11, 0), at(5, 12, 7))).toBe(
+      "Clears in ~45 min (11:00 to 12:07)",
+    );
+    expect(when(at(5, 11, 0), at(5, 13, 22))).toBe(
+      "Clears in ~2 hr (11:00 to 13:22)",
+    );
+  });
+
+  it("rounds a part minute up", () => {
+    const end = new Date(NOW.getTime() + 30_000);
+
+    expect(when(at(5, 11, 0), end)).toBe(
+      "Clears in ~1 min (11:00 to 11:22)",
+    );
+  });
+
+  it("gives no dates for one that crosses midnight", () => {
+    expect(when(at(4, 23, 40), at(5, 13, 10))).toBe(
+      "Clears in ~1 hr 48 min (23:40 to 13:10)",
+    );
+  });
+
+  it("tells an ongoing one by the day it clears", () => {
+    expect(when(at(1, 16, 7), at(5, 18, 0))).toBe(
+      "Clears Today (ongoing since Oct 1)",
+    );
+    expect(when(at(1, 16, 7), at(9, 10, 0))).toBe(
+      "Clears Friday (ongoing since Oct 1)",
+    );
+    expect(when(at(1, 16, 7), at(12, 10, 0))).toBe(
+      "Clears Oct 12 (ongoing since Oct 1)",
+    );
+  });
+
+  it("gives the time an ongoing one began today", () => {
+    expect(when(at(5, 8, 0), at(9, 10, 0))).toBe(
+      "Clears Friday (ongoing since 08:00)",
+    );
+  });
+
+  it("says one past its end should have cleared", () => {
+    expect(when(at(5, 11, 0), at(5, 11, 15))).toBe(
+      "Should have cleared at 11:15",
+    );
+    expect(when(at(1, 16, 7), at(5, 10, 0))).toBe(
+      "Should have cleared at 10:00 (ongoing since Oct 1)",
+    );
+    expect(when(at(1, 16, 7), at(3, 10, 0))).toBe(
+      "Should have cleared Oct 3 (ongoing since Oct 1)",
+    );
+  });
+
+  it("gives only the end of one with no start", () => {
+    expect(when(null, at(5, 11, 47))).toBe(
+      "Clears in ~25 min (until 11:47)",
+    );
+    expect(when(null, at(9, 10, 0))).toBe("Clears Friday");
+  });
+
+  it("says when one yet to begin starts", () => {
+    expect(when(at(5, 14, 22), at(5, 16, 0))).toBe(
+      "Starts in 3 hr (14:22 to 16:00)",
+    );
+    expect(when(at(8, 14, 0), at(8, 16, 0))).toBe(
+      "Starts Thursday (14:00 to 16:00)",
+    );
+    expect(when(at(5, 20, 0), at(20, 6, 0))).toBe(
+      "Starts in 8 hr 38 min (until Oct 20)",
+    );
+  });
+
+  it("gives only the start of one with no end", () => {
+    expect(when(at(5, 11, 0), null)).toBe("Since 11:00");
+    expect(when(at(1, 16, 7), null)).toBe("Since Oct 1 16:07");
+    expect(when(null, null)).toBeNull();
   });
 });

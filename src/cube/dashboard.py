@@ -638,8 +638,45 @@ class Labels(BaseModel):
         default="Incident", description="A lone incident's title, in place of its type, when it has none"
     )
     incidents_closed: str = Field(default="Closed", description="An incident's window: a road that is closed")
-    incidents_since: str = Field(default="Since", description="An incident's window: before when it began")
-    incidents_until: str = Field(default="Until", description="An incident's window: before when it is due to end")
+    incidents_since: str = Field(
+        default="Since", description="An incident's window: before when it began, for one with no end"
+    )
+    incidents_until: str = Field(
+        default="until", description="An incident's window: before when it is due to end, for one with no start"
+    )
+    incidents_range: str = Field(
+        default="{start} to {end}", description="An incident's window: its times; `{start}` and `{end}` are replaced"
+    )
+    incidents_clears_in: str = Field(
+        default="Clears in ~{duration}",
+        description="An incident's window: how long until one of a day or less clears; `{duration}` is replaced",
+    )
+    incidents_clears_on: str = Field(
+        default="Clears {day}",
+        description="An incident's window: the day an ongoing one clears; `{day}` is replaced",
+    )
+    incidents_cleared_at: str = Field(
+        default="Should have cleared at {time}",
+        description="An incident's window: one past its end, as a time of day; `{time}` is replaced",
+    )
+    incidents_cleared_on: str = Field(
+        default="Should have cleared {day}",
+        description="An incident's window: an ongoing one past its end on an earlier day; `{day}` is replaced",
+    )
+    incidents_starts_in: str = Field(
+        default="Starts in {duration}",
+        description="An incident's window: how long until one a day or less off starts; `{duration}` is replaced",
+    )
+    incidents_starts_on: str = Field(
+        default="Starts {day}",
+        description="An incident's window: the day one more than a day off starts; `{day}` is replaced",
+    )
+    incidents_ongoing: str = Field(
+        default="ongoing since {day}",
+        description="An incident's window: when one spanning more than a day began; `{day}` is replaced",
+    )
+    incidents_hours: str = Field(default="hr", description="An incident's window: the unit after a number of hours")
+    incidents_today: str = Field(default="Today", description="An incident's window: the day it is")
 
 
 BLANK_FACE_CONTENT = "blank"
