@@ -118,7 +118,7 @@
         onclick={notice.window ? (event) => open(notice, event) : undefined}
       >
         <Icon name={icon} />
-        <span>{message}</span>
+        <span class="notices__text">{message}</span>
       </li>
     {/each}
 
@@ -131,7 +131,7 @@
         out:wipeOut
       >
         <Icon name={notice.icon} />
-        <span>{notice.message}</span>
+        <span class="notices__text">{notice.message}</span>
       </li>
     {/each}
   </ul>
@@ -161,6 +161,20 @@
     padding: 0.32em 0;
     font-size: var(--notice-size);
     line-height: 1.35;
+  }
+
+  /* The icon keeps its size however long the line beside it is. */
+  .notices__item > :global(:not(.notices__text)) {
+    flex: 0 0 auto;
+  }
+
+  /* One line a notice, cut short rather than wrapped, so a long one does not push the list down. */
+  .notices__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .notices__item--opens {

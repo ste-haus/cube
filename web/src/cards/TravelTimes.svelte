@@ -1,6 +1,5 @@
 <script lang="ts">
   import { faceVisibility, swipeable, type Direction, TAP_SLOP_PX } from "../lib/cube.svelte";
-  import { COLOUR_HOLD_MS } from "../lib/hue";
   import Icon from "../lib/Icon.svelte";
   import { Lapsing, PANE_RESET_MS } from "../lib/panes.svelte";
   import type { Box } from "../lib/picture";
@@ -22,7 +21,6 @@
     type ActiveRoute,
   } from "../lib/travel";
   import type { DepartureFaceOptions, Labels } from "../lib/types";
-  import Reticle from "./Reticle.svelte";
   import TravelWindow from "./TravelWindow.svelte";
 
   /*
@@ -30,7 +28,7 @@
    * are always there. A route nobody is keeping up to date is left out rather than shown as a
    * stale figure, and with none under way the card says so in grey. With more than two, the rest
    * are a sideways swipe away: the pair slides one card along, round from the last to the first
-   * either way, a chevron says there is more and steps on when tapped, and holding a route opens a
+   * either way, a chevron says there is more and steps on when tapped, and tapping a route opens a
    * window with more about it, and like the other cards with panes it goes back to
    * the first pair a minute after it was last swiped.
    *
@@ -70,9 +68,6 @@
   const SLIDE_MS = 420;
   const SLIDE_GIVE_UP_MS = 2 * SLIDE_MS;
   const CARD_SELECTOR = "li";
-  const PRIMARY_BUTTON = 0;
-  // The reticle round a held route lets go as quickly as the floorplan's does.
-  const RETICLE_RELEASE_MS = 260;
 
   let { options, labels }: { options: DepartureFaceOptions; labels: Labels } = $props();
 
@@ -169,8 +164,8 @@
 
   $effect(() => () => cancelSlideGiveUp());
 
-  /* The chevron is tapped, and a swipe across the carousel can start on it, so a release far from
-   * the press is the swipe's and not also a tap. */
+  /* The chevron and the routes are tapped, and a swipe across the carousel can start on any of
+   * them, so a release far from the press is the swipe's and not also a tap. */
   let pressedAt: { x: number; y: number } | null = null;
 
   function press(event: PointerEvent): void {
@@ -195,95 +190,24 @@
     }
   }
 
-  /* A route held long enough opens its window out of the reticle round its card, and the card
-   * hides while it is open, so the window reads as the card lifted off the rail; it shows again as
-   * the brackets come home. Letting go, or sliding off, before the reticle has closed does
-   * nothing, and it springs back out. The carousel does not go back to its first pair behind an
-   * open window, and starts its wait again once the window is closed. */
+  /* A route tapped opens its window out of its card, and the card hides while it is open, so the
+   * window reads as the card lifted off the rail; it shows again as the brackets come home. A
+   * press that moved further than a tap is a swipe, of the carousel or the cube, and opens
+   * nothing. The carousel does not go back to its first pair behind an open window, and starts
+   * its wait again once the window is closed. */
   let opened = $state<{ entityId: string; from: Box } | null>(null);
   let away = $state<string | null>(null);
-  let lock = $state<{ entityId: string; releasing: boolean } | null>(null);
 
   const openedEntry = $derived(opened ? (active.find(({ route }) => route.entity_id === opened?.entityId) ?? null) : null);
 
-  let holdTimer: number | null = null;
-  let releaseTimer: number | null = null;
-  let heldAt: { x: number; y: number } | null = null;
-
-  function hold(event: PointerEvent, entityId: string): void {
-    if (event.button !== PRIMARY_BUTTON || !event.isPrimary || holdTimer !== null || opened !== null || sliding !== AT_REST) {
+  function tapRoute(event: MouseEvent, entityId: string): void {
+    if (!tapped(event) || opened !== null || sliding !== AT_REST) {
       return;
     }
 
     const card = (event.currentTarget as HTMLElement).closest(CARD_SELECTOR) ?? (event.currentTarget as HTMLElement);
-
-    cancelRelease();
-    heldAt = { x: event.clientX, y: event.clientY };
-    lock = { entityId, releasing: false };
-    holdTimer = window.setTimeout(() => {
-      holdTimer = null;
-      stopListening();
-      lock = null;
-      open(card, entityId);
-    }, COLOUR_HOLD_MS);
-
-    window.addEventListener("pointermove", wandered);
-    window.addEventListener("pointerup", letGo);
-    window.addEventListener("pointercancel", letGo);
+    open(card, entityId);
   }
-
-  function stopListening(): void {
-    window.removeEventListener("pointermove", wandered);
-    window.removeEventListener("pointerup", letGo);
-    window.removeEventListener("pointercancel", letGo);
-  }
-
-  /** A press that wanders is a swipe, not a hold. */
-  function wandered(event: PointerEvent): void {
-    if (heldAt && Math.hypot(event.clientX - heldAt.x, event.clientY - heldAt.y) > TAP_SLOP_PX) {
-      letGo();
-    }
-  }
-
-  /** Let go before the hold ran out: nothing opens. After it, the hold has already opened. */
-  function letGo(): void {
-    stopListening();
-    heldAt = null;
-
-    if (holdTimer === null) {
-      return;
-    }
-
-    window.clearTimeout(holdTimer);
-    holdTimer = null;
-
-    if (lock) {
-      lock = { ...lock, releasing: true };
-      releaseTimer = window.setTimeout(() => {
-        releaseTimer = null;
-        lock = null;
-      }, RETICLE_RELEASE_MS);
-    }
-  }
-
-  function cancelRelease(): void {
-    if (releaseTimer !== null) {
-      window.clearTimeout(releaseTimer);
-      releaseTimer = null;
-    }
-  }
-
-  // A face turned away mid-hold has nobody holding it.
-  $effect(() => {
-    if (!visibility.showing) {
-      letGo();
-    }
-  });
-
-  $effect(() => () => {
-    letGo();
-    cancelRelease();
-  });
 
   function open(card: Element, entityId: string): void {
     const { left, top, width, height } = card.getBoundingClientRect();
@@ -336,14 +260,10 @@
       type="button"
       class="travel__card"
       aria-label={route.short_name ?? route.name}
-      onpointerdown={(event) => hold(event, route.entity_id)}
-      oncontextmenu={(event) => event.preventDefault()}
+      onpointerdown={press}
+      onpointercancel={forget}
+      onclick={(event) => tapRoute(event, route.entity_id)}
     >
-      {#if lock?.entityId === route.entity_id}
-        <span class="travel__reticle">
-          <Reticle holding={!lock.releasing} releasing={lock.releasing} holdMs={COLOUR_HOLD_MS} releaseMs={RETICLE_RELEASE_MS} />
-        </span>
-      {/if}
       <span class="travel__name">{route.short_name ?? route.name}</span>
       <span class="travel__minutes">
         {#if count === null && !home}
@@ -468,7 +388,7 @@
     visibility: hidden;
   }
 
-  /* The whole card is what a hold opens, drawn as nothing but what it holds. */
+  /* The whole card is what a tap opens, drawn as nothing but what it holds. */
   .travel__card {
     position: relative;
     display: block;
@@ -482,14 +402,6 @@
     cursor: pointer;
     -webkit-touch-callout: none;
     user-select: none;
-  }
-
-  /* The reticle stands a little off the card above and below, and no wider than its half of the
-   * rail, so it never reaches over the card beside it. */
-  .travel__reticle {
-    position: absolute;
-    inset: calc(-1 * var(--travel-reticle-reach)) 0;
-    pointer-events: none;
   }
 
   .travel__name,
