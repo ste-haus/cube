@@ -547,7 +547,17 @@ labels:
   incidents_type_unknown: Incident
   incidents_closed: Closed
   incidents_since: Since
-  incidents_until: Until
+  incidents_until: until
+  incidents_range: "{start} to {end}"
+  incidents_clears_in: Clears in ~{duration}
+  incidents_clears_on: Clears {day}
+  incidents_cleared_at: Should have cleared at {time}
+  incidents_cleared_on: Should have cleared {day}
+  incidents_starts_in: Starts in {duration}
+  incidents_starts_on: Starts {day}
+  incidents_ongoing: ongoing since {day}
+  incidents_hours: hr
+  incidents_today: Today
 ```
 
 ### What the panel may switch

@@ -5,7 +5,7 @@
     CLOSED_ICON,
     incidentIcon,
     incidentsTitle,
-    incidentTime,
+    incidentWhen,
     roadOf,
     severityColour,
     severityOf,
@@ -21,13 +21,13 @@
    * band is solid in the banner's colour and says what the incident is, or for several of them
    * that they are incidents, and how many; the brackets take the colour too. Each incident leads
    * with its road and how bad it is, its icon in its own colour, then what HERE says of it, where,
-   * and when it began and is due to end.
+   * and when it is expected to clear.
    *
    * Nothing in it is something to press, so a tap anywhere closes it, and it closes itself once
    * the last incident clears, or a while after it was last touched.
    */
 
-  const TIME_SEPARATOR = " · ";
+  const MINUTE_MS = 60_000;
 
   let {
     incidents,
@@ -57,8 +57,14 @@
 
   const sorted = $derived(byCriticality(incidents));
 
-  /* The times are only told to the minute, so the window's clock is the one it opened with. */
-  const now = new Date();
+  /* The times are only told to the minute, so the window's clock moves on by the minute. */
+  let now = $state(new Date());
+
+  $effect(() => {
+    const tick = window.setInterval(() => (now = new Date()), MINUTE_MS);
+
+    return () => window.clearInterval(tick);
+  });
 
   let panel = $state<PanelWindow | null>(null);
   let idleTimer: number | null = null;
@@ -86,14 +92,6 @@
       panel?.close();
     }
   });
-
-  function when(incident: Incident): string {
-    const since = incidentTime(incident.start_time, now);
-    const until = incidentTime(incident.end_time, now);
-    const parts = [since && `${labels.incidents_since} ${since}`, until && `${labels.incidents_until} ${until}`];
-
-    return parts.filter(Boolean).join(TIME_SEPARATOR);
-  }
 </script>
 
 {#snippet band()}
@@ -118,7 +116,7 @@
     {#each sorted as incident, index (incident.id ?? index)}
       {@const road = roadOf(incident, labels.incidents_unnamed)}
       {@const tint = severityColour(severityOf(incident), criticalColour)}
-      {@const times = when(incident)}
+      {@const times = incidentWhen(incident, now, labels)}
       <li class="incidents-window__incident">
         <span class="incidents-window__icon" style:color={tint}><Icon name={incidentIcon(incident)} /></span>
 

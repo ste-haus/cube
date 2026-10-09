@@ -75,7 +75,18 @@ const WORD_START = /(?=[A-Z])/;
 const WORD_SEPARATOR = " ";
 
 const TODAY_FORMAT = "%H:%M";
-const OTHER_DAY_FORMAT = "%-d %b %H:%M";
+const OTHER_DAY_FORMAT = "%b %-d %H:%M";
+const WEEKDAY_FORMAT = "%A";
+const DATE_FORMAT = "%b %-d";
+
+// An incident that spans more than a day is ongoing: told by the day, not counted down.
+const MINUTE_MS = 60_000;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+const DAY_MS = HOURS_PER_DAY * MINUTES_PER_HOUR * MINUTE_MS;
+const DAYS_PER_WEEK = 7;
+const TODAY = 0;
+const DURATION_SEPARATOR = " ";
 
 const INCIDENT_ICONS: Record<string, string> = {
   accident: "mdi:car-emergency",
@@ -250,4 +261,134 @@ export function incidentTime(text: string | null, now: Date): string | null {
       ? TODAY_FORMAT
       : OTHER_DAY_FORMAT,
   );
+}
+
+export interface WhenLabels {
+  minutes: string;
+  incidents_hours: string;
+  incidents_today: string;
+  incidents_since: string;
+  incidents_until: string;
+  incidents_range: string;
+  incidents_clears_in: string;
+  incidents_clears_on: string;
+  incidents_cleared_at: string;
+  incidents_cleared_on: string;
+  incidents_starts_in: string;
+  incidents_starts_on: string;
+  incidents_ongoing: string;
+}
+
+function momentOf(text: string | null): Date | null {
+  const moment = text === null ? null : new Date(text);
+
+  return moment === null || Number.isNaN(moment.getTime()) ? null : moment;
+}
+
+function fill(template: string, values: Record<string, string>): string {
+  return Object.entries(values).reduce(
+    (filled, [key, value]) => filled.replace(`{${key}}`, value),
+    template,
+  );
+}
+
+// Calendar days from `now` to `then`; rounded, since a day across a clock change is not 24 hours.
+function daysUntil(then: Date, now: Date): number {
+  const midnight = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+  return Math.round((midnight(then) - midnight(now)) / DAY_MS);
+}
+
+/** A day ahead: today, its weekday within the week, or its date further off. */
+function dayAhead(then: Date, now: Date, labels: WhenLabels): string {
+  const days = daysUntil(then, now);
+  if (days === TODAY) {
+    return labels.incidents_today;
+  }
+
+  return days > TODAY && days < DAYS_PER_WEEK
+    ? strftime(then, WEEKDAY_FORMAT)
+    : strftime(then, DATE_FORMAT);
+}
+
+/** A time left, to the minute and rounded up: "45 min", "1 hr 15 min", "2 hr". */
+function duration(ms: number, labels: WhenLabels): string {
+  const minutes = Math.ceil(ms / MINUTE_MS);
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  const rest = minutes % MINUTES_PER_HOUR;
+  const parts = [
+    hours > 0 ? `${hours} ${labels.incidents_hours}` : null,
+    rest > 0 || hours === 0 ? `${rest} ${labels.minutes}` : null,
+  ];
+
+  return parts.filter(Boolean).join(DURATION_SEPARATOR);
+}
+
+/**
+ * When an incident clears, as of `now`. One spanning a day or less is counted down, its times in
+ * parentheses: "Clears in ~1 hr 15 min (11:22 to 12:37)". A longer one is told by the
+ * day it clears and when it began: "Clears Friday (ongoing since Oct 1)". One not yet
+ * begun says when it starts, one past its end that it should have cleared, and one with no end
+ * only when it began.
+ */
+export function incidentWhen(
+  incident: Incident,
+  now: Date,
+  labels: WhenLabels,
+): string | null {
+  const start = momentOf(incident.start_time);
+  const end = momentOf(incident.end_time);
+
+  if (end === null) {
+    const since = incidentTime(incident.start_time, now);
+
+    return since && `${labels.incidents_since} ${since}`;
+  }
+
+  const time = (moment: Date) => strftime(moment, TODAY_FORMAT);
+  const ongoing = end.getTime() - (start ?? now).getTime() > DAY_MS;
+
+  if (start !== null && start > now) {
+    const lead = start.getTime() - now.getTime();
+    const opening =
+      lead > DAY_MS
+        ? fill(labels.incidents_starts_on, { day: dayAhead(start, now, labels) })
+        : fill(labels.incidents_starts_in, { duration: duration(lead, labels) });
+    const span = ongoing
+      ? `${labels.incidents_until} ${dayAhead(end, now, labels)}`
+      : fill(labels.incidents_range, { start: time(start), end: time(end) });
+
+    return `${opening} (${span})`;
+  }
+
+  if (!ongoing) {
+    if (end <= now) {
+      return fill(labels.incidents_cleared_at, { time: time(end) });
+    }
+
+    const span =
+      start === null
+        ? `${labels.incidents_until} ${time(end)}`
+        : fill(labels.incidents_range, { start: time(start), end: time(end) });
+
+    return `${fill(labels.incidents_clears_in, { duration: duration(end.getTime() - now.getTime(), labels) })} (${span})`;
+  }
+
+  // Past its end today, it gives the time; on an earlier day, the date.
+  const clears =
+    end > now
+      ? fill(labels.incidents_clears_on, { day: dayAhead(end, now, labels) })
+      : daysUntil(end, now) === TODAY
+        ? fill(labels.incidents_cleared_at, { time: time(end) })
+        : fill(labels.incidents_cleared_on, { day: strftime(end, DATE_FORMAT) });
+
+  if (start === null) {
+    return clears;
+  }
+
+  const began =
+    daysUntil(start, now) === TODAY ? time(start) : strftime(start, DATE_FORMAT);
+
+  return `${clears} (${fill(labels.incidents_ongoing, { day: began })})`;
 }

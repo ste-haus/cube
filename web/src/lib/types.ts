@@ -414,8 +414,20 @@ export interface Labels {
   /** A lone incident's title when HERE gives it no type. */
   incidents_type_unknown: string;
   incidents_closed: string;
+  /** Words before a time: "Since 11:27", "until 11:47". */
   incidents_since: string;
   incidents_until: string;
+  /** When an incident clears, with `{start}`, `{end}`, `{duration}`, `{day}` or `{time}` in them. */
+  incidents_range: string;
+  incidents_clears_in: string;
+  incidents_clears_on: string;
+  incidents_cleared_at: string;
+  incidents_cleared_on: string;
+  incidents_starts_in: string;
+  incidents_starts_on: string;
+  incidents_ongoing: string;
+  incidents_hours: string;
+  incidents_today: string;
 }
 
 export interface Theme {
