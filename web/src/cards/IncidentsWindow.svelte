@@ -4,6 +4,7 @@
     byCriticality,
     CLOSED_ICON,
     incidentIcon,
+    incidentsTitle,
     incidentTime,
     roadOf,
     severityColour,
@@ -17,9 +18,10 @@
 
   /*
    * Every traffic incident, closer up, in a window opened out of the banner that was tapped. The
-   * band is solid in the banner's colour and says how many there are, and the brackets take the
-   * colour too. Each incident leads with its road and how bad it is, its icon in its own colour,
-   * then what HERE says of it, where, and when it began and is due to end.
+   * band is solid in the banner's colour and says what the incident is, or for several of them
+   * that they are incidents, and how many; the brackets take the colour too. Each incident leads
+   * with its road and how bad it is, its icon in its own colour, then what HERE says of it, where,
+   * and when it began and is due to end.
    *
    * Nothing in it is something to press, so a tap anywhere closes it, and it closes itself once
    * the last incident clears, or a while after it was last touched.
@@ -95,14 +97,14 @@
 </script>
 
 {#snippet band()}
-  <h2 class="incidents-window__title">{labels.incidents}</h2>
+  <h2 class="incidents-window__title">{incidentsTitle(incidents, labels)}</h2>
   <span class="incidents-window__count">{incidents.length}</span>
 {/snippet}
 
 <PanelWindow
   bind:this={panel}
   {from}
-  label={labels.incidents}
+  label={incidentsTitle(incidents, labels)}
   width="var(--incidents-window-width)"
   band="solid"
   tint={colour}
@@ -122,17 +124,19 @@
 
         <div class="incidents-window__text">
           <div class="incidents-window__head">
-            <span class="incidents-window__road">{road}</span>
-            {#if incident.direction}<span class="incidents-window__direction">{incident.direction}</span>{/if}
+            <span class="incidents-window__line incidents-window__road">
+              <span class="incidents-window__run"
+                >{road}{#if incident.direction}<span class="incidents-window__direction">{incident.direction}</span
+                  >{/if}</span
+              >
+            </span>
             {#if incident.criticality}
               <span class="incidents-window__criticality" style:color={tint}>{incident.criticality}</span>
             {/if}
           </div>
 
           {#if incident.description ?? incident.summary}
-            <p class="incidents-window__line incidents-window__description">
-              <span class="incidents-window__run">{incident.description ?? incident.summary}</span>
-            </p>
+            <p class="incidents-window__description">{incident.description ?? incident.summary}</p>
           {/if}
 
           {#if incident.location && incident.location !== road}
@@ -213,15 +217,24 @@
     gap: 0.6em;
   }
 
+  /* Travels like the lines under it, so the criticality keeps its place at the end of the row. */
   .incidents-window__road {
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: var(--travel-window-event-size);
     font-weight: var(--weight-light);
     line-height: 1.2;
-    overflow-wrap: anywhere;
   }
 
   .incidents-window__direction {
+    margin-left: 0.6em;
     color: var(--color-muted);
+  }
+
+  /* What HERE says of it is the part worth reading whole, so it wraps rather than travelling. */
+  .incidents-window__description {
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 
   .incidents-window__criticality {
@@ -230,8 +243,8 @@
     text-transform: uppercase;
   }
 
-  /* Each line under the road keeps to one, and one too long for it travels back and forth to show
-   * the rest, as the agenda's running title does. The offset is nought unless the line is wider
+  /* The road and the lines of detail keep to one each, and one too long for it travels back and
+   * forth to show the rest, as the agenda's running title does. The offset is nought unless the line is wider
    * than the window, so one that fits does not move. */
   .incidents-window__line {
     margin: 0;

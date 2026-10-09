@@ -544,6 +544,7 @@ labels:
   incidents_other: and {count} other
   incidents_others: and {count} others
   incidents_unnamed: Unnamed road
+  incidents_type_unknown: Incident
   incidents_closed: Closed
   incidents_since: Since
   incidents_until: Until

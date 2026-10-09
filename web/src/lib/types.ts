@@ -411,6 +411,8 @@ export interface Labels {
   incidents_other: string;
   incidents_others: string;
   incidents_unnamed: string;
+  /** A lone incident's title when HERE gives it no type. */
+  incidents_type_unknown: string;
   incidents_closed: string;
   incidents_since: string;
   incidents_until: string;

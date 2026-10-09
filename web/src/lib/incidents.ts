@@ -70,19 +70,23 @@ const ROAD_SEPARATOR = ", ";
 const COUNT_PLACEHOLDER = "{count}";
 const SINGLE = 1;
 
+// HERE's types are camelCase, "disabledVehicle"; each word starts at a capital.
+const WORD_START = /(?=[A-Z])/;
+const WORD_SEPARATOR = " ";
+
 const TODAY_FORMAT = "%H:%M";
 const OTHER_DAY_FORMAT = "%-d %b %H:%M";
 
 const INCIDENT_ICONS: Record<string, string> = {
   accident: "mdi:car-emergency",
   congestion: "mdi:car-multiple",
-  construction: "mdi:cone",
+  construction: "mdi:bulldozer",
   disabledVehicle: "mdi:car-wrench",
-  laneRestriction: "mdi:road-variant",
+  laneRestriction: "mdi:traffic-cone",
   massTransit: "mdi:bus-alert",
   plannedEvent: "mdi:calendar-alert",
-  roadClosure: "mdi:road-variant",
-  roadHazard: "mdi:alert-octagon-outline",
+  roadClosure: "mdi:minus-circle",
+  roadHazard: "mdi:hazard-lights",
   weather: "mdi:weather-lightning-rainy",
 };
 const DEFAULT_INCIDENT_ICON = "mdi:alert-outline";
@@ -99,7 +103,10 @@ export function incidentsOf(value: unknown): Incident[] {
   }
 
   return value
-    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .filter(
+      (item): item is Record<string, unknown> =>
+        typeof item === "object" && item !== null,
+    )
     .map((item) => ({
       id: text(item.id),
       type: text(item.type),
@@ -131,7 +138,10 @@ export function severityOf(incident: Incident): Severity {
 
 /** The worst of them, which is what the banner and its window are coloured by. */
 export function worstSeverity(incidents: Incident[]): Severity {
-  const worst = Math.max(UNRANKED, ...incidents.map((incident) => SEVERITIES.indexOf(severityOf(incident))));
+  const worst = Math.max(
+    UNRANKED,
+    ...incidents.map((incident) => SEVERITIES.indexOf(severityOf(incident))),
+  );
 
   return SEVERITIES[worst];
 }
@@ -149,7 +159,11 @@ export function wantsLightType(colour: string): boolean {
   const luminance = match
     .slice(1)
     .map((hex) => parseInt(hex, HEX_RADIX) / CHANNEL_MAX)
-    .map((value) => (value <= LINEAR_BELOW ? value / LINEAR_SLOPE : ((value + GAMMA_OFFSET) / GAMMA_SCALE) ** GAMMA))
+    .map((value) =>
+      value <= LINEAR_BELOW
+        ? value / LINEAR_SLOPE
+        : ((value + GAMMA_OFFSET) / GAMMA_SCALE) ** GAMMA,
+    )
     .reduce((sum, value, index) => sum + value * LUMINANCE_WEIGHTS[index], 0);
 
   return luminance < DARK_TYPE_FROM_LUMINANCE;
@@ -165,24 +179,58 @@ export function roadOf(incident: Incident, unnamed: string): string {
   return incident.road ?? incident.location ?? incident.summary ?? unnamed;
 }
 
+/** An incident's type as words, "Disabled vehicle", or `unknown` for one HERE does not give. */
+export function typeName(incident: Incident, unknown: string): string {
+  const words = (incident.type ?? "")
+    .split(WORD_START)
+    .filter(Boolean)
+    .join(WORD_SEPARATOR)
+    .toLowerCase();
+
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : unknown;
+}
+
+/** What a lone incident is, or the label for a number of them. */
+export function incidentsTitle(
+  incidents: Incident[],
+  labels: { incidents: string; incidents_type_unknown: string },
+): string {
+  return incidents.length === SINGLE
+    ? typeName(incidents[0], labels.incidents_type_unknown)
+    : labels.incidents;
+}
+
 /**
- * The banner's words: the label, then the roads with incidents on them, worst first and each
+ * The banner's words: what the incidents are, then the roads they are on, worst first and each
  * once, up to `BANNER_ROADS` of them, and how many more roads there are after that.
  */
 export function bannerText(
   incidents: Incident[],
-  labels: { incidents: string; incidents_other: string; incidents_others: string; incidents_unnamed: string },
+  labels: {
+    incidents: string;
+    incidents_other: string;
+    incidents_others: string;
+    incidents_unnamed: string;
+    incidents_type_unknown: string;
+  },
 ): string {
-  const roads = [...new Set(byCriticality(incidents).map((incident) => roadOf(incident, labels.incidents_unnamed)))];
+  const roads = [
+    ...new Set(
+      byCriticality(incidents).map((incident) =>
+        roadOf(incident, labels.incidents_unnamed),
+      ),
+    ),
+  ];
   const named = roads.slice(0, BANNER_ROADS);
   const rest = roads.length - named.length;
 
   if (rest > 0) {
-    const others = rest === SINGLE ? labels.incidents_other : labels.incidents_others;
+    const others =
+      rest === SINGLE ? labels.incidents_other : labels.incidents_others;
     named.push(others.replace(COUNT_PLACEHOLDER, String(rest)));
   }
 
-  return `${labels.incidents}: ${named.join(ROAD_SEPARATOR)}`;
+  return `${incidentsTitle(incidents, labels)}: ${named.join(ROAD_SEPARATOR)}`;
 }
 
 export function incidentIcon(incident: Incident): string {
@@ -196,5 +244,10 @@ export function incidentTime(text: string | null, now: Date): string | null {
     return null;
   }
 
-  return strftime(moment, moment.toDateString() === now.toDateString() ? TODAY_FORMAT : OTHER_DAY_FORMAT);
+  return strftime(
+    moment,
+    moment.toDateString() === now.toDateString()
+      ? TODAY_FORMAT
+      : OTHER_DAY_FORMAT,
+  );
 }

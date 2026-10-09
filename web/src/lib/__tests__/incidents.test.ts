@@ -1,15 +1,31 @@
 import { describe, expect, it } from "vitest";
 
-import { bannerText, byCriticality, incidentsOf, incidentTime, roadOf, wantsLightType, worstSeverity } from "../incidents";
+import {
+  bannerText,
+  byCriticality,
+  incidentIcon,
+  incidentsOf,
+  incidentsTitle,
+  incidentTime,
+  roadOf,
+  typeName,
+  wantsLightType,
+  worstSeverity,
+} from "../incidents";
 
 const LABELS = {
   incidents: "Active incidents",
   incidents_other: "and {count} other",
   incidents_others: "and {count} others",
   incidents_unnamed: "Unnamed road",
+  incidents_type_unknown: "Incident",
 };
 
-function incident(road: string | null, criticality = "minor", extra: Record<string, unknown> = {}) {
+function incident(
+  road: string | null,
+  criticality = "minor",
+  extra: Record<string, unknown> = {},
+) {
   return { road, criticality, ...extra };
 }
 
@@ -30,12 +46,20 @@ describe("incidentsOf", () => {
 
 describe("worstSeverity", () => {
   it("is minor while every incident is", () => {
-    expect(worstSeverity(incidentsOf([incident("A"), incident("B", "lowImpact")]))).toBe("minor");
+    expect(
+      worstSeverity(incidentsOf([incident("A"), incident("B", "lowImpact")])),
+    ).toBe("minor");
   });
 
   it("is the worst of them", () => {
-    expect(worstSeverity(incidentsOf([incident("A"), incident("B", "major")]))).toBe("major");
-    expect(worstSeverity(incidentsOf([incident("A", "critical"), incident("B", "major")]))).toBe("critical");
+    expect(
+      worstSeverity(incidentsOf([incident("A"), incident("B", "major")])),
+    ).toBe("major");
+    expect(
+      worstSeverity(
+        incidentsOf([incident("A", "critical"), incident("B", "major")]),
+      ),
+    ).toBe("critical");
   });
 
   it("is minor with none", () => {
@@ -65,7 +89,14 @@ describe("wantsLightType", () => {
 
 describe("byCriticality", () => {
   it("puts the worst first and otherwise keeps the order", () => {
-    const sorted = byCriticality(incidentsOf([incident("A"), incident("B", "critical"), incident("C"), incident("D", "major")]));
+    const sorted = byCriticality(
+      incidentsOf([
+        incident("A"),
+        incident("B", "critical"),
+        incident("C"),
+        incident("D", "major"),
+      ]),
+    );
 
     expect(sorted.map((item) => item.road)).toEqual(["B", "D", "A", "C"]);
   });
@@ -85,27 +116,106 @@ describe("roadOf", () => {
   });
 });
 
+describe("typeName", () => {
+  it("splits HERE's camelCase into words", () => {
+    expect(
+      typeName(
+        incidentsOf([incident("A", "minor", { type: "disabledVehicle" })])[0],
+        "Incident",
+      ),
+    ).toBe("Disabled vehicle");
+    expect(
+      typeName(
+        incidentsOf([incident("A", "minor", { type: "construction" })])[0],
+        "Incident",
+      ),
+    ).toBe("Construction");
+  });
+
+  it("falls back for an incident with no type", () => {
+    expect(typeName(incidentsOf([incident("A")])[0], "Incident")).toBe(
+      "Incident",
+    );
+  });
+});
+
+describe("incidentsTitle", () => {
+  it("calls a lone incident by its type", () => {
+    expect(
+      incidentsTitle(
+        incidentsOf([incident("A", "minor", { type: "roadHazard" })]),
+        LABELS,
+      ),
+    ).toBe("Road hazard");
+  });
+
+  it("calls several of them incidents, whatever their types", () => {
+    const incidents = incidentsOf([
+      incident("A", "minor", { type: "accident" }),
+      incident("B", "minor", { type: "accident" }),
+    ]);
+
+    expect(incidentsTitle(incidents, LABELS)).toBe("Active incidents");
+  });
+});
+
+describe("incidentIcon", () => {
+  it("digs for construction", () => {
+    expect(
+      incidentIcon(
+        incidentsOf([incident("A", "minor", { type: "construction" })])[0],
+      ),
+    ).toBe("mdi:bulldozer");
+  });
+});
+
 describe("bannerText", () => {
-  it("names one road", () => {
-    expect(bannerText(incidentsOf([incident("I-135")]), LABELS)).toBe("Active incidents: I-135");
+  it("names a lone incident by its type, and its road", () => {
+    expect(
+      bannerText(
+        incidentsOf([incident("I-135", "minor", { type: "disabledVehicle" })]),
+        LABELS,
+      ),
+    ).toBe("Disabled vehicle: I-135");
+  });
+
+  it("names a lone incident with no type as an incident", () => {
+    expect(bannerText(incidentsOf([incident("I-135")]), LABELS)).toBe(
+      "Incident: I-135",
+    );
   });
 
   it("names up to three roads, worst first, each once", () => {
-    const incidents = incidentsOf([incident("I-135"), incident("K-96", "major"), incident("I-135"), incident("US-54")]);
+    const incidents = incidentsOf([
+      incident("I-135"),
+      incident("K-96", "major"),
+      incident("I-135"),
+      incident("US-54"),
+    ]);
 
-    expect(bannerText(incidents, LABELS)).toBe("Active incidents: K-96, I-135, US-54");
+    expect(bannerText(incidents, LABELS)).toBe(
+      "Active incidents: K-96, I-135, US-54",
+    );
   });
 
   it("counts one road past three as another", () => {
-    const incidents = incidentsOf(["A", "B", "C", "D"].map((road) => incident(road)));
+    const incidents = incidentsOf(
+      ["A", "B", "C", "D"].map((road) => incident(road)),
+    );
 
-    expect(bannerText(incidents, LABELS)).toBe("Active incidents: A, B, C, and 1 other");
+    expect(bannerText(incidents, LABELS)).toBe(
+      "Active incidents: A, B, C, and 1 other",
+    );
   });
 
   it("counts roads past three as others", () => {
-    const incidents = incidentsOf(["A", "B", "C", "D", "E", "D"].map((road) => incident(road)));
+    const incidents = incidentsOf(
+      ["A", "B", "C", "D", "E", "D"].map((road) => incident(road)),
+    );
 
-    expect(bannerText(incidents, LABELS)).toBe("Active incidents: A, B, C, and 2 others");
+    expect(bannerText(incidents, LABELS)).toBe(
+      "Active incidents: A, B, C, and 2 others",
+    );
   });
 });
 
@@ -113,11 +223,15 @@ describe("incidentTime", () => {
   const NOW = new Date(2026, 9, 5, 9, 0);
 
   it("gives a time of day for today", () => {
-    expect(incidentTime(new Date(2026, 9, 5, 7, 42).toISOString(), NOW)).toBe("07:42");
+    expect(incidentTime(new Date(2026, 9, 5, 7, 42).toISOString(), NOW)).toBe(
+      "07:42",
+    );
   });
 
   it("gives the date for another day", () => {
-    expect(incidentTime(new Date(2026, 8, 28, 22, 5).toISOString(), NOW)).toBe("28 Sep 22:05");
+    expect(incidentTime(new Date(2026, 8, 28, 22, 5).toISOString(), NOW)).toBe(
+      "28 Sep 22:05",
+    );
   });
 
   it("gives nothing for nothing", () => {
