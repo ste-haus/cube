@@ -620,7 +620,10 @@ class Labels(BaseModel):
     departed: str = Field(default="Gone", description="What a trip's icon is called once its person has left")
     incidents: str = Field(
         default="Active incidents",
-        description="The departure face's incident banner, before the roads, and its window's band",
+        description=(
+            "The departure face's incident banner, before the roads, and its window's band, while there is more than "
+            "one incident; a lone one is called by its type"
+        ),
     )
     incidents_other: str = Field(
         default="and {count} other",
@@ -631,6 +634,9 @@ class Labels(BaseModel):
         description="The incident banner's tail for the roads it has no room to name; `{count}` is replaced",
     )
     incidents_unnamed: str = Field(default="Unnamed road", description="An incident with no road or location")
+    incidents_type_unknown: str = Field(
+        default="Incident", description="A lone incident's title, in place of its type, when it has none"
+    )
     incidents_closed: str = Field(default="Closed", description="An incident's window: a road that is closed")
     incidents_since: str = Field(default="Since", description="An incident's window: before when it began")
     incidents_until: str = Field(default="Until", description="An incident's window: before when it is due to end")
