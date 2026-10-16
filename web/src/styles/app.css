@@ -961,7 +961,7 @@ body {
   padding: var(--panel-padding);
   column-gap: calc(3 * var(--panel-gap));
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .network-face--unmapped {
@@ -971,7 +971,6 @@ body {
 /* Ends above the face map in the corner, as the departure face's rail does. */
 .network-face__map {
   min-height: 0;
-  padding-top: var(--panel-gap);
   padding-bottom: calc(
     var(--announcement-axis) + var(--face-map-height) / 2 + var(--panel-gap) - var(--panel-padding)
   );
@@ -983,6 +982,15 @@ body {
   gap: calc(1.5 * var(--panel-gap));
   min-height: 0;
   padding-top: var(--panel-gap);
+}
+
+/* Across the whole face, so the map starts level with the rack rather than in the corner. */
+.network-face__top {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--network-wan-rate-gap);
 }
 
 .network-face__hosts {

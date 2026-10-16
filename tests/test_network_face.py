@@ -41,6 +41,7 @@ RACK = "sensor.rack_temperature"
 RACK_TOP = "sensor.rack_top_temperature"
 RACK_FAN = "sensor.rack_fan_speed"
 SESSIONS = "sensor.media_sessions"
+NTP_OFFSET = "sensor.ntp_offset"
 
 
 def network_face(**options) -> dict:
@@ -82,6 +83,7 @@ def everything() -> Dashboard:
             bus={"title": "Bus", "rows": [{"label": "Changes", "entity_id": STATE_CHANGES}]},
             rack={"title": "Rack", "entity_id": RACK, "upper_entity_id": RACK_TOP, "fan_entity_id": RACK_FAN},
             media={"entity_id": SESSIONS},
+            clock={"ntp_entity_id": NTP_OFFSET},
         )
     )
 
@@ -107,6 +109,7 @@ READ = {
     RACK_TOP,
     RACK_FAN,
     SESSIONS,
+    NTP_OFFSET,
 }
 
 

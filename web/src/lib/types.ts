@@ -484,7 +484,13 @@ export interface NetworkMedia {
   title: string;
 }
 
+export interface NetworkClock {
+  /** How far a host's clock is off its time source, signed, in its own unit. */
+  ntp_entity_id: string | null;
+}
+
 export interface NetworkFaceOptions {
+  clock: NetworkClock;
   map: NetworkMap | null;
   wan: NetworkWan | null;
   hosts: NetworkHost[];
@@ -573,6 +579,8 @@ export interface Labels {
   incidents_ongoing: string;
   incidents_hours: string;
   incidents_today: string;
+  clock_utc: string;
+  clock_ntp: string;
 }
 
 export interface Theme {
