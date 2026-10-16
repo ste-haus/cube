@@ -4,7 +4,7 @@ Providers stamp days differently, and the one mistake worth guarding against is 
 of Greenwich labelling every column with the day before.
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -54,7 +54,7 @@ def hour(offset: int, temperature: float = 62, chance: float = 0) -> dict:
     start = NOW.replace(minute=0) + timedelta(hours=offset)
 
     return {
-        "datetime": start.astimezone(timezone.utc).isoformat(),
+        "datetime": start.astimezone(UTC).isoformat(),
         "condition": "cloudy",
         "temperature": temperature,
         "precipitation_probability": chance,
@@ -66,7 +66,7 @@ def test_a_local_midnight_is_the_day_it_starts():
 
 
 def test_a_local_midnight_written_in_utc_is_still_the_local_day():
-    stamped = datetime(TODAY.year, TODAY.month, TODAY.day).astimezone().astimezone(timezone.utc).isoformat()
+    stamped = datetime(TODAY.year, TODAY.month, TODAY.day).astimezone().astimezone(UTC).isoformat()
 
     assert local_date(stamped) == TODAY
 
