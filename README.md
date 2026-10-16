@@ -213,4 +213,4 @@ make lock
 
 ## Prior art
 
-This replaces a Lovelace dashboard, which itself replaced a hand-written panel from 2018: [ste-haus-archive/cube](https://github.com/ste-haus-archive/cube). The cube rotation is carried over from that original, along with the idea that a wall panel is better served by something small than by a general-purpose dashboard engine.
+The panel this replaces, and the cards and dashboards the cube took ideas from or ported, are listed in [PRIORART.md](PRIORART.md).
