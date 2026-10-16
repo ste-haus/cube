@@ -114,7 +114,7 @@ Cycles, a parent that does not exist, and a `floorplan` that was never declared 
 | `weather` | The conditions, the wind, and how it feels, today's range, the sun and moon against the horizon, the forecast, and a radar and cameras |
 | `guest` | For a guest room: the clock, how to join the network, the room's light and blinds, the weather, today's range and the forecast, and an alarm clock |
 | `departure` | For the way out: the clock, a traffic map, how long the trips under way will take and when to leave for them, and the fuel gauges |
-| `network` | For the network: a rail map of it, the way out, the hosts, the rack, and who is streaming |
+| `network` | For the network: a rail map of it, a clock to the millisecond, the way out, the hosts, the rack, and who is streaming |
 | `custom` | A page you supply yourself, served from the resources directory |
 | `blank` | Nothing but its own label |
 
@@ -312,7 +312,7 @@ Everything a departure face reads is added to the allowlist, and it switches not
 
 ### The network face
 
-The network at a glance. A rail map of it runs down the left, the internet at its top and the house below, as narrow as its names allow. Beside it, the way out sits in the top corner; under that, the rack, the VIPs and the network's vitals on one line; a card for each host on the next; and how hard the automations are working, a host's containers, and who is streaming on the last, all on the host cards' columns so their edges line up. Every option is optional, and a card with nothing to show is left out.
+The network at a glance. Across the top, a clock sits in the corner and the way out across from it. Under them, a rail map of the network runs down the left, the internet at its top and the house below, as narrow as its names allow; beside it, the rack, the VIPs and the network's vitals on one line; a card for each host on the next; and how hard the automations are working, a host's containers, and who is streaming on the last, all on the host cards' columns so their edges line up. Every option is optional, and a card with nothing to show is left out.
 
 ```yaml
 faces:
@@ -320,6 +320,8 @@ faces:
     content: network
     label: Network
     options:
+      clock:
+        ntp_entity_id: sensor.ntp_offset
       map:
         upstream:
           - name: Public resolver
@@ -374,7 +376,7 @@ faces:
           - label: State changes
             icon: mdi:swap-vertical-variant
             entity_id: sensor.state_changes
-            unit: /m
+            unit: /min
       rack:
         title: Rack
         entity_id: sensor.rack_temperature
@@ -391,14 +393,17 @@ faces:
 
 | Option | Holds |
 |---|---|
+| `clock` | `ntp_entity_id`, how far a host's clock is off its time source, signed, in its own `unit_of_measurement` |
 | `map` | The rail map: `upstream`, places outside the house, each rising off the head of the line on a rail of its own, and `line`, at least one stop, down from the head, the first being where the house meets the internet |
 | `wan` | The way out: `entity_id`, whether it is up, read against `up_states` (`on` unless you say otherwise); `address_entity_id`; `download_entity_id` and `upload_entity_id` with optional `download_capacity` and `upload_capacity`, the plan in the rates' own unit; `latency_entity_id`; `history_minutes`, how far back each reading's chart runs, 60 unless you say otherwise; and `latency_busy_ms` and `latency_full_ms`, 50 and 100 |
 | `hosts` | A card each: see below |
 | `containers` | `name`, what the card is titled, and `entity_id`, a sensor whose `containers` attribute lists them |
 | `vips` | `name`, `entity_id`, and optionally `attribute`: the host holding the address, `offline`, or `split brain (…)` |
-| `stats`, `bus` | A card of readings each: a `title` and at least one row, `label`, `icon`, `entity_id`, optionally `attribute`, `decimals` (none unless you say otherwise), and `unit`, set straight after the figure |
+| `stats`, `bus` | A card of readings each: a `title` and at least one row, `label`, `icon`, `entity_id`, optionally `attribute`, `decimals` (none unless you say otherwise), and `unit`, set straight after the figure, such as `/min` |
 | `rack` | `title`, `entity_id`, the temperature inside it, and optionally `unit`, `upper_entity_id`, `lower_entity_id`, `fan_entity_id` with `fan_max` (10 unless you say otherwise), and `caution_above` and `warning_above`. A `warning_above` under `caution_above` is refused when the config loads |
 | `media` | `entity_id`, a sensor whose `sessions` attribute lists the streams, and `title`, `Streaming` unless you say otherwise |
+
+**The clock.** The time to the second, in fixed-width figures so the line holds still as they run, and under it in grey, sized to run exactly as wide as the time, with `ntp_entity_id`, how far a host's clock is off its time source, signed, then the time in UTC. The clock is the panel's own, so the offset is the host's, not the panel's. Their words are the `clock_utc` and `clock_ntp` labels.
 
 **The map.** A stop names a `name` and optionally `name_entity_id`, whose state names it instead while it has one; `entity_id`, whether it is up, against `up_states`; `latency_entity_id`, milliseconds to it, shown at the right; and `branches`, more stops. A stop with branches is a station, drawn across the rails its branches leave on and named in capitals; every other stop is named in lower case. Each branch has a rail of its own, leaving its station side by side with the others, the first branch outermost, and turns off right into the column of stops at its own row. Because the outer branches turn off first, a branch that branches again takes the rails beside it afresh, so the map is as wide as its busiest station and no turn crosses a rail still in use. A stop with `tap: true` is something the line runs through, like a resolver every lookup passes, and is drawn as a dotted line across it; one among a station's branches sits just under the station and takes no rail. A rail is primary while the stop it leads to is up and grey while it is down; a stop that is down reads `Down`. While the face is looked at, sparks travel the network from one stop at the end of a branch to another, up to the station the two share and down the other side, by a way lit end to end and never ending at a station; at most three are out at once, each resting a random while between trips.
 

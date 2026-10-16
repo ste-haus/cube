@@ -558,6 +558,8 @@ labels:
   incidents_ongoing: ongoing since {day}
   incidents_hours: hr
   incidents_today: Today
+  clock_utc: UTC
+  clock_ntp: NTP
 ```
 
 ### What the panel may switch

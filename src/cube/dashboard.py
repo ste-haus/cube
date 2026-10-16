@@ -677,6 +677,8 @@ class Labels(BaseModel):
     )
     incidents_hours: str = Field(default="hr", description="An incident's window: the unit after a number of hours")
     incidents_today: str = Field(default="Today", description="An incident's window: the day it is")
+    clock_utc: str = Field(default="UTC", description="The network face's clock: after the time in UTC")
+    clock_ntp: str = Field(default="NTP", description="The network face's clock: before how far a host's clock is off its time source")
 
 
 BLANK_FACE_CONTENT = "blank"
@@ -1612,9 +1614,19 @@ class NetworkMedia(BaseModel):
     title: str = DEFAULT_MEDIA_TITLE
 
 
-class NetworkFaceOptions(FaceOptions):
-    """A face given over to the network: its map down the left, the way out, the hosts, and who is streaming."""
+class NetworkClock(BaseModel):
+    """The network face's clock: the time to the second, with the time server and UTC under it."""
 
+    ntp_entity_id: str | None = Field(
+        default=None,
+        description="How far a host's clock is off its time source, signed, in its own `unit_of_measurement`",
+    )
+
+
+class NetworkFaceOptions(FaceOptions):
+    """A face given over to the network: its clock, its map down the left, the way out, the hosts, and who is streaming."""
+
+    clock: NetworkClock = Field(default_factory=NetworkClock)
     map: NetworkMap | None = None
     wan: NetworkWan | None = None
     hosts: list[NetworkHost] = Field(default_factory=list)
@@ -1627,7 +1639,8 @@ class NetworkFaceOptions(FaceOptions):
 
     @property
     def entities(self) -> list[str]:
-        entities = self.map.entities if self.map else []
+        entities = [self.clock.ntp_entity_id] if self.clock.ntp_entity_id else []
+        entities += self.map.entities if self.map else []
         entities += self.wan.entities if self.wan else []
         entities += [entity_id for host in self.hosts for entity_id in host.entities]
         entities += [containers.entity_id for containers in self.containers]
