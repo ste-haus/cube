@@ -1,4 +1,5 @@
 import type { HueSaturation, XyPoint } from "./hue";
+import type { TemperatureRange } from "./thermostat";
 import type { AgendaEvent, DashboardConfig, ForecastDay, ForecastHour, HistoryState } from "./types";
 
 const API_ROOT = "/api";
@@ -72,8 +73,14 @@ export async function toggle(entityId: string): Promise<void> {
   }
 }
 
-/** Sets a light's brightness or colour, a cover's position, or the time an `input_datetime` holds. */
-export async function setValue(entityId: string, value: number | string | HueSaturation | XyPoint): Promise<void> {
+/**
+ * Sets a light's brightness or colour, a cover's position, the time an `input_datetime` holds, or a
+ * thermostat's mode or range.
+ */
+export async function setValue(
+  entityId: string,
+  value: number | string | HueSaturation | XyPoint | TemperatureRange,
+): Promise<void> {
   const response = await fetch(`${API_ROOT}/set`, {
     method: "POST",
     headers: { "content-type": "application/json" },

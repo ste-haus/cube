@@ -489,6 +489,16 @@ fuel:
 transcript:
   entity_id: input_text.example_transcript
 
+# A thermostat hanging off the edge of the dashboard face, over whatever is under it. A tap opens
+# it out with the modes and a pair of arrows for the setpoint the mode is working to. The entity
+# is a `climate` entity with a high and a low setpoint. `side` is `left` or `right`; `offset`
+# moves it down from where it hangs, centred on the top of the screen's lower third, in percent of the
+# screen's height (negative moves it up).
+thermostat:
+  entity_id: climate.example_home
+  side: left
+  offset: 0
+
 # Master warning and master caution lights, top centre on every face. Each master is a binary
 # sensor that is `on` while its tier has an uncleared alert, with every active alert listed in
 # its `alerts` attribute. Tapping a master lists them; holding it fires `clear_event` with the

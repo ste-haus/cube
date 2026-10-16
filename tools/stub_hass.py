@@ -41,6 +41,8 @@ PERCENT = 100
 LIGHT_TURN_ON = ("light", "turn_on")
 COVER_SET_POSITION = ("cover", "set_cover_position")
 DATETIME_SET = ("input_datetime", "set_datetime")
+CLIMATE_SET_MODE = ("climate", "set_hvac_mode")
+CLIMATE_SET_TEMPERATURE = ("climate", "set_temperature")
 BRIGHTNESS_PCT_FIELD = "brightness_pct"
 HS_COLOR_FIELD = "hs_color"
 XY_COLOR_FIELD = "xy_color"
@@ -61,6 +63,11 @@ RGB_MAX = 255
 POSITION_FIELD = "position"
 TIME_FIELD = "time"
 POSITION_ATTRIBUTE = "current_position"
+HVAC_MODE_FIELD = "hvac_mode"
+TARGET_LOW_FIELD = "target_temp_low"
+TARGET_HIGH_FIELD = "target_temp_high"
+CURRENT_TEMPERATURE_ATTRIBUTE = "current_temperature"
+HVAC_ACTION_ATTRIBUTE = "hvac_action"
 BRIGHTNESS_ATTRIBUTE = "brightness"
 
 # Plausible readings, so the panel has something to lay out.
@@ -104,6 +111,14 @@ SAMPLE_ALARM_TIME = "07:00:00"
 SAMPLE_WIFI_SSID = "Example Guest"
 SAMPLE_WIFI_PASSWORD = "correct-horse-battery-staple"
 SAMPLE_COVER_POSITION = 50
+# A thermostat heating a cool house up to its low, with a high it is not working to yet.
+SAMPLE_HVAC_MODE = "heat"
+SAMPLE_HVAC_MODES = ["off", "heat", "cool", "auto"]
+SAMPLE_INDOOR_TEMPERATURE = 66
+SAMPLE_TARGET_LOW = 68
+SAMPLE_TARGET_HIGH = 74
+SAMPLE_THERMOSTAT_RANGE = (60, 80)
+SAMPLE_THERMOSTAT_STEP = 1
 
 # A day with a shape to it: a busy morning, a long empty afternoon, something late on. The
 # gap is what makes the timeline's break worth looking at.
@@ -211,6 +226,23 @@ def _initial_state(dashboard: Dashboard, entity_id: str) -> dict[str, Any]:
 
     if domain == "input_datetime":
         return {protocol.STATE: SAMPLE_ALARM_TIME, protocol.ATTRIBUTES: {}}
+
+    if domain == "climate":
+        thermostat = {
+            protocol.STATE: SAMPLE_HVAC_MODE,
+            protocol.ATTRIBUTES: {
+                "hvac_modes": SAMPLE_HVAC_MODES,
+                "min_temp": SAMPLE_THERMOSTAT_RANGE[0],
+                "max_temp": SAMPLE_THERMOSTAT_RANGE[1],
+                "target_temp_step": SAMPLE_THERMOSTAT_STEP,
+                CURRENT_TEMPERATURE_ATTRIBUTE: SAMPLE_INDOOR_TEMPERATURE,
+                TARGET_LOW_FIELD: SAMPLE_TARGET_LOW,
+                TARGET_HIGH_FIELD: SAMPLE_TARGET_HIGH,
+            },
+        }
+        settle_thermostat(thermostat)
+
+        return thermostat
 
     if domain in ("light", "switch", "group", "input_boolean", "binary_sensor"):
         state = random.choice([ON, OFF])
@@ -359,6 +391,13 @@ def apply_service(state: dict[str, Any], domain: str, service: str, data: dict[s
     elif (domain, service) == DATETIME_SET:
         # Home Assistant keeps the seconds, whether or not it was sent any.
         state[protocol.STATE] = data[TIME_FIELD] if data[TIME_FIELD].count(":") == 2 else f"{data[TIME_FIELD]}:00"
+    elif (domain, service) == CLIMATE_SET_MODE:
+        state[protocol.STATE] = data[HVAC_MODE_FIELD]
+        settle_thermostat(state)
+    elif (domain, service) == CLIMATE_SET_TEMPERATURE:
+        attributes[TARGET_LOW_FIELD] = data[TARGET_LOW_FIELD]
+        attributes[TARGET_HIGH_FIELD] = data[TARGET_HIGH_FIELD]
+        settle_thermostat(state)
     elif state[protocol.STATE] in (OPEN, CLOSED):
         opening = state[protocol.STATE] == CLOSED
         state[protocol.STATE] = OPEN if opening else CLOSED
@@ -370,6 +409,25 @@ def apply_service(state: dict[str, Any], domain: str, service: str, data: dict[s
         colour_light = SUPPORTED_COLOR_MODES_ATTRIBUTE in attributes
         if colour_light and state[protocol.STATE] == ON and RGB_COLOR_ATTRIBUTE not in attributes:
             set_colour(attributes, SAMPLE_HS_COLOR)
+
+
+def settle_thermostat(state: dict[str, Any]) -> None:
+    """What the equipment would be doing in the mode, with the house where it is against the range."""
+
+    attributes = state[protocol.ATTRIBUTES]
+    mode = state[protocol.STATE]
+    current = attributes[CURRENT_TEMPERATURE_ATTRIBUTE]
+    heating = mode in ("heat", "auto") and current < attributes[TARGET_LOW_FIELD]
+    cooling = mode in ("cool", "auto") and current > attributes[TARGET_HIGH_FIELD]
+
+    if mode == OFF:
+        attributes[HVAC_ACTION_ATTRIBUTE] = OFF
+    elif heating:
+        attributes[HVAC_ACTION_ATTRIBUTE] = "heating"
+    elif cooling:
+        attributes[HVAC_ACTION_ATTRIBUTE] = "cooling"
+    else:
+        attributes[HVAC_ACTION_ATTRIBUTE] = "idle"
 
 
 def sample_longitude() -> float:

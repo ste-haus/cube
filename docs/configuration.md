@@ -394,6 +394,29 @@ A colour the panel cannot draw is refused when the config loads, naming the chip
 
 Either way, a glint crosses the chip from the moment it is switched until Home Assistant reports the change. Tapping it again in the meantime does nothing, so a slow round trip cannot turn into a double toggle.
 
+### thermostat
+
+A thermostat hanging off the edge of the dashboard face, over whatever is under it.
+
+```yaml
+thermostat:
+  entity_id: climate.home
+  side: left
+  offset: 0
+```
+
+| Field | Default | Meaning |
+|---|---|---|
+| `entity_id` | — | A `climate` entity with a high and a low setpoint (`target_temp_low` and `target_temp_high`) |
+| `side` | `left` | The edge it hangs from: `left` or `right` |
+| `offset` | `0` | How far below the top of the screen's lower third it hangs, in percent of the screen's height; negative moves it up. It is centred on that line unless moved |
+
+Collapsed, it is an oval most of the way off the screen, showing the temperature with the high above it and the low below. A tap slides it out, keeping the figures where they are, and brings in a row of modes under them (off, heat, cool and auto, of those the thermostat offers) and a pair of arrows on the edge's side of them. A tap on it again, a press anywhere else, or ten seconds without a touch puts it back. On the right, everything is mirrored, so the arrows are still on the edge's side.
+
+It is drawn in the mode's colour, a line of it round a wash of it: the primary colour for heat, the secondary for cool, and grey only for off; it keeps its colour while the equipment is idle. In auto it takes the colour of whatever the equipment is doing, and while it idles, of whichever it would do next: heat if the house is nearer the low setpoint, cool if nearer the high. While the equipment is heating or cooling, a flame or a snowflake shows over the figures and air flows off its open side.
+
+The arrows step the setpoint the mode works to, the low while heating and the high while cooling, by the thermostat's own `target_temp_step` and within its `min_temp` and `max_temp`, and never to within a step of the other. In auto and off there is no one setpoint to step, so the arrows are not there. A press moves the figure at once, and it is sent once the presses stop. Both setpoints go together, since a thermostat with a range takes neither on its own.
+
 ### transcript
 
 A line along the bottom that types itself out, for whatever was last spoken aloud.
@@ -570,7 +593,7 @@ toggleable_domains: [light, switch, group, input_boolean, cover]
 
 A tap is refused unless the entity is one some panel actually draws as a control — a light or a fan on the floorplan, a configured toggle, or a control on a [guest face](panels.md#the-guest-face) — **and** its domain is in this list. Everything else is read-only no matter what is sent.
 
-Setting a value rather than switching is held to the same rule, with a fixed set of domains in place of this list: a `light`'s brightness, a `cover`'s position, and the time an `input_datetime` holds. The allowlist is the whole house's rather than one panel's, so a floorplan light can be dimmed as well as switched, even from a panel whose own floorplan does not draw it.
+Setting a value rather than switching is held to the same rule, with a fixed set of domains in place of this list: a `light`'s brightness, a `cover`'s position, the time an `input_datetime` holds, and a `climate` entity's mode and setpoints. The allowlist is the whole house's rather than one panel's, so a floorplan light can be dimmed as well as switched, even from a panel whose own floorplan does not draw it.
 
 ### What the panel may fire
 

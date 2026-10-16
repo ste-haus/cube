@@ -185,6 +185,15 @@ export interface Transcript {
   content_marker: string | null;
 }
 
+export type ThermostatSide = "left" | "right";
+
+export interface Thermostat {
+  entity_id: string;
+  side: ThermostatSide;
+  /** Below the top of the screen's lower third, in percent of its height; negative is above. */
+  offset: number;
+}
+
 export interface Toggle {
   entity_id: string;
   label: string;
@@ -622,6 +631,7 @@ export interface DashboardConfig {
   go2rtc: Go2rtc | null;
   fuel: GaugeRow;
   transcript: Transcript | null;
+  thermostat: Thermostat | null;
   visualizer: Visualizer | null;
   mcw: Mcw | null;
   popups: Popup[];

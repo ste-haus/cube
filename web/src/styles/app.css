@@ -54,6 +54,43 @@
   --waiting-breathe: 1.2s;
   --waiting-opacity: 0.4;
 
+  /* The thermostat: an oval hanging off the edge, `reach` of it on the screen. Collapsed, a little
+   * under half of it shows, just wide enough for its figures; open, exactly half of it, its middle on the
+   * edge, so its outline never curves back towards the edge it hangs from. Its fill is a wash of its
+   * line's colour over the background. */
+  --thermostat-height: 28vh;
+  --thermostat-width: 18vh;
+  --thermostat-reach: 8vh;
+  --thermostat-edge-padding: 0.8vh;
+  /* Where the figures sit across what shows of it once it is out, from the edge. */
+  --thermostat-open-centre: 46%;
+  /* Where its middle hangs: the top of the screen's lower third. */
+  --thermostat-anchor: calc(100% * 2 / 3);
+  --thermostat-open-height: 42vh;
+  --thermostat-open-reach: 15.5vh;
+  --thermostat-open-width: calc(2 * var(--thermostat-open-reach));
+  --thermostat-curve: cubic-bezier(0.65, 0, 0.35, 1);
+  --thermostat-line: 0.2vh;
+  --thermostat-wash: 12%;
+  --thermostat-wash-core: 28%;
+  --thermostat-rim-glow: 1.6vh;
+  --thermostat-rim-strength: 45%;
+  --thermostat-halo: 1.4vh;
+  --thermostat-halo-strength: 40%;
+  --thermostat-crest-glow: 0.5vh;
+  --thermostat-action-size: 1.8vh;
+  --thermostat-action-gap: 0.6vh;
+  --thermostat-crest-line: 0.3vh;
+  --thermostat-current-size: 4.2vh;
+  --thermostat-setpoint-size: 1.9vh;
+  --thermostat-arrow-size: 2.8vh;
+  --thermostat-arrow-gap: 0.4vh;
+  --thermostat-arrows-gap: 0.8vh;
+  --thermostat-mode-size: 2.4vh;
+  --thermostat-modes-gap: 1.2vh;
+  --thermostat-modes-spacing: 0.3vh;
+  --thermostat-button-padding: 0.3vh;
+
   --panel-gap: 1.6vh;
   --panel-padding: 0.5vw;
   /*

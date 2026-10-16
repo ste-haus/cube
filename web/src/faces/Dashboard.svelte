@@ -7,6 +7,7 @@
   import Indicators from "../cards/Indicators.svelte";
   import Notices from "../cards/Notices.svelte";
   import Toggles from "../cards/Toggles.svelte";
+  import Thermostat from "../cards/Thermostat.svelte";
   import Transcript from "../cards/Transcript.svelte";
   import Visualizer from "../cards/Visualizer.svelte";
   import Weather from "../cards/Weather.svelte";
@@ -67,6 +68,10 @@
     {/if}
     <Gauges row={config.fuel} />
   </div>
+
+  {#if config.thermostat}
+    <Thermostat thermostat={config.thermostat} />
+  {/if}
 
   {#if config.transcript}
     <Transcript transcript={config.transcript} mediaPlayer={config.profile.media_player} />
