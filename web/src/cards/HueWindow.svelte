@@ -106,7 +106,11 @@
       return null;
     }
 
-    return "hue" in value ? value : xyToHueSaturation(value);
+    if ("hue" in value) {
+      return value;
+    }
+
+    return "x" in value ? xyToHueSaturation(value) : null;
   });
   const shown = $derived<HueSaturation | null>(
     preview !== null ? { hue: preview, saturation: FULL_SATURATION } : (requested ?? current),

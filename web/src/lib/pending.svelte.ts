@@ -1,13 +1,14 @@
 import { setValue, toggle } from "./api";
 import type { HueSaturation, XyPoint } from "./hue";
 import { ha } from "./state.svelte";
+import type { TemperatureRange } from "./thermostat";
 import type { EntityState } from "./types";
 
 /** Long enough for the slowest round trip through Home Assistant; past it, no answer is coming. */
 export const PENDING_TIMEOUT_MS = 10000;
 
 type ToggleRequest = (entityId: string) => Promise<void>;
-type Value = number | string | HueSaturation | XyPoint;
+type Value = number | string | HueSaturation | XyPoint | TemperatureRange;
 type SetRequest = (entityId: string, value: Value) => Promise<void>;
 
 /**

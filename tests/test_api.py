@@ -23,6 +23,8 @@ SAMPLE_GUEST_LIGHT = "light.example_guest_room"
 SAMPLE_GUEST_BLINDS = "cover.example_guest_blinds"
 SAMPLE_GUEST_FAN = "switch.example_guest_fan"
 SAMPLE_ALARM_TIME = "input_datetime.example_guest_alarm"
+# Matches `thermostat` in the sample config.
+SAMPLE_THERMOSTAT = "climate.example_home"
 # Matches a tile of `profiles.example-cameras.faces.left` in the sample config, which no
 # `camera:` block names.
 FACE_CAMERA = "camera.example_back_yard"
@@ -428,6 +430,12 @@ def recording_calls(calls: list[tuple]):
             {"x": 0.469, "y": 0.403},
             ("light", "turn_on", SAMPLE_GUEST_LIGHT, {"xy_color": [0.469, 0.403]}),
         ),
+        (SAMPLE_THERMOSTAT, "cool", ("climate", "set_hvac_mode", SAMPLE_THERMOSTAT, {"hvac_mode": "cool"})),
+        (
+            SAMPLE_THERMOSTAT,
+            {"low": 64, "high": 72.5},
+            ("climate", "set_temperature", SAMPLE_THERMOSTAT, {"target_temp_low": 64, "target_temp_high": 72.5}),
+        ),
     ],
 )
 def test_a_control_is_set_through_its_domains_service(settings, entity_id, value, expected):
@@ -451,6 +459,13 @@ def test_a_control_is_set_through_its_domains_service(settings, entity_id, value
         (SAMPLE_ALARM_TIME, 7),
         # A colour for something that has none.
         (SAMPLE_GUEST_BLINDS, {"hue": 210, "saturation": 100}),
+        (SAMPLE_THERMOSTAT, "sauna"),
+        (SAMPLE_THERMOSTAT, 70),
+        # A range upside down, which would have it heat and cool at once.
+        (SAMPLE_THERMOSTAT, {"low": 72, "high": 64}),
+        # A setpoint is not a time of day, nor a range a colour.
+        (SAMPLE_ALARM_TIME, "heat"),
+        (SAMPLE_GUEST_LIGHT, {"low": 64, "high": 72}),
     ],
 )
 def test_a_value_the_control_cannot_take_is_refused(settings, entity_id, value):

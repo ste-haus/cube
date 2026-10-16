@@ -443,6 +443,29 @@ class Transcript(BaseModel):
     )
 
 
+class ThermostatSide(StrEnum):
+    """Which edge of the screen the thermostat hangs off."""
+
+    LEFT = "left"
+    RIGHT = "right"
+
+
+class Thermostat(BaseModel):
+    """A thermostat hanging off one edge of the dashboard face, over whatever is under it.
+
+    Collapsed, it shows the temperature with the range it is held to; tapped, it slides out with a
+    row of modes and a pair of arrows for the setpoint the mode is working to. The entity is a
+    `climate` entity with a high and a low setpoint.
+    """
+
+    entity_id: str
+    side: ThermostatSide = ThermostatSide.LEFT
+    offset: float = Field(
+        default=0,
+        description="How far below the top of the screen's lower third it hangs, in percent of its height; negative is above",
+    )
+
+
 # A chip at rest, in the panel's muted grey. Lit, it takes the primary colour unless it names its
 # own, which the panel resolves, since a palette name is swapped for its colour before defaults apply.
 DEFAULT_TOGGLE_INACTIVE_COLOR = "#999999"
@@ -1763,8 +1786,8 @@ class Profile(BaseModel):
 DEFAULT_TOGGLEABLE_DOMAINS = ["light", "switch", "group", "input_boolean", "cover"]
 
 # Domains the panel may set a value on, and nothing else: a light's brightness, a cover's
-# position, and the time of day an `input_datetime` holds.
-SETTABLE_DOMAINS = frozenset({"light", "cover", "input_datetime"})
+# position, the time of day an `input_datetime` holds, and a thermostat's mode and setpoints.
+SETTABLE_DOMAINS = frozenset({"light", "cover", "input_datetime", "climate"})
 
 CUBE_FACES = ("front", "back", "left", "right", "up", "down")
 
@@ -1833,6 +1856,7 @@ class Dashboard(BaseModel):
     go2rtc: Go2rtc | None = None
     fuel: GaugeRow = Field(default_factory=GaugeRow)
     transcript: Transcript | None = None
+    thermostat: Thermostat | None = None
     visualizer: Visualizer | None = None
     mcw: Mcw | None = None
     popups: list[Popup] = Field(default_factory=list)
@@ -2105,6 +2129,9 @@ class Dashboard(BaseModel):
         if self.transcript:
             entities.add(self.transcript.entity_id)
 
+        if self.thermostat:
+            entities.add(self.thermostat.entity_id)
+
         if self.mcw:
             entities.update(self.mcw.entity_for(tier) for tier in AlertTier)
 
@@ -2120,13 +2147,16 @@ class Dashboard(BaseModel):
     def control_entities(self) -> frozenset[str]:
         """Every entity some panel draws as a control.
 
-        Toggles and face controls are explicit, floorplan controls are inferred from the groups
-        whose whole purpose is to be tapped. It is one set for the whole house rather than one per
+        Toggles, the thermostat and face controls are explicit, floorplan controls are inferred
+        from the groups whose whole purpose is to be tapped. It is one set for the whole house rather than one per
         panel, like every other allowlist here. Membership is necessary but not sufficient: what a
         panel may do to one still depends on its domain.
         """
 
         entities = {toggle.entity_id for toggle in self.toggles}
+
+        if self.thermostat:
+            entities.add(self.thermostat.entity_id)
 
         for floorplan in self.floorplans.values():
             for group in CONTROLLABLE_FLOORPLAN_GROUPS:

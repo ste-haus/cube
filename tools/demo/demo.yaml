@@ -374,6 +374,9 @@ camera:
   entity_id: camera.example_traffic
   title: Traffic
 
+thermostat:
+  entity_id: climate.example_home
+
 fuel:
   unit: "%"
   scale:
