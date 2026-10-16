@@ -48,8 +48,10 @@ export async function fetchForecast(): Promise<{ days: ForecastDay[]; hours: For
   return { days: body.days ?? [], hours: body.hours ?? [] };
 }
 
-export async function fetchHistory(entityId: string): Promise<HistoryState[]> {
-  const response = await fetch(`${API_ROOT}/history/${encodeURIComponent(entityId)}`);
+/** An entity's recent states; `hours` back, or the proxy's own default when unsaid. */
+export async function fetchHistory(entityId: string, hours?: number): Promise<HistoryState[]> {
+  const query = hours === undefined ? "" : `?hours=${hours}`;
+  const response = await fetch(`${API_ROOT}/history/${encodeURIComponent(entityId)}${query}`);
   if (!response.ok) {
     throw new Error(`Could not load the history of ${entityId}: ${response.status}`);
   }

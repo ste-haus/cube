@@ -8,6 +8,7 @@ forecast and the calendar agree with the time on the panel. Started by run.sh.
 
 import argparse
 import itertools
+import math
 import random
 import sys
 from datetime import UTC, datetime, timedelta
@@ -142,6 +143,165 @@ STATES: dict[str, Any] = {
 }
 
 
+# The network face: a small house of hosts behind one gateway, one of them in a cluster, with every
+# address from the ranges kept for documentation.
+UP = "on"
+DOWN = "off"
+METRICS_ATTRIBUTES = ("cpu_utilization", "memory_utilization", "disk_utilization")
+NETWORK_STATES: dict[str, Any] = {
+    "binary_sensor.example_resolver_connection": UP,
+    "sensor.example_resolver_latency": "6.4",
+    "binary_sensor.example_search_connection": UP,
+    "sensor.example_search_latency": "8.1",
+    "binary_sensor.example_wan": UP,
+    "sensor.example_public_ip": "203.0.113.42",
+    "sensor.example_wan_download": "287",
+    "sensor.example_wan_upload": "412",
+    "binary_sensor.example_modem_connection": UP,
+    "sensor.example_modem_latency": "0.9",
+    "binary_sensor.example_gateway_connection": UP,
+    "sensor.example_gateway_latency": "0.4",
+    "switch.example_dns_blocking": UP,
+    "binary_sensor.example_nas_connection": UP,
+    "sensor.example_nas_latency": "0.5",
+    "sensor.example_nas_ip": "192.0.2.10",
+    "binary_sensor.example_cluster": UP,
+    "binary_sensor.example_node_a_connection": UP,
+    "sensor.example_node_a_latency": "0.6",
+    "sensor.example_node_a_ip": "192.0.2.21",
+    "binary_sensor.example_node_b_connection": UP,
+    "sensor.example_node_b_latency": "0.4",
+    "sensor.example_node_b_ip": "192.0.2.22",
+    "binary_sensor.example_home_server": UP,
+    "binary_sensor.example_home_assistant": UP,
+    "binary_sensor.example_zigbee_connection": DOWN,
+    "binary_sensor.example_mqtt_connection": UP,
+    "sensor.example_nas_metrics": (
+        "online",
+        {
+            "cpu_utilization": 0.04,
+            "memory_utilization": 0.71,
+            "disk_utilization": 0.58,
+            "upsince": "2026-07-21 13:32:13",
+        },
+    ),
+    "sensor.example_node_a_metrics": (
+        "online",
+        {
+            "cpu_utilization": 0.23,
+            "memory_utilization": 0.66,
+            "disk_utilization": 0.12,
+            "upsince": "2026-09-30 08:02:51",
+        },
+    ),
+    "sensor.example_node_b_metrics": (
+        "online",
+        {"cpu_utilization": 0.08, "memory_utilization": 0.46, "disk_utilization": 0.29},
+    ),
+    "sensor.example_ups": ("normal", {"capacity": 100, "runtime_remaining": 1320}),
+    "sensor.example_home_server_name": "atlas",
+    "sensor.example_home_server_ip": "192.0.2.30",
+    "sensor.example_home_server_heartbeat": "beating",
+    "sensor.example_home_server_booted": "2026-10-11T18:58:58+00:00",
+    "sensor.example_home_server_cpu": "6",
+    "sensor.example_home_server_memory": "21",
+    "sensor.example_home_server_disk": "9",
+    "sensor.example_home_server_power": ("normal", {"capacity": 80, "runtime_remaining": 600}),
+    "sensor.example_home_server_status": (
+        "ok",
+        {
+            "containers": [
+                {"name": name, "state": state, "status": status, "uptime": uptime}
+                for name, state, status, uptime in (
+                    ("broker", "ok", "healthy", "6d 2h"),
+                    ("database", "ok", "healthy", "6d 2h"),
+                    ("home-assistant", "ok", "healthy", "6d 2h"),
+                    ("migrate", "completed", "completed", "6d 2h"),
+                    ("proxy", "ok", "healthy", "6d 2h"),
+                    ("recorder-backup", "warning", "restarted x2", "4m"),
+                    ("updater", "ok", "running", "6d 2h"),
+                    ("zigbee", "ok", "running", "1h 12m"),
+                )
+            ]
+        },
+    ),
+    "sensor.example_vips": ("online", {"dns": "nas", "cluster": "node-a", "lb": "node-b"}),
+    "sensor.example_wifi_clients": "23",
+    "sensor.example_ads_blocked": "6142",
+    "sensor.example_blocked_share": "0.9",
+    "sensor.example_dns_rate": "312",
+    "sensor.example_state_changes": "842",
+    "sensor.example_automations": "37",
+    "sensor.example_loop_lag": "6",
+    "sensor.example_mqtt_rate": "1180",
+    "sensor.example_rack_temperature": "81",
+    "sensor.example_rack_top_temperature": "75",
+    "sensor.example_rack_bottom_temperature": "69",
+    "sensor.example_rack_fan": "3",
+    "sensor.example_media_sessions": (
+        "2",
+        {
+            "sessions": [
+                {
+                    "device": "Living Room TV",
+                    "user": "alice",
+                    "title": "The Long Way Round",
+                    "series": "Night Trains",
+                    "state": "playing",
+                    "position": 1310,
+                    "duration": 2640,
+                    "play_method": "DirectPlay",
+                    "resolution": "1080p",
+                    "bitrate": 8_400_000,
+                },
+                {
+                    "device": "Bob's laptop",
+                    "user": "bob",
+                    "title": "Signs",
+                    "series": "Small Hours",
+                    "state": "paused",
+                    "position": 301,
+                    "duration": 1320,
+                    "play_method": "Transcode",
+                    "resolution": "720p",
+                    "bitrate": 3_200_000,
+                },
+            ]
+        },
+    ),
+}
+STATES.update(NETWORK_STATES)
+
+# How long the connection has been up, and the day's dropouts on the strips: (hours ago, minutes).
+WAN_UP_FOR = timedelta(days=12, hours=4)
+OUTAGES = {
+    "binary_sensor.example_nas_connection": [],
+    "binary_sensor.example_wan": [(7, 25)],
+    "binary_sensor.example_node_a_connection": [(9.5, 25)],
+    "binary_sensor.example_node_b_connection": [(17, 70), (3, 6)],
+}
+HOME_SERVER_HEARTBEAT = "sensor.example_home_server_heartbeat"
+HEARTBEAT_GAPS = [(14 * 60, 40), (5 * 60, 2)]
+MINUTES_PER_HOUR = 60
+HOURS_PER_DAY = 24
+WHOLE_TURN = 2 * math.pi
+
+# A day of the rack, warmest mid-afternoon, and of its fan, which follows it; and an hour of the
+# rates and the latency, each drifting about its reading now: (centre, swing, minutes between).
+RACK_TEMPERATURE = "sensor.example_rack_temperature"
+RACK_FAN = "sensor.example_rack_fan"
+RACK_SWING = 3
+FAN_SWING = 3
+RACK_STEP_MINUTES = 5
+WAVES = {
+    "sensor.example_wan_download": (287, 160, 2),
+    "sensor.example_wan_upload": (412, 140, 2),
+    "sensor.example_resolver_latency": (6.4, 2, 2),
+}
+WAVE_MINUTES = 60
+WAVE_CYCLES = 3
+
+
 class Scripted(random.Random):
     """The stub's random, except that the churn picks the next light in the cycle."""
 
@@ -167,7 +327,11 @@ def demo_state(dashboard, entity_id: str, clock: type[datetime]) -> dict[str, An
         value = STATES[entity_id]
         state, attributes = value if isinstance(value, tuple) else (value, {})
 
-        return {protocol.STATE: state, protocol.ATTRIBUTES: dict(attributes)}
+        mocked = {protocol.STATE: state, protocol.ATTRIBUTES: dict(attributes)}
+        if entity_id == "binary_sensor.example_wan":
+            mocked[protocol.LAST_CHANGED] = (now - WAN_UP_FOR).timestamp()
+
+        return mocked
 
     if entity_id == "weather.example":
         return {
@@ -244,6 +408,56 @@ def demo_state(dashboard, entity_id: str, clock: type[datetime]) -> dict[str, An
     return stub_hass._initial_state(dashboard, entity_id)
 
 
+def network_history(entity_id: str, start: datetime, now: datetime) -> list[dict[str, Any]] | None:
+    """What the network face's strips and charts read: dropouts, a heartbeat, a day, and an hour."""
+
+    def entry(state: Any, at: datetime) -> dict[str, Any]:
+        return {"state": str(state), "last_changed": at.isoformat()}
+
+    if entity_id in OUTAGES:
+        entries = [entry(UP, start)]
+        for hours_ago, minutes in sorted(OUTAGES[entity_id], reverse=True):
+            down = now - timedelta(hours=hours_ago)
+            entries += [entry(DOWN, down), entry(UP, down + timedelta(minutes=minutes))]
+
+        return entries
+
+    if entity_id == HOME_SERVER_HEARTBEAT:
+        minutes = int((now - start).total_seconds() // timedelta(minutes=1).total_seconds())
+
+        return [
+            entry(ago, now - timedelta(minutes=ago))
+            for ago in range(minutes, 0, -1)
+            if not any(gap_start >= ago > gap_start - length for gap_start, length in HEARTBEAT_GAPS)
+        ]
+
+    if entity_id in (RACK_TEMPERATURE, RACK_FAN):
+        reading = float(STATES[entity_id])
+        swing = RACK_SWING if entity_id == RACK_TEMPERATURE else FAN_SWING
+        day = HOURS_PER_DAY * MINUTES_PER_HOUR
+
+        def shape(ago: int) -> float:
+            return swing * math.sin((day - ago) / day * WHOLE_TURN - 1)
+
+        return [
+            entry(round(max(0.0, reading - shape(0) + shape(ago)), 1), now - timedelta(minutes=ago))
+            for ago in range(day, 0, -RACK_STEP_MINUTES)
+        ]
+
+    if entity_id in WAVES:
+        centre, swing, step = WAVES[entity_id]
+
+        return [
+            entry(
+                round(centre + swing * math.sin(ago / WAVE_MINUTES * WAVE_CYCLES * WHOLE_TURN), 2),
+                now - timedelta(minutes=ago),
+            )
+            for ago in range(WAVE_MINUTES, 0, -step)
+        ]
+
+    return None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=HERE / "demo.yaml")
@@ -281,6 +495,10 @@ def main() -> None:
     @app.get("/api/history/period/{start}")
     async def history(start: str, filter_entity_id: str) -> list[list[dict[str, Any]]]:
         now = clock.now(UTC)
+        network = network_history(filter_entity_id, datetime.fromisoformat(start), now)
+        if network is not None:
+            return [network]
+
         current = TRAVEL_TIMES.get(filter_entity_id)
         if current is None:
             return []

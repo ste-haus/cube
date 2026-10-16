@@ -6,6 +6,7 @@
   import Dashboard from "./Dashboard.svelte";
   import DepartureFace from "./DepartureFace.svelte";
   import GuestFace from "./GuestFace.svelte";
+  import NetworkFace from "./NetworkFace.svelte";
   import WeatherFace from "./WeatherFace.svelte";
   import { provideVisibility } from "../lib/cube.svelte";
   import type {
@@ -15,6 +16,7 @@
     DepartureFaceOptions,
     Face,
     GuestFaceOptions,
+    NetworkFaceOptions,
     WeatherFaceOptions,
   } from "../lib/types";
 
@@ -38,6 +40,7 @@
   const WEATHER_CONTENT = "weather";
   const GUEST_CONTENT = "guest";
   const DEPARTURE_CONTENT = "departure";
+  const NETWORK_CONTENT = "network";
 
   let {
     face,
@@ -69,6 +72,7 @@
   const weatherOptions = $derived(face.options as unknown as WeatherFaceOptions);
   const guestOptions = $derived(face.options as unknown as GuestFaceOptions);
   const departureOptions = $derived(face.options as unknown as DepartureFaceOptions);
+  const networkOptions = $derived(face.options as unknown as NetworkFaceOptions);
 
   const label = $derived(face.label || name);
 </script>
@@ -96,6 +100,8 @@
         <GuestFace {config} options={guestOptions} />
       {:else if face.content === DEPARTURE_CONTENT}
         <DepartureFace {config} options={departureOptions} />
+      {:else if face.content === NETWORK_CONTENT}
+        <NetworkFace {config} options={networkOptions} />
       {:else}
         <Blank {label} named={!face.label_strip} />
       {/if}

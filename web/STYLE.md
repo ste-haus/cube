@@ -7,7 +7,10 @@ The one idea underneath all of it: **a mark or a motion means the same thing eve
 ## Colour
 
 - **Grey is the resting state.** `--color-foreground`, `--color-muted`, `--color-dim` and `--color-faint` carry almost everything. Colour is kept for things that have changed or want attention.
-- **The tier colours belong to MCW alone, but for a critical traffic incident's red.** Master warning red and master caution amber (`mcw.warning_color`, `mcw.caution_color`) never appear outside the master caution card, except that a critical traffic incident on the departure face is drawn in the master warning's red. A red or amber frame anywhere else would read as an alert. MCW is for the house; an incident is about the road, which the panel's own two colours cannot rank above major, and red is the one colour that says a route has to change. Caution amber stays MCW's alone.
+- **The tier colours belong to MCW, and to the readings it alerts on.** Master warning red and master caution amber (`mcw.warning_color`, `mcw.caution_color`) appear on the master caution card, and on a reading that raises an alert of that tier, while it does, so the reading and the master agree: the network face's rack past its caution and warning thresholds, its way out while the connection is down, and a host on it that has gone down. A red or amber frame anywhere else would read as an alert. The one other use is a critical traffic incident on the departure face, drawn in the master warning's red: MCW is for the house; an incident is about the road, which the panel's own two colours cannot rank above major, and red is the one colour that says a route has to change.
+- **A load is grey, then primary, then secondary.** A reading measured against what it can carry, the network face's rates against the plan and its latency against its two thresholds, is grey while it is light, primary once it is busy and secondary once it is near full, the order the fuel gauges' bands run in. Its meter, its chart and the dot at the chart's end all take it, the chart by its height so a busy stretch shows where it was.
+- **A rail is lit while what it leads to is up.** On the network face's map, a stop's rail is primary while the stop is up and grey while it is down, the one place a healthy thing is drawn in colour, because the map is a picture of what is live. Its sparks are the primary colour too.
+- **A card in alert carries it in its frame and its title alike.** The frame takes the alert's colour and beat, and the title keeps the same beat in the same colour, so the card reads as one thing in alert rather than a frame round something calm.
 - **A frame is dimmer than what it frames.** Brackets and bands sit a step or more below the content they surround: the transcript's corners are `--color-dim` against `--color-foreground` text, and the camera window's are `--color-muted`.
 - **A level is primary, and thin.** The room light's arc and handle are drawn in the primary colour, as the fuel gauges' arcs are, over a `--color-dim` track; the bulb inside takes the light's own colour, as bright as the light is. A bar keeps its grey fill and gives only the fill's leading edge to the primary colour. The one exception is a light's bar set to `fill: light`, as the colour window's brightness bar is by default: its fill is the light's own colour, as strong as the light is bright (from `--slider-colour-dim-floor` of `--slider-colour-strength` at its dimmest to all of it at full), following the edge while it is dragged, because the colour is what that bar is about. Its edge stays primary. A level is a line, never a block of colour: a primary fill the size of a bar shouts.
 - **A lit chip is primary.** A chip's icon and its label take the primary colour while its entity is on, and rest in grey; `active_color` overrides the primary.
@@ -24,9 +27,9 @@ Every repeating animation on the panel is one of these. Pick by meaning, not by 
 
 | Rhythm | Timing | Means | Used by |
 |---|---|---|---|
-| Flash | 1 s, `steps(1, end)` | A warning is lit | Master warning, and its list's brackets |
-| Breathe (alert) | 3 s, `ease-in-out`, brightness (a trip fades its opacity to `--travel-breathe-opacity` instead, so a pared icon's outline is not darkened into a rim) | A caution is lit, or a trip is soon | Master caution, and its list's brackets; a departure face trip that is soon |
-| Pulse | 0.9 s, `ease-in-out`, opacity down to `--travel-pulse-opacity` (0.3) with a glow of its own colour at the top | Time is up, or nearly | A departure face trip that is imminent or late; a popup's brackets |
+| Flash | 1 s, `steps(1, end)` | A warning is lit | Master warning, and its list's brackets; on the network face, a host that has gone down and the rack past its warning |
+| Breathe (alert) | 3 s, `ease-in-out`, brightness (a trip fades its opacity to `--travel-breathe-opacity` instead, so a pared icon's outline is not darkened into a rim) | A caution is lit, or a trip is soon | Master caution, and its list's brackets; a departure face trip that is soon; the network face's rack past its caution |
+| Pulse | 0.9 s, `ease-in-out`, opacity down to `--travel-pulse-opacity` (0.3) with a glow of its own colour at the top | Time is up, or nearly | A departure face trip that is imminent or late; a popup's brackets; on the network face, the way out while the connection is down, a host on battery, and a container in trouble |
 | Breathe (settled) | 3 s, `ease-in-out`, opacity to 0.35 | Done and still showing | Transcript brackets once the line has finished |
 | Breathe (waiting) | `--waiting-breathe` (1.2 s), `ease-in-out`, opacity to `--waiting-opacity` (0.4) | Asked Home Assistant, waiting on the answer | The reticle, on the floorplan and round a trip's event being sent; the alarm's bell and its time once sent; the room light's bulb once tapped |
 | Glow | `--glow-breathe` (1.4 s), `ease-in-out`, a halo in the control's own colour swelling and fading | Being set: a change on its way to Home Assistant | The room light's handle and a bar's primary edge, from the start of a drag until it settles |
@@ -116,13 +119,21 @@ How a face change looks says who asked for it. A swipe rotates, in the swipe's d
 
 A band that comes and goes over a card, like the departure face's incident band, slides down out from under the card's heading as its room opens, and back up into it as the room closes, so what is below moves aside rather than being drawn over. It slides over 420 ms, easing in and out, and keeps the words it last had while it leaves rather than emptying first. It is not a row: a row wipes across, and a banner is a sheet pulled down over the top of something. A tap on it opens its window out of it, as any window comes out of what was tapped, and it hides while the window is open so the brackets read as lifting it off the card. A banner sits over a picture that opens a window of its own, so its tap stops there.
 
+### Figures slide to a new value
+
+A figure Home Assistant changes slides to its new value over `LEVEL_SLIDE_MS` rather than jumping, counting through the values between at its own precision, as a level slides to a new place. It takes its first value at once, so nothing counts up from nought as a face comes into view. `SlidingNumber` in `src/cards/SlidingNumber.svelte` does it, on `SlidingLevel`; the network face's readings are the example.
+
+### Sparks travel the network
+
+While the network face is looked at, sparks travel its map from one stop at the end of a branch to another, by the rails between them: up to the station the two share and down the other side, never to or through a stop that is down, and never ending at a station. At most three are out at once, each resting between trips for a while drawn as independent arrivals are, mostly short with now and then a long one, so they never fall into a rhythm. They are drawn over the stations and stops, so one is seen passing through them.
+
 ### Leaving is quick
 
 Something that goes away fades in about 250 ms rather than cutting out, and never lingers. The transcript is the example.
 
 ### Still unless something is happening
 
-A face that is turned away does not animate and does not fetch. A settled face is still. Every repeating animation above is tied to a state that ends: a lit master, a pending toggle, a line that has been said.
+A face that is turned away does not animate and does not fetch. A settled face is still. Every repeating animation above is tied to a state that ends: a lit master, a pending toggle, a line that has been said. The one exception is the network face's sparks, which run for as long as the face is looked at, because what the map shows is the network being live; they stop the moment it turns away.
 
 ## Mechanics
 

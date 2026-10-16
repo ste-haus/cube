@@ -62,8 +62,150 @@ profiles:
                 rings: [25, 50, 100]
                 ring_unit: mi
       down:
-        content: blank
-        label: down
+        content: network
+        label: Network
+        options:
+          map:
+            upstream:
+              - name: Resolver
+                entity_id: binary_sensor.example_resolver_connection
+                latency_entity_id: sensor.example_resolver_latency
+              - name: Search
+                entity_id: binary_sensor.example_search_connection
+                latency_entity_id: sensor.example_search_latency
+            line:
+              - name: Demarc
+                entity_id: binary_sensor.example_wan
+              - name: Modem
+                entity_id: binary_sensor.example_modem_connection
+                latency_entity_id: sensor.example_modem_latency
+              - name: Gateway
+                entity_id: binary_sensor.example_gateway_connection
+                latency_entity_id: sensor.example_gateway_latency
+                branches:
+                  - name: DNS
+                    entity_id: switch.example_dns_blocking
+                    tap: true
+                  - name: nas
+                    entity_id: binary_sensor.example_nas_connection
+                    latency_entity_id: sensor.example_nas_latency
+                  - name: Cluster
+                    entity_id: binary_sensor.example_cluster
+                    branches:
+                      - name: node-a
+                        entity_id: binary_sensor.example_node_a_connection
+                        latency_entity_id: sensor.example_node_a_latency
+                      - name: node-b
+                        entity_id: binary_sensor.example_node_b_connection
+                        latency_entity_id: sensor.example_node_b_latency
+              - name: Home server
+                entity_id: binary_sensor.example_home_server
+                branches:
+                  - name: Home Assistant
+                    entity_id: binary_sensor.example_home_assistant
+                  - name: Zigbee bridge
+                    entity_id: binary_sensor.example_zigbee_connection
+                  - name: MQTT broker
+                    entity_id: binary_sensor.example_mqtt_connection
+          wan:
+            entity_id: binary_sensor.example_wan
+            address_entity_id: sensor.example_public_ip
+            download_entity_id: sensor.example_wan_download
+            upload_entity_id: sensor.example_wan_upload
+            latency_entity_id: sensor.example_resolver_latency
+            download_capacity: 500
+            upload_capacity: 500
+          hosts:
+            - name: nas
+              connection_entity_id: binary_sensor.example_nas_connection
+              address_entity_id: sensor.example_nas_ip
+              latency_entity_id: sensor.example_nas_latency
+              metrics_entity_id: sensor.example_nas_metrics
+              booted_entity_id: sensor.example_nas_metrics
+              booted_attribute: upsince
+              ups_entity_id: sensor.example_ups
+            - name: node-a
+              connection_entity_id: binary_sensor.example_node_a_connection
+              address_entity_id: sensor.example_node_a_ip
+              latency_entity_id: sensor.example_node_a_latency
+              metrics_entity_id: sensor.example_node_a_metrics
+              booted_entity_id: sensor.example_node_a_metrics
+              booted_attribute: upsince
+              ups_entity_id: sensor.example_ups
+            - name: node-b
+              connection_entity_id: binary_sensor.example_node_b_connection
+              address_entity_id: sensor.example_node_b_ip
+              latency_entity_id: sensor.example_node_b_latency
+              metrics_entity_id: sensor.example_node_b_metrics
+            - name_entity_id: sensor.example_home_server_name
+              address_entity_id: sensor.example_home_server_ip
+              heartbeat_entity_id: sensor.example_home_server_heartbeat
+              booted_entity_id: sensor.example_home_server_booted
+              cpu_entity_id: sensor.example_home_server_cpu
+              memory_entity_id: sensor.example_home_server_memory
+              disk_entity_id: sensor.example_home_server_disk
+              ups_entity_id: sensor.example_home_server_power
+          containers:
+            - name: home server
+              entity_id: sensor.example_home_server_status
+          vips:
+            - name: DNS
+              entity_id: sensor.example_vips
+              attribute: dns
+            - name: Cluster
+              entity_id: sensor.example_vips
+              attribute: cluster
+            - name: Load balancer
+              entity_id: sensor.example_vips
+              attribute: lb
+          stats:
+            title: Vitals
+            rows:
+              - label: Wi-Fi clients
+                icon: mdi:wifi
+                entity_id: sensor.example_wifi_clients
+              - label: Ads blocked
+                icon: mdi:shield-check-outline
+                entity_id: sensor.example_ads_blocked
+              - label: Blocked
+                icon: mdi:percent-outline
+                entity_id: sensor.example_blocked_share
+                decimals: 1
+                unit: "%"
+              - label: DNS queries
+                icon: mdi:dns-outline
+                entity_id: sensor.example_dns_rate
+                unit: /m
+          bus:
+            title: Bus
+            rows:
+              - label: State changes
+                icon: mdi:swap-vertical-variant
+                entity_id: sensor.example_state_changes
+                unit: /m
+              - label: Automations
+                icon: mdi:robot-outline
+                entity_id: sensor.example_automations
+                unit: /m
+              - label: Loop lag
+                icon: mdi:timer-sand
+                entity_id: sensor.example_loop_lag
+                unit: " ms"
+              - label: MQTT messages
+                icon: mdi:swap-horizontal
+                entity_id: sensor.example_mqtt_rate
+                unit: /m
+          rack:
+            title: Rack
+            entity_id: sensor.example_rack_temperature
+            unit: °
+            upper_entity_id: sensor.example_rack_top_temperature
+            lower_entity_id: sensor.example_rack_bottom_temperature
+            fan_entity_id: sensor.example_rack_fan
+            caution_above: 90
+            warning_above: 100
+          media:
+            entity_id: sensor.example_media_sessions
 
 colors:
   primary: "#f205f2"

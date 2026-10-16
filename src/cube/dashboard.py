@@ -687,6 +687,7 @@ CAMERA_HERO_FACE_CONTENT = "camera-hero"
 WEATHER_FACE_CONTENT = "weather"
 GUEST_FACE_CONTENT = "guest"
 DEPARTURE_FACE_CONTENT = "departure"
+NETWORK_FACE_CONTENT = "network"
 
 FACE_DIRECTORY = "faces"
 FACE_ENTRYPOINT = "index.html"
@@ -1347,6 +1348,297 @@ class DepartureFaceOptions(CameraFaceOptions):
         return [self.send_event] if self.send_event else []
 
 
+# What a stop on the network map reads as up, unless it says otherwise: a connectivity sensor's own.
+DEFAULT_UP_STATES = ["on"]
+
+
+class NetworkStop(BaseModel):
+    """One stop on a network face's map.
+
+    A stop with `branches` is an interchange: each branch leaves it on a rail of its own to the
+    right, and a branch can branch again. A `tap` is something the line runs through rather
+    than stops at, such as the DNS every lookup passes, and is drawn across the line.
+    """
+
+    name: str
+    name_entity_id: str | None = Field(
+        default=None, description="Named by this entity's state, `name` until it has one"
+    )
+    entity_id: str | None = Field(default=None, description="Whether the stop is up, read against `up_states`")
+    up_states: list[str] = Field(default_factory=lambda: list(DEFAULT_UP_STATES))
+    latency_entity_id: str | None = Field(default=None, description="Milliseconds to the stop, shown at the right")
+    tap: bool = Field(default=False, description="Drawn across the line rather than as a stop on it")
+    branches: list["NetworkStop"] = Field(default_factory=list)
+
+    @property
+    def entities(self) -> list[str]:
+        named = [entity_id for entity_id in (self.name_entity_id, self.entity_id, self.latency_entity_id) if entity_id]
+
+        return named + [entity_id for branch in self.branches for entity_id in branch.entities]
+
+
+class NetworkMap(BaseModel):
+    """The network drawn as a rail map: the internet above, the house below.
+
+    `upstream` are the places outside the house the line reaches, each rising off its head on a
+    rail of its own. `line` runs down from the head, the first stop being where the house meets
+    the internet.
+    """
+
+    upstream: list[NetworkStop] = Field(default_factory=list)
+    line: list[NetworkStop] = Field(min_length=1)
+
+    @property
+    def entities(self) -> list[str]:
+        return [entity_id for stop in (*self.upstream, *self.line) for entity_id in stop.entities]
+
+
+# How far back the corner's charts run, and the most the proxy's history will give; and the
+# latencies from which the internet is slow, and slower.
+DEFAULT_WAN_HISTORY_MINUTES = 60
+MAX_WAN_HISTORY_MINUTES = 24 * 60
+DEFAULT_LATENCY_BUSY_MS = 50
+DEFAULT_LATENCY_FULL_MS = 100
+
+
+class NetworkWan(BaseModel):
+    """The house's way out: whether it is up and for how long, the address it goes by, and what is crossing it.
+
+    `entity_id`'s history is the day of uptime drawn under the address, so it wants a sensor whose
+    state changes only when the connection does, rather than one rebuilt on every reload.
+    """
+
+    entity_id: str = Field(description="Whether the connection is up, read against `up_states`")
+    up_states: list[str] = Field(default_factory=lambda: list(DEFAULT_UP_STATES))
+    address_entity_id: str | None = Field(default=None, description="The address the house goes by outside")
+    download_entity_id: str | None = None
+    upload_entity_id: str | None = None
+    latency_entity_id: str | None = Field(default=None, description="Milliseconds to the internet, beside the rates")
+    history_minutes: int = Field(
+        default=DEFAULT_WAN_HISTORY_MINUTES,
+        gt=0,
+        le=MAX_WAN_HISTORY_MINUTES,
+        description="How far back each reading's chart runs",
+    )
+    latency_busy_ms: float = Field(
+        default=DEFAULT_LATENCY_BUSY_MS, gt=0, description="Latency from which it is drawn primary"
+    )
+    latency_full_ms: float = Field(
+        default=DEFAULT_LATENCY_FULL_MS, gt=0, description="Latency from which it is drawn secondary"
+    )
+    download_capacity: float | None = Field(
+        default=None, gt=0, description="What the plan carries down, in the rate's unit"
+    )
+    upload_capacity: float | None = Field(
+        default=None, gt=0, description="What the plan carries up, in the rate's unit"
+    )
+
+    @property
+    def entities(self) -> list[str]:
+        named = (
+            self.entity_id,
+            self.address_entity_id,
+            self.download_entity_id,
+            self.upload_entity_id,
+            self.latency_entity_id,
+        )
+
+        return [entity_id for entity_id in named if entity_id]
+
+
+# How often a host's heartbeat sensor changes, unless it says otherwise: once a minute.
+DEFAULT_HEARTBEAT_SECONDS = 60
+
+
+HOST_WITHOUT_NAME_MESSAGE = "A network host needs a `name`, a `name_entity_id`, or both."
+
+
+class NetworkHost(BaseModel):
+    """A machine worth a card of its own: whether it has stayed up, how hard it is working, and its power.
+
+    How hard it is working comes either from one sensor's `metrics_entity_id` attributes, as
+    fractions, or from a sensor apiece, as percentages. The uptime strip is a connection
+    sensor's history, or, for the host doing the pinging, which cannot see itself drop out, the
+    gaps in a heartbeat's. Its name is `name`, or the state of `name_entity_id`, for a host known
+    by its role, whichever machine is filling it.
+    """
+
+    name: str | None = None
+    name_entity_id: str | None = Field(
+        default=None, description="Named by this entity's state, `name` until it has one"
+    )
+    connection_entity_id: str | None = Field(
+        default=None, description="A connectivity sensor; its history is the card's uptime strip"
+    )
+    heartbeat_entity_id: str | None = Field(
+        default=None,
+        description="A sensor that changes every `heartbeat_seconds`, whose gaps are the uptime strip in place of a connection",
+    )
+    heartbeat_seconds: int = Field(default=DEFAULT_HEARTBEAT_SECONDS, gt=0)
+    booted_entity_id: str | None = Field(
+        default=None, description="When the host last booted, for how long it has been up"
+    )
+    booted_attribute: str | None = Field(
+        default=None, description="Read the boot time from this attribute rather than the state"
+    )
+    address_entity_id: str | None = None
+    latency_entity_id: str | None = None
+    metrics_entity_id: str | None = Field(
+        default=None,
+        description="A sensor whose `cpu_utilization`, `memory_utilization` and `disk_utilization` attributes are fractions",
+    )
+    cpu_entity_id: str | None = Field(default=None, description="A sensor whose state is the CPU in use, in percent")
+    memory_entity_id: str | None = Field(
+        default=None, description="A sensor whose state is the memory in use, in percent"
+    )
+    disk_entity_id: str | None = Field(default=None, description="A sensor whose state is the disk in use, in percent")
+    ups_entity_id: str | None = Field(
+        default=None,
+        description="A UPS whose state is `normal` on mains, with `capacity` and `runtime_remaining` attributes",
+    )
+
+    @model_validator(mode="after")
+    def require_a_name(self) -> Self:
+        if self.name is None and self.name_entity_id is None:
+            raise ValueError(HOST_WITHOUT_NAME_MESSAGE)
+
+        return self
+
+    @property
+    def entities(self) -> list[str]:
+        named = (
+            self.name_entity_id,
+            self.connection_entity_id,
+            self.heartbeat_entity_id,
+            self.booted_entity_id,
+            self.address_entity_id,
+            self.latency_entity_id,
+            self.metrics_entity_id,
+            self.cpu_entity_id,
+            self.memory_entity_id,
+            self.disk_entity_id,
+            self.ups_entity_id,
+        )
+
+        return [entity_id for entity_id in named if entity_id]
+
+
+class NetworkContainers(BaseModel):
+    """A host's containers, from one sensor listing them."""
+
+    name: str = Field(description="The host they run on, as the card is titled")
+    entity_id: str = Field(
+        description="A sensor whose `containers` attribute lists each one's `name`, `state`, `status` and `uptime`"
+    )
+
+
+class NetworkVip(BaseModel):
+    """A virtual address, and which host holds it: a reading that is a host's name, `offline`, or `split brain (...)`."""
+
+    name: str
+    entity_id: str
+    attribute: str | None = Field(default=None, description="Read the holder from this attribute rather than the state")
+
+
+class NetworkStat(BaseModel):
+    """One reading on a card of them: an icon, what it is, and its value, from a state or an attribute."""
+
+    label: str
+    icon: str | None = None
+    entity_id: str
+    attribute: str | None = Field(default=None, description="Read the value from this attribute rather than the state")
+    decimals: int = Field(default=0, ge=0, description="Places after the point a number is shown to")
+    unit: str | None = Field(default=None, description="Set after the value, such as `%` or `°`")
+
+
+class NetworkStats(BaseModel):
+    """A card of readings, one to a row."""
+
+    title: str
+    rows: list[NetworkStat] = Field(min_length=1)
+
+    @property
+    def entities(self) -> list[str]:
+        return [row.entity_id for row in self.rows]
+
+
+# How fast a rack fan can run, as fan controllers count it: off at 0 and flat out at 10.
+DEFAULT_FAN_MAX = 10
+RACK_THRESHOLDS_MESSAGE = "A rack's `warning_above` is past its `caution_above`, so it cannot be lower."
+
+
+class NetworkRack(BaseModel):
+    """The rack: the temperature inside it large, its top and bottom beside, and a day of it with the fan's speed.
+
+    Past `caution_above` the temperature takes the master caution's colour and breathes as a lit
+    caution does; past `warning_above`, the master warning's, flashing.
+    """
+
+    title: str
+    entity_id: str = Field(description="The temperature inside the rack, which the card leads with and draws a day of")
+    unit: str | None = Field(default=None, description="Set after each temperature, such as `°`")
+    upper_entity_id: str | None = Field(default=None, description="The temperature at the top of the rack")
+    lower_entity_id: str | None = Field(default=None, description="The temperature at the bottom of the rack")
+    fan_entity_id: str | None = Field(default=None, description="The fan's speed, drawn on its own scale under the day")
+    fan_max: int = Field(default=DEFAULT_FAN_MAX, gt=0, description="The top of the fan's scale")
+    caution_above: float | None = None
+    warning_above: float | None = None
+
+    @model_validator(mode="after")
+    def require_warning_past_caution(self) -> Self:
+        if (
+            self.caution_above is not None
+            and self.warning_above is not None
+            and self.warning_above < self.caution_above
+        ):
+            raise ValueError(RACK_THRESHOLDS_MESSAGE)
+
+        return self
+
+    @property
+    def entities(self) -> list[str]:
+        named = (self.entity_id, self.upper_entity_id, self.lower_entity_id, self.fan_entity_id)
+
+        return [entity_id for entity_id in named if entity_id]
+
+
+DEFAULT_MEDIA_TITLE = "Streaming"
+
+
+class NetworkMedia(BaseModel):
+    """Who is streaming from the media server, from one sensor listing its sessions."""
+
+    entity_id: str = Field(description="A sensor whose `sessions` attribute lists what is playing, and where")
+    title: str = DEFAULT_MEDIA_TITLE
+
+
+class NetworkFaceOptions(FaceOptions):
+    """A face given over to the network: its map down the left, the way out, the hosts, and who is streaming."""
+
+    map: NetworkMap | None = None
+    wan: NetworkWan | None = None
+    hosts: list[NetworkHost] = Field(default_factory=list)
+    containers: list[NetworkContainers] = Field(default_factory=list)
+    vips: list[NetworkVip] = Field(default_factory=list)
+    stats: NetworkStats | None = Field(default=None, description="The network's vitals, beside the rack")
+    bus: NetworkStats | None = Field(default=None, description="How hard the automations are working, under the hosts")
+    rack: NetworkRack | None = None
+    media: NetworkMedia | None = None
+
+    @property
+    def entities(self) -> list[str]:
+        entities = self.map.entities if self.map else []
+        entities += self.wan.entities if self.wan else []
+        entities += [entity_id for host in self.hosts for entity_id in host.entities]
+        entities += [containers.entity_id for containers in self.containers]
+        entities += [vip.entity_id for vip in self.vips]
+        entities += self.stats.entities if self.stats else []
+        entities += self.bus.entities if self.bus else []
+        entities += self.rack.entities if self.rack else []
+
+        return entities + ([self.media.entity_id] if self.media else [])
+
+
 # The renderers that read `options` as something more than a passthrough, and the shape each
 # one reads it as. A content name absent from here takes its options untouched.
 FACE_OPTIONS: dict[str, type[FaceOptions]] = {
@@ -1355,6 +1647,7 @@ FACE_OPTIONS: dict[str, type[FaceOptions]] = {
     WEATHER_FACE_CONTENT: WeatherFaceOptions,
     GUEST_FACE_CONTENT: GuestFaceOptions,
     DEPARTURE_FACE_CONTENT: DepartureFaceOptions,
+    NETWORK_FACE_CONTENT: NetworkFaceOptions,
 }
 
 

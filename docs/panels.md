@@ -114,6 +114,7 @@ Cycles, a parent that does not exist, and a `floorplan` that was never declared 
 | `weather` | The conditions, the wind, and how it feels, today's range, the sun and moon against the horizon, the forecast, and a radar and cameras |
 | `guest` | For a guest room: the clock, how to join the network, the room's light and blinds, the weather, today's range and the forecast, and an alarm clock |
 | `departure` | For the way out: the clock, a traffic map, how long the trips under way will take and when to leave for them, and the fuel gauges |
+| `network` | For the network: a rail map of it, the way out, the hosts, the rack, and who is streaming |
 | `custom` | A page you supply yourself, served from the resources directory |
 | `blank` | Nothing but its own label |
 
@@ -308,6 +309,110 @@ incidents:
 With more than one map, a map swapped in replaces the one before it, title and all, the moment its `visible_when` turns `on`, and the face goes back to the last when it turns off. The camera swapped out stops fetching, as one on a face turned away does, and the one swapped in fetches at once.
 
 Everything a departure face reads is added to the allowlist, and it switches nothing.
+
+### The network face
+
+The network at a glance. A rail map of it runs down the left, the internet at its top and the house below, as narrow as its names allow. Beside it, the way out sits in the top corner; under that, the rack, the VIPs and the network's vitals on one line; a card for each host on the next; and how hard the automations are working, a host's containers, and who is streaming on the last, all on the host cards' columns so their edges line up. Every option is optional, and a card with nothing to show is left out.
+
+```yaml
+faces:
+  down:
+    content: network
+    label: Network
+    options:
+      map:
+        upstream:
+          - name: Public resolver
+            entity_id: binary_sensor.resolver_connection
+            latency_entity_id: sensor.resolver_round_trip
+        line:
+          - name: Demarc
+            entity_id: binary_sensor.wan_status
+          - name: Router
+            entity_id: binary_sensor.router_connection
+            latency_entity_id: sensor.router_round_trip
+            branches:
+              - name: DNS
+                entity_id: switch.dns_blocking
+                tap: true
+              - name: nas
+                entity_id: binary_sensor.nas_connection
+                latency_entity_id: sensor.nas_round_trip
+      wan:
+        entity_id: binary_sensor.wan_status
+        address_entity_id: sensor.public_ip
+        download_entity_id: sensor.wan_download
+        upload_entity_id: sensor.wan_upload
+        latency_entity_id: sensor.resolver_round_trip
+        download_capacity: 500
+        upload_capacity: 500
+      hosts:
+        - name: nas
+          connection_entity_id: binary_sensor.nas_connection
+          address_entity_id: sensor.nas_ip
+          latency_entity_id: sensor.nas_round_trip
+          metrics_entity_id: sensor.nas_metrics
+          booted_entity_id: sensor.nas_metrics
+          booted_attribute: upsince
+          ups_entity_id: sensor.ups
+      containers:
+        - name: server
+          entity_id: sensor.server_status
+      vips:
+        - name: DNS
+          entity_id: sensor.vips
+          attribute: dns
+      stats:
+        title: Vitals
+        rows:
+          - label: Wi-Fi clients
+            icon: mdi:wifi
+            entity_id: sensor.wifi_clients
+      bus:
+        title: Bus
+        rows:
+          - label: State changes
+            icon: mdi:swap-vertical-variant
+            entity_id: sensor.state_changes
+            unit: /m
+      rack:
+        title: Rack
+        entity_id: sensor.rack_temperature
+        unit: °
+        upper_entity_id: sensor.rack_top_temperature
+        lower_entity_id: sensor.rack_bottom_temperature
+        fan_entity_id: sensor.rack_fan_speed
+        caution_above: 90
+        warning_above: 100
+      media:
+        entity_id: sensor.media_sessions
+        title: Streaming
+```
+
+| Option | Holds |
+|---|---|
+| `map` | The rail map: `upstream`, places outside the house, each rising off the head of the line on a rail of its own, and `line`, at least one stop, down from the head, the first being where the house meets the internet |
+| `wan` | The way out: `entity_id`, whether it is up, read against `up_states` (`on` unless you say otherwise); `address_entity_id`; `download_entity_id` and `upload_entity_id` with optional `download_capacity` and `upload_capacity`, the plan in the rates' own unit; `latency_entity_id`; `history_minutes`, how far back each reading's chart runs, 60 unless you say otherwise; and `latency_busy_ms` and `latency_full_ms`, 50 and 100 |
+| `hosts` | A card each: see below |
+| `containers` | `name`, what the card is titled, and `entity_id`, a sensor whose `containers` attribute lists them |
+| `vips` | `name`, `entity_id`, and optionally `attribute`: the host holding the address, `offline`, or `split brain (…)` |
+| `stats`, `bus` | A card of readings each: a `title` and at least one row, `label`, `icon`, `entity_id`, optionally `attribute`, `decimals` (none unless you say otherwise), and `unit`, set straight after the figure |
+| `rack` | `title`, `entity_id`, the temperature inside it, and optionally `unit`, `upper_entity_id`, `lower_entity_id`, `fan_entity_id` with `fan_max` (10 unless you say otherwise), and `caution_above` and `warning_above`. A `warning_above` under `caution_above` is refused when the config loads |
+| `media` | `entity_id`, a sensor whose `sessions` attribute lists the streams, and `title`, `Streaming` unless you say otherwise |
+
+**The map.** A stop names a `name` and optionally `name_entity_id`, whose state names it instead while it has one; `entity_id`, whether it is up, against `up_states`; `latency_entity_id`, milliseconds to it, shown at the right; and `branches`, more stops. A stop with branches is a station, drawn across the rails its branches leave on and named in capitals; every other stop is named in lower case. Each branch has a rail of its own, leaving its station side by side with the others, the first branch outermost, and turns off right into the column of stops at its own row. Because the outer branches turn off first, a branch that branches again takes the rails beside it afresh, so the map is as wide as its busiest station and no turn crosses a rail still in use. A stop with `tap: true` is something the line runs through, like a resolver every lookup passes, and is drawn as a dotted line across it; one among a station's branches sits just under the station and takes no rail. A rail is primary while the stop it leads to is up and grey while it is down; a stop that is down reads `Down`. While the face is looked at, sparks travel the network from one stop at the end of a branch to another, up to the station the two share and down the other side, by a way lit end to end and never ending at a station; at most three are out at once, each resting a random while between trips.
+
+**The way out.** How long the connection has been up sits before the address on its line. Under the address, as wide as it, the last day of the connection is drawn as an underline: primary while it was up, grey where it dropped. Under them, the latency and the two rates, each with its last `history_minutes` drawn on its scale, running up to now at the right edge, and each rate's chart standing on its meter, how much of the plan is in use. Each reading is grey below its first threshold, primary to its second and secondary past it, by height on its chart: half and three quarters of the plan for a rate, `latency_busy_ms` and `latency_full_ms` for the latency, whose scale runs at least half again past its second threshold so both show. With the connection down the line before the address reads `Offline` and how long, and it and the address pulse in the master warning's red.
+
+**Hosts.** Each card gives the host's `name`, or the state of `name_entity_id` for a host known by its role; `address_entity_id`; how long it has been up, in its largest unit, in the top corner, from `booted_entity_id` or its `booted_attribute`, a time with or without a zone; a strip of the last day, a dot to each slice; its CPU, memory and disk, either as `cpu_utilization`, `memory_utilization` and `disk_utilization` fractions on `metrics_entity_id` or as percentages from `cpu_entity_id`, `memory_entity_id` and `disk_entity_id`; its latency; and its power from `ups_entity_id`, a sensor reading `normal` on mains with `capacity` and `runtime_remaining` in seconds. The strip is `connection_entity_id`'s history, or for a host that cannot see itself drop out, such as the one doing the pinging, the gaps in `heartbeat_entity_id`'s, a sensor that changes every `heartbeat_seconds` (60 unless you say otherwise) while the host is up. A host that has gone down flashes its frame and name in the master warning's red; one on battery pulses them in the secondary colour. A card needs a `name`, a `name_entity_id`, or both.
+
+**Containers.** Each is a mark for its state, its name, and how long, from records of `name`, `state` (`ok`, `completed`, `stopped`, `warning` or `error`), `status` and `uptime`. Running is primary; finished and stopped ones rest in grey; one in trouble pulses in the secondary colour.
+
+**The rack.** The temperature inside it sits large in the top corner opposite the title, with the top and bottom of the rack as a small pair before it. Under them, a day of the inside temperature, averaged into half hours and drawn smooth, over the fan's speed as a faint area on a fixed scale from nought to `fan_max`. Past `caution_above` the temperature, the frame and the title take the master caution's colour and breathe; past `warning_above`, the master warning's, flashing. The curve is coloured by the same thresholds over its height, so it shows when in the day the rack ran hot.
+
+**Streaming.** One row to each record in `sessions`: `device`, `user`, `title`, `series`, `state` (`playing` or anything else for paused), `position` and `duration` in seconds, `play_method` (`DirectPlay`, `DirectStream` or `Transcode`), `resolution`, and `bitrate` in bits a second. The title has a line of its own, travelling back and forth when it is too long for the card; under it, who, on what, at what resolution and rate, with how it plays pinned to the right, a transcode in the secondary colour; then how far in. A stream comes and goes as a row does, wiping in and out.
+
+Every figure on the face slides to a new value rather than jumping. The charts and strips are read from Home Assistant's history while the face is looked at, and again every five minutes; nothing on the face fetches or animates while it is turned away. Everything a network face reads is added to the allowlist, and it switches nothing.
 
 ### The label strip
 
