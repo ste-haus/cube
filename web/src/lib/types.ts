@@ -352,6 +352,151 @@ export interface DepartureFaceOptions {
   incidents_entity_id: string | null;
 }
 
+/** A stop on the network map; one with branches is an interchange, and a tap is drawn across the line. */
+export interface NetworkStop {
+  name: string;
+  /** Named by this entity's state, `name` until it has one. */
+  name_entity_id: string | null;
+  entity_id: string | null;
+  up_states: string[];
+  latency_entity_id: string | null;
+  tap: boolean;
+  branches: NetworkStop[];
+}
+
+export interface NetworkMap {
+  /** Places outside the house, each rising off the head of the line on a rail of its own. */
+  upstream: NetworkStop[];
+  /** Down from the head, the first stop being where the house meets the internet. */
+  line: NetworkStop[];
+}
+
+export interface NetworkWan {
+  entity_id: string;
+  up_states: string[];
+  address_entity_id: string | null;
+  download_entity_id: string | null;
+  upload_entity_id: string | null;
+  /** Milliseconds to the internet. */
+  latency_entity_id: string | null;
+  /** How far back each reading's chart runs. */
+  history_minutes: number;
+  /** Latencies from which the internet is drawn primary, and secondary. */
+  latency_busy_ms: number;
+  latency_full_ms: number;
+  /** What the plan carries each way, in the rates' own unit. */
+  download_capacity: number | null;
+  upload_capacity: number | null;
+}
+
+/** One container, as a containers sensor's `containers` attribute lists it. */
+export interface Container {
+  name: string;
+  /** `ok`, `completed`, `stopped`, `warning` or `error`. */
+  state: string;
+  status: string;
+  uptime: string;
+}
+
+export interface NetworkVip {
+  name: string;
+  entity_id: string;
+  attribute: string | null;
+}
+
+/** One reading on a card of them, from a state or an attribute. */
+export interface NetworkStat {
+  label: string;
+  icon: string | null;
+  entity_id: string;
+  attribute: string | null;
+  decimals: number;
+  unit: string | null;
+}
+
+export interface NetworkStats {
+  title: string;
+  rows: NetworkStat[];
+}
+
+export interface NetworkRack {
+  title: string;
+  /** The temperature inside, which the card leads with and draws a day of. */
+  entity_id: string;
+  unit: string | null;
+  upper_entity_id: string | null;
+  lower_entity_id: string | null;
+  /** The fan's speed, drawn on its own scale from nought to `fan_max`. */
+  fan_entity_id: string | null;
+  fan_max: number;
+  caution_above: number | null;
+  warning_above: number | null;
+}
+
+export interface NetworkContainers {
+  name: string;
+  entity_id: string;
+}
+
+export interface NetworkHost {
+  /** Its name, or the state of `name_entity_id` for a host known by its role; at least one is set. */
+  name: string | null;
+  name_entity_id: string | null;
+  /** None for the host doing the pinging, whose strip comes from the gaps in its heartbeat instead. */
+  connection_entity_id: string | null;
+  /** A sensor that changes every `heartbeat_seconds` while the host is up. */
+  heartbeat_entity_id: string | null;
+  heartbeat_seconds: number;
+  /** When the host last booted, from the state or `booted_attribute`. */
+  booted_entity_id: string | null;
+  booted_attribute: string | null;
+  address_entity_id: string | null;
+  latency_entity_id: string | null;
+  /** Its `cpu_utilization`, `memory_utilization` and `disk_utilization` attributes are fractions. */
+  metrics_entity_id: string | null;
+  /** Or a sensor apiece, each in percent. */
+  cpu_entity_id: string | null;
+  memory_entity_id: string | null;
+  disk_entity_id: string | null;
+  /** `normal` while on mains, with `capacity` and `runtime_remaining` attributes. */
+  ups_entity_id: string | null;
+}
+
+/** One stream from the media server, as the media sensor's `sessions` attribute lists it. */
+export interface MediaSession {
+  device: string;
+  user: string | null;
+  title: string | null;
+  series: string | null;
+  state: string;
+  /** Seconds in, and seconds long. */
+  position: number | null;
+  duration: number | null;
+  /** How it reaches the client: `DirectPlay`, `DirectStream` or `Transcode`, as Jellyfin says. */
+  play_method: string | null;
+  /** What the client is shown, such as `1080p`, and at what rate, in bits a second. */
+  resolution: string | null;
+  bitrate: number | null;
+}
+
+export interface NetworkMedia {
+  entity_id: string;
+  title: string;
+}
+
+export interface NetworkFaceOptions {
+  map: NetworkMap | null;
+  wan: NetworkWan | null;
+  hosts: NetworkHost[];
+  containers: NetworkContainers[];
+  vips: NetworkVip[];
+  stats: NetworkStats | null;
+  /** How hard the automations are working: a card of readings like `stats`. */
+  bus: NetworkStats | null;
+  rack: NetworkRack | null;
+  media: NetworkMedia | null;
+}
+
 export interface Face {
   content: string;
   label: string;

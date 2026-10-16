@@ -120,6 +120,37 @@
   /* The clock sits flush; the sections below it are inset, as on the dashboard replaced. */
   --section-indent: 0.6rem;
 
+  /* The network face: the map's rows and type, and the host cards beside it. */
+  --network-map-size: 0.95rem;
+  --network-map-label-gap: 0.6rem;
+  --network-map-reading-gap: 1.6rem;
+  --network-card-title-size: 1.5rem;
+  --network-containers-columns: 2;
+  --network-face-wide-columns: 2;
+  --media-marquee-duration: 9s;
+  --network-rack-chart-min: 5rem;
+  /* Clear of the readings in the header, so the scale's top figure does not sit under them. */
+  --network-rack-header-gap: 1rem;
+  --network-wan-rate-gap: 2rem;
+  --network-host-gap: 0.9rem;
+  --network-host-padding: 1rem 1.1rem;
+  --network-host-radius: 0.9rem;
+  --network-host-name-size: 2.2rem;
+  --network-host-detail-size: 1.05rem;
+  --network-host-small-size: 0.9rem;
+  --network-host-slice: 0.55rem;
+  --network-host-bar: 3px;
+  --network-host-edge: 2px;
+  --network-wan-ip-size: 3rem;
+  --network-wan-rate-size: 1.7rem;
+  --network-wan-rate-width: 10.5rem;
+  --network-wan-rate-digits: 3ch;
+  --network-wan-latency-width: 6.5rem;
+  --network-wan-underline: 2px;
+  --network-wan-underline-gap: 0.35rem;
+  --network-wan-status-gap: 0.8rem;
+  --network-wan-area-opacity: 0.18;
+
   /* Type scale, matched to the dashboard this replaces. */
   --title-size: 1.68rem;
   /* Between a section heading's rule and what it heads. */
@@ -918,4 +949,78 @@ body {
   50% {
     opacity: 0;
   }
+}
+
+/*
+ * The network face: the map down the left as wide as it needs, and everything else stacked
+ * beside it.
+ */
+.network-face {
+  display: grid;
+  height: 100%;
+  padding: var(--panel-padding);
+  column-gap: calc(3 * var(--panel-gap));
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.network-face--unmapped {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Ends above the face map in the corner, as the departure face's rail does. */
+.network-face__map {
+  min-height: 0;
+  padding-top: var(--panel-gap);
+  padding-bottom: calc(
+    var(--announcement-axis) + var(--face-map-height) / 2 + var(--panel-gap) - var(--panel-padding)
+  );
+}
+
+.network-face__main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(1.5 * var(--panel-gap));
+  min-height: 0;
+  padding-top: var(--panel-gap);
+}
+
+.network-face__hosts {
+  display: grid;
+  grid-template-columns: repeat(var(--network-face-hosts), minmax(0, 1fr));
+  gap: var(--panel-gap);
+}
+
+/* A card on the network face: a faint frame, and its name in thin type at the top. */
+.network-card {
+  min-width: 0;
+  padding: var(--network-host-padding);
+  border: 1px solid var(--color-faint);
+  border-radius: var(--network-host-radius);
+}
+
+.network-card__title {
+  margin: 0 0 0.5em;
+  color: var(--color-foreground);
+  font-size: var(--network-card-title-size);
+  font-weight: var(--weight-thin);
+}
+
+/* The hosts' columns again, so every line's edges meet theirs. */
+.network-face__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--network-face-hosts), minmax(0, 1fr));
+  gap: var(--panel-gap);
+}
+
+/* Two of the hosts' columns, its card filling the line's height as its neighbours do. */
+.network-face__wide {
+  display: flex;
+  grid-column: span var(--network-face-wide-columns);
+  min-width: 0;
+}
+
+.network-face__wide > * {
+  flex: 1 1 auto;
+  min-width: 0;
 }
