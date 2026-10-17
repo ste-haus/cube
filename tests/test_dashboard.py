@@ -1016,10 +1016,12 @@ def test_the_thermostat_may_be_set_but_not_toggled(dashboard):
 def test_a_thermostat_hangs_on_the_left_unless_told():
     plain = Dashboard.model_validate(profiles() | {"thermostat": {"entity_id": THERMOSTAT}})
     right = Dashboard.model_validate(profiles() | {"thermostat": {"entity_id": THERMOSTAT, "side": "right"}})
+    bottom = Dashboard.model_validate(profiles() | {"thermostat": {"entity_id": THERMOSTAT, "side": "bottom"}})
 
     assert plain.thermostat.side == "left"
     assert plain.thermostat.offset == 0
     assert right.thermostat.side == "right"
+    assert bottom.thermostat.side == "bottom"
 
 
 def test_a_thermostat_only_hangs_off_an_edge():

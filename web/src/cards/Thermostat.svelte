@@ -1,22 +1,32 @@
 <script lang="ts">
   import { faceVisibility, TAP_SLOP_PX } from "../lib/cube.svelte";
+  import { cubicOut } from "svelte/easing";
+  import { Tween } from "svelte/motion";
+  import { Breath } from "../lib/breath.svelte";
   import { crestCharacter, crestOpacity, crestPath, type CrestCharacter, type Oval } from "../lib/gust";
   import Icon from "../lib/Icon.svelte";
+  import { SlidingLevel } from "../lib/level.svelte";
   import { pending } from "../lib/pending.svelte";
   import { ha } from "../lib/state.svelte";
   import {
     adjustable,
     decimals,
+    DialArc,
+    DIAL_MIDDLE,
+    dialFade,
+    dialHashes,
+    dialPosition,
     MODE_AUTO,
     MODE_COOL,
     MODE_HEAT,
     MODE_OFF,
     modeColour,
+    moveSetpoint,
+    nearestHash,
     running,
     sameRange,
-    stepRange,
+    strainGrowth,
     stripModes,
-    type StepDirection,
     type TemperatureRange,
   } from "../lib/thermostat";
   import type { Thermostat } from "../lib/types";
@@ -25,14 +35,15 @@
   /*
    * A thermostat hanging off the edge of the face: an oval most of the way off the screen, showing
    * the temperature with the range it is held to above and below. A tap slides it out, keeping the
-   * figures where they are in the middle of what shows, and brings in the modes under them and a
-   * pair of arrows on the edge's side of them for the setpoint the mode works to. A tap on it again,
-   * a tap anywhere else, or being left alone for `IDLE_CLOSE_MS` puts it back.
+   * figures where they are in the middle of what shows, and brings in a column of modes on the
+   * edge's side of them and a dial round the inside of its edge for the setpoint the mode works to. A tap on it again, a tap
+   * anywhere else, or being left alone for `IDLE_CLOSE_MS` puts it back.
    *
    * It is drawn in the mode's colour, a wash of it inside a line of it, lit from the edge it hangs
    * from, and while the equipment runs it gives off air and shows what the equipment is doing above
-   * the figures. The arrows move the setpoint on the panel at once and send it once the presses
-   * stop, as the alarm's wheels do; a mode is asked for and lights once Home Assistant says so.
+   * the figures. The dial's hashes move under the finger, past a mark held level with the figures
+   * that shows the setpoint; on letting go they slide so the nearest hash meets the mark, and the
+   * setpoint is sent. A mode is asked for and lights once Home Assistant says so.
    */
 
   const CURRENT_ATTRIBUTE = "current_temperature";
@@ -44,16 +55,9 @@
   const MIN_ATTRIBUTE = "min_temp";
   const MAX_ATTRIBUTE = "max_temp";
   const DEFAULT_STEP = 1;
-  const DEFAULT_MIN = Number.NEGATIVE_INFINITY;
-  const DEFAULT_MAX = Number.POSITIVE_INFINITY;
 
   const DEGREE = "°";
   const PLACEHOLDER = "--";
-  const COMMIT_DELAY_MS = 1500;
-  const UP: StepDirection = 1;
-  const DOWN: StepDirection = -1;
-  const UP_ICON = "mdi:chevron-up";
-  const DOWN_ICON = "mdi:chevron-down";
   const ACTION_ICONS: Record<string, string> = {
     heating: "mdi:fire",
     cooling: "mdi:snowflake",
@@ -73,7 +77,7 @@
 
   // Sliding out and back takes a window's flight, on the same curve.
   const SLIDE_MS = 300;
-  // The modes and the arrows come in once it has mostly slid out, and go before it slides back.
+  // The modes and the dial come in once it has mostly slid out, and go before it slides back.
   const CONTROLS_DELAY_MS = 180;
   // Left alone this long while it is out, it slides back in.
   const IDLE_CLOSE_MS = 10 * 1000;
@@ -102,6 +106,40 @@
   const GRADIENT_MIDDLE = "50%";
   const GRADIENT_END = "100%";
 
+  // The dial runs round the far side of the oval from this far below its middle to as far above,
+  // as an angle about its centre, stopping short of where the curve runs back into the edge.
+  const DIAL_SWEEP = (Math.PI * 7) / 18;
+  // The hashes, against the oval's half-height, so they scale with it: how far in from the line
+  // they start, and how far in they reach, the fifths further.
+  const HASH_INSET = 0.035;
+  const HASH_SHORT = 0.045;
+  const HASH_LONG = 0.09;
+  // The mark for the setpoint, held at the dial's middle: from a little outside the line, across
+  // it, to well past the hashes on the inside.
+  const MARK_OUTSET = 0.02;
+  const MARK_REACH = 0.16;
+  // Held, it reaches further in, over the time a held mark takes to grow (`--held-grow-time`).
+  const MARK_HELD_REACH = 0.22;
+  const MARK_GROW_MS = 150;
+  // Pulled past where it can go, the setpoint's figure grows with how far, towards this much
+  // bigger, most of the way there `STRAIN_SOFTNESS_DEGREES` past; let go, it springs back.
+  const STRAIN_MOST = 1.6;
+  const STRAIN_SOFTNESS_DEGREES = 3;
+  const STRAIN_SNAP_MS = 250;
+  // How many degrees the dial shows from one end to the other.
+  const DIAL_SPAN_DEGREES = 20;
+  // The dial is pressable along the middle of the long hashes.
+  const RING_INSET = HASH_INSET + HASH_LONG / HALF;
+  const RING_SAMPLES = 48;
+  const PRIMARY_BUTTON = 0;
+
+  // On the bottom it hangs up from the edge, centred along it, and is moved along the edge
+  // rather than up and down it.
+  const BOTTOM = "bottom";
+  const RIGHT = "right";
+  const ALONG_SIDE = "vh";
+  const ALONG_BOTTOM = "vw";
+
   let { thermostat }: { thermostat: Thermostat } = $props();
 
   const visibility = faceVisibility();
@@ -116,7 +154,10 @@
 
   let draft = $state<TemperatureRange | null>(null);
   let sent = $state(false);
-  let commitTimer: number | null = null;
+  // Where the finger has the setpoint while it drags the dial, between the hashes.
+  let dragged = $state<number | null>(null);
+  // How far past where the setpoint can go the finger is pulling it, in degrees.
+  let strain = $state(0);
 
   const entityId = $derived(thermostat.entity_id);
   const mode = $derived(ha.state(entityId));
@@ -137,6 +178,12 @@
   const blowing = $derived(running(action) && visibility.showing);
   const waiting = $derived(sent && pending.isPending(entityId));
   const asked = $derived(pending.requested(entityId));
+  const limits = $derived.by(() => {
+    const min = reading(MIN_ATTRIBUTE);
+    const max = reading(MAX_ATTRIBUTE);
+
+    return min === null || max === null || max <= min ? null : { min, max };
+  });
 
   function reading(attribute: string): number | null {
     const value = Number(ha.attribute<number>(entityId, attribute) ?? Number.NaN);
@@ -210,10 +257,8 @@
 
   $effect(
     () => () => {
-      for (const timer of [idleTimer, commitTimer]) {
-        if (timer !== null) {
-          window.clearTimeout(timer);
-        }
+      if (idleTimer !== null) {
+        window.clearTimeout(idleTimer);
       }
     },
   );
@@ -229,25 +274,7 @@
     }
   });
 
-  function stepSetpoint(direction: StepDirection) {
-    if (shown === null || setpoint === null) {
-      return;
-    }
-
-    const min = reading(MIN_ATTRIBUTE) ?? DEFAULT_MIN;
-    const max = reading(MAX_ATTRIBUTE) ?? DEFAULT_MAX;
-    draft = stepRange(shown, setpoint, direction, step, min, max);
-    sent = false;
-
-    if (commitTimer !== null) {
-      window.clearTimeout(commitTimer);
-    }
-    commitTimer = window.setTimeout(commit, COMMIT_DELAY_MS);
-  }
-
   function commit() {
-    commitTimer = null;
-
     if (draft === null) {
       return;
     }
@@ -268,6 +295,188 @@
     }
   }
 
+  /* --- The dial --- */
+
+  /*
+   * Measured inside the oval's line, as the air is, and drawn for an oval hanging off the left; on
+   * the right the drawing is mirrored, and on the bottom turned up off the edge with the low end on
+   * the left, and where the finger is read is turned with it.
+   */
+
+  let inside = $state<Oval | null>(null);
+
+  const bottom = $derived(thermostat.side === BOTTOM);
+  /* From the left's drawing to the bottom's: its far side up, its low end to the left. */
+  const turn = $derived(
+    bottom && inside ? `matrix(0 -1 -1 0 ${inside.cy * HALF} ${inside.cx * HALF})` : undefined,
+  );
+
+  const arc = $derived(inside ? new DialArc(inside, DIAL_SWEEP) : null);
+  const hashes = $derived(limits ? dialHashes(limits.min, limits.max) : []);
+  const ring = $derived(arc ? ringPath(arc) : NO_PATH);
+
+  /* The scale follows the finger at once, and slides to anything else: onto its hash once let go,
+   * or to a setpoint changed somewhere else. */
+  const sliding = new SlidingLevel();
+  const breath = new Breath();
+
+  $effect(() => () => breath.dispose());
+
+  const strained = $derived(strainGrowth(strain, STRAIN_MOST, STRAIN_SOFTNESS_DEGREES));
+
+  const selected = $derived(dragged ?? (shown && setpoint ? shown[setpoint] : null));
+
+  $effect.pre(() => {
+    if (selected !== null) {
+      sliding.follow(selected, dragged !== null);
+    }
+  });
+
+  /* The hashes on the dial as it is turned: where each sits, and how strongly it shows. */
+  const placed = $derived(
+    hashes
+      .map((hash) => ({ ...hash, at: dialPosition(hash.value, sliding.current, DIAL_SPAN_DEGREES) }))
+      .filter((hash) => hash.at >= 0 && hash.at <= 1),
+  );
+  const markReach = new Tween(MARK_REACH, { duration: MARK_GROW_MS, easing: cubicOut });
+
+  $effect(() => {
+    markReach.target = dragged !== null ? MARK_HELD_REACH : MARK_REACH;
+  });
+
+  const mark = $derived(arc ? markLine(arc, markReach.current) : null);
+
+  // Where the finger took hold of the dial, and the setpoint then.
+  let grip: { at: number; value: number } | null = null;
+
+  function hashLine(dial: DialArc, at: number, major: boolean) {
+    const ry = dial.oval.ry;
+    const start = dial.mark(at, ry * HASH_INSET);
+    const reach = ry * (major ? HASH_LONG : HASH_SHORT);
+
+    return { x1: start.x, y1: start.y, x2: start.x + start.nx * reach, y2: start.y + start.ny * reach };
+  }
+
+  function markLine(dial: DialArc, inwards: number) {
+    const ry = dial.oval.ry;
+    const start = dial.mark(DIAL_MIDDLE, -ry * MARK_OUTSET);
+    const reach = ry * (MARK_OUTSET + inwards);
+
+    return { x1: start.x, y1: start.y, x2: start.x + start.nx * reach, y2: start.y + start.ny * reach };
+  }
+
+  function ringPath(dial: DialArc): string {
+    const inset = dial.oval.ry * RING_INSET;
+    const points = Array.from({ length: RING_SAMPLES + 1 }, (_, index) => dial.mark(index / RING_SAMPLES, inset));
+
+    return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  }
+
+  /* How far along the dial the finger is, from the bottom. */
+  function underFinger(event: PointerEvent, drawing: SVGElement): number | null {
+    if (!arc) {
+      return null;
+    }
+
+    const box = drawing.getBoundingClientRect();
+    const fromLeft = event.clientX - box.left;
+    const fromTop = event.clientY - box.top;
+
+    if (bottom) {
+      return arc.fractionToward(box.height - fromTop, box.width - fromLeft);
+    }
+
+    return arc.fractionToward(thermostat.side === RIGHT ? box.width - fromLeft : fromLeft, fromTop);
+  }
+
+  /* The scale carried with the finger: up brings the lower degrees to the mark, down the higher.
+   * The scale stops at the thermostat's limits, and the figure shows the hash nearest the mark. */
+  function drag(event: PointerEvent, drawing: SVGElement) {
+    const at = underFinger(event, drawing);
+    if (at === null || grip === null || shown === null || setpoint === null || limits === null) {
+      return;
+    }
+
+    const value = grip.value - (at - grip.at) * DIAL_SPAN_DEGREES;
+    const held = (to: number) => moveSetpoint(shown!, setpoint!, to, step, limits!.min, limits!.max);
+    dragged = held(value)[setpoint];
+    strain = Math.abs(value - dragged);
+    draft = held(nearestHash(value));
+    sent = false;
+    stillHere();
+  }
+
+  /*
+   * Listened for on the ring itself rather than through Svelte's handlers, which it delegates to
+   * the document: by then the cube has already read the gesture as a swipe. Its click is kept from
+   * the card too, so a press on the ring never slides the card back.
+   */
+  function dial(target: SVGPathElement) {
+    const drawing = target.ownerSVGElement!;
+
+    function down(event: PointerEvent) {
+      const at = underFinger(event, drawing);
+      if (event.button !== PRIMARY_BUTTON || !event.isPrimary || selected === null || at === null) {
+        return;
+      }
+
+      target.setPointerCapture(event.pointerId);
+      grip = { at, value: selected };
+      dragged = selected;
+      breath.start();
+    }
+
+    function moved(event: PointerEvent) {
+      if (dragged !== null) {
+        drag(event, drawing);
+      }
+    }
+
+    function up(event: PointerEvent) {
+      if (dragged === null) {
+        return;
+      }
+
+      event.stopPropagation();
+      dragged = null;
+      strain = 0;
+      grip = null;
+      breath.release();
+      commit();
+      stillHere();
+    }
+
+    function cancel() {
+      if (dragged === null) {
+        return;
+      }
+
+      dragged = null;
+      strain = 0;
+      grip = null;
+      draft = null;
+      breath.release();
+    }
+
+    const swallow = (event: MouseEvent) => event.stopPropagation();
+
+    target.addEventListener("pointerdown", down);
+    target.addEventListener("pointermove", moved);
+    target.addEventListener("pointerup", up);
+    target.addEventListener("pointercancel", cancel);
+    target.addEventListener("click", swallow);
+
+    return {
+      destroy() {
+        target.removeEventListener("pointerdown", down);
+        target.removeEventListener("pointermove", moved);
+        target.removeEventListener("pointerup", up);
+        target.removeEventListener("pointercancel", cancel);
+        target.removeEventListener("click", swallow);
+      },
+    };
+  }
+
   /* --- Air --- */
 
   /*
@@ -281,16 +490,26 @@
   // Emptied by the markup when the air stops and its drawing goes, so each may be gone.
   const crestPaths: (SVGPathElement | null)[] = [];
 
+  /* The oval's size as the left's drawing has it: on the bottom, across is up and down. */
+  function sized(measured: HTMLElement) {
+    const { clientWidth, clientHeight, offsetWidth, offsetHeight } = measured;
+
+    return bottom
+      ? { across: clientHeight, along: clientWidth, outerAcross: offsetHeight, outerAlong: offsetWidth }
+      : { across: clientWidth, along: clientHeight, outerAcross: offsetWidth, outerAlong: offsetHeight };
+  }
+
   /* The drawing sits inside the oval's border, so its middle is the inside's, and its reach is the
    * outside's, border and all, and a little more. */
   function measure(measured: HTMLElement): Oval {
-    const clearance = (measured.offsetHeight / HALF) * CREST_CLEARANCE;
+    const { across, along, outerAcross, outerAlong } = sized(measured);
+    const clearance = (outerAlong / HALF) * CREST_CLEARANCE;
 
     return {
-      cx: measured.clientWidth / HALF,
-      cy: measured.clientHeight / HALF,
-      rx: measured.offsetWidth / HALF + clearance,
-      ry: measured.offsetHeight / HALF + clearance,
+      cx: across / HALF,
+      cy: along / HALF,
+      rx: outerAcross / HALF + clearance,
+      ry: outerAlong / HALF + clearance,
     };
   }
 
@@ -300,7 +519,11 @@
     }
 
     const measured = shell;
-    const observer = new ResizeObserver(() => (oval = measure(measured)));
+    const observer = new ResizeObserver(() => {
+      const { across, along } = sized(measured);
+      oval = measure(measured);
+      inside = { cx: across / HALF, cy: along / HALF, rx: across / HALF, ry: along / HALF };
+    });
     observer.observe(measured);
 
     return () => observer.disconnect();
@@ -390,9 +613,10 @@
   class:thermostat--lit={tone !== null}
   bind:this={card}
   style:--thermostat-colour={colour}
-  style:--thermostat-offset="{thermostat.offset}vh"
+  style:--thermostat-offset="{thermostat.offset}{bottom ? ALONG_BOTTOM : ALONG_SIDE}"
   style:--thermostat-slide="{SLIDE_MS}ms"
   style:--thermostat-controls-delay="{CONTROLS_DELAY_MS}ms"
+  style:--thermostat-strain-snap="{STRAIN_SNAP_MS}ms"
   onpointerdown={press}
   onclick={tap}
 >
@@ -413,9 +637,36 @@
             <stop offset={GRADIENT_END} stop-color="currentColor" stop-opacity="0" />
           </linearGradient>
         </defs>
-        {#each { length: MAX_CRESTS }, index}
-          <path class="thermostat__crest" bind:this={crestPaths[index]} stroke="url(#{gradientId})" />
-        {/each}
+        <g transform={turn}>
+          {#each { length: MAX_CRESTS }, index}
+            <path class="thermostat__crest" bind:this={crestPaths[index]} stroke="url(#{gradientId})" />
+          {/each}
+        </g>
+      </svg>
+    {/if}
+
+    {#if arc && limits && setpoint !== null}
+      <svg class="thermostat__dial thermostat__controls" aria-hidden="true">
+        <g transform={turn}>
+          {#each placed as hash (hash.value)}
+            <line
+              class="thermostat__hash"
+              class:thermostat__hash--major={hash.major}
+              opacity={dialFade(hash.at)}
+              {...hashLine(arc, hash.at, hash.major)}
+            />
+          {/each}
+          {#if mark}
+            <line
+              class="thermostat__mark"
+              class:thermostat__mark--held={dragged !== null}
+              class:thermostat__mark--breathing={breath.breathing}
+              {...mark}
+              onanimationiteration={() => breath.breathed(waiting)}
+            />
+          {/if}
+          <path class="thermostat__ring" d={ring} use:dial />
+        </g>
       </svg>
     {/if}
   </div>
@@ -425,9 +676,11 @@
       <Icon name={ACTION_ICONS[action ?? ""] ?? null} />
     </span>
     <span
-      class="thermostat__setpoint"
+      class="thermostat__setpoint thermostat__setpoint--high"
       class:thermostat__setpoint--active={setpoint === "high"}
       class:thermostat__setpoint--waiting={waiting && setpoint === "high"}
+      class:thermostat__setpoint--straining={strain > 0 && setpoint === "high"}
+      style:--thermostat-strain={setpoint === "high" ? strained : 1}
     >
       {shown === null ? PLACEHOLDER : degrees(shown.high)}
     </span>
@@ -435,41 +688,14 @@
       <SlidingNumber value={current} format={wholeDegrees} fallback={PLACEHOLDER} />
     </span>
     <span
-      class="thermostat__setpoint"
+      class="thermostat__setpoint thermostat__setpoint--low"
       class:thermostat__setpoint--active={setpoint === "low"}
       class:thermostat__setpoint--waiting={waiting && setpoint === "low"}
+      class:thermostat__setpoint--straining={strain > 0 && setpoint === "low"}
+      style:--thermostat-strain={setpoint === "low" ? strained : 1}
     >
       {shown === null ? PLACEHOLDER : degrees(shown.low)}
     </span>
-
-    {#if setpoint !== null}
-      <div class="thermostat__arrows thermostat__controls">
-        <button
-          type="button"
-          class="thermostat__arrow"
-          aria-label="{setpoint} up"
-          tabindex={open ? 0 : -1}
-          onclick={(event) => {
-            event.stopPropagation();
-            stepSetpoint(UP);
-          }}
-        >
-          <Icon name={UP_ICON} />
-        </button>
-        <button
-          type="button"
-          class="thermostat__arrow"
-          aria-label="{setpoint} down"
-          tabindex={open ? 0 : -1}
-          onclick={(event) => {
-            event.stopPropagation();
-            stepSetpoint(DOWN);
-          }}
-        >
-          <Icon name={DOWN_ICON} />
-        </button>
-      </div>
-    {/if}
 
     <div class="thermostat__modes thermostat__controls">
       {#each modes as item (item)}
@@ -528,6 +754,21 @@
     height: var(--thermostat-open-height);
   }
 
+  /* On the bottom, the same oval turned up off the edge: long across the screen, centred along it. */
+  .thermostat--bottom {
+    top: auto;
+    bottom: 0;
+    left: calc(50% + var(--thermostat-offset));
+    width: var(--thermostat-bottom-length);
+    height: var(--thermostat-bottom-reach);
+    transform: translateX(-50%);
+  }
+
+  .thermostat--bottom.thermostat--open {
+    width: var(--thermostat-bottom-open-length);
+    height: var(--thermostat-bottom-open-reach);
+  }
+
   .thermostat__shell {
     position: absolute;
     top: 0;
@@ -570,6 +811,21 @@
     width: var(--thermostat-open-width);
   }
 
+  .thermostat--bottom .thermostat__shell {
+    left: 0;
+    width: 100%;
+    height: var(--thermostat-bottom-depth);
+    transition:
+      height var(--thermostat-slide) var(--thermostat-curve),
+      border-color var(--colour-fade) ease,
+      box-shadow var(--colour-fade) ease;
+  }
+
+  .thermostat--bottom.thermostat--open .thermostat__shell {
+    width: 100%;
+    height: var(--thermostat-bottom-open-depth);
+  }
+
   /* The air leaves the side facing into the screen, which on the right is the other way. */
   .thermostat__air {
     position: absolute;
@@ -599,7 +855,7 @@
 
   /* Collapsed, the figures sit close against the edge, clear of the oval's curve on the other
    * side; out, they sit a little edge-wards of the middle of what shows, where the half oval is
-   * tallest, with room for the arrows on the edge's side. */
+   * tallest, with the modes between them and the edge and the dial round the far side. */
   .thermostat__readout {
     position: absolute;
     top: 50%;
@@ -610,6 +866,7 @@
     transition:
       left var(--thermostat-slide) var(--thermostat-curve),
       right var(--thermostat-slide) var(--thermostat-curve),
+      bottom var(--thermostat-slide) var(--thermostat-curve),
       transform var(--thermostat-slide) var(--thermostat-curve);
     line-height: 1;
   }
@@ -632,6 +889,22 @@
     transform: translate(50%, -50%);
   }
 
+  /* On the bottom the figures turn with the oval: a row, the low on the left as the dial has it,
+   * close against the edge collapsed and out at the same place across what shows once open. */
+  .thermostat--bottom .thermostat__readout {
+    top: auto;
+    bottom: var(--thermostat-edge-padding);
+    left: 50%;
+    flex-direction: row-reverse;
+    align-items: baseline;
+    gap: var(--thermostat-row-gap);
+    transform: translateX(-50%);
+  }
+
+  .thermostat--bottom.thermostat--open .thermostat__readout {
+    bottom: var(--thermostat-bottom-open-lift);
+  }
+
   /* What the equipment is doing, over the figures, while it runs. */
   .thermostat__action {
     position: absolute;
@@ -648,6 +921,17 @@
     opacity: 1;
   }
 
+  /* On the bottom, beside the row rather than over it, where the dial's mark comes down, standing
+   * on the figures' baseline. */
+  .thermostat--bottom .thermostat__action {
+    top: auto;
+    right: calc(100% + var(--thermostat-action-gap));
+    bottom: var(--thermostat-bottom-action-lift);
+    left: auto;
+    display: flex;
+    transform: none;
+  }
+
   .thermostat__current {
     font-size: var(--thermostat-current-size);
     font-weight: var(--weight-thin);
@@ -660,6 +944,32 @@
     color: var(--color-dim);
     font-size: var(--thermostat-setpoint-size);
     font-weight: var(--weight-light);
+    transform: scale(var(--thermostat-strain));
+    transition:
+      color var(--colour-fade) ease,
+      transform var(--thermostat-strain-snap) var(--thermostat-spring);
+  }
+
+  /* It grows away from the temperature, held on the side that faces it, so it never runs into it:
+   * the high above and the low below, or on the bottom, the low to the left and the high right. */
+  .thermostat__setpoint--high {
+    transform-origin: center bottom;
+  }
+
+  .thermostat__setpoint--low {
+    transform-origin: center top;
+  }
+
+  .thermostat--bottom .thermostat__setpoint--high {
+    transform-origin: left center;
+  }
+
+  .thermostat--bottom .thermostat__setpoint--low {
+    transform-origin: right center;
+  }
+
+  /* Pulled past where it can go: it grows under the finger at once, and springs back once let go. */
+  .thermostat__setpoint--straining {
     transition: color var(--colour-fade) ease;
   }
 
@@ -705,23 +1015,6 @@
       visibility 0s;
   }
 
-  /* On the edge's side of the figures, up above down, whichever setpoint they step. */
-  .thermostat__arrows {
-    top: 50%;
-    flex-direction: column;
-    gap: var(--thermostat-arrow-gap);
-    transform: translateY(-50%);
-  }
-
-  .thermostat--left .thermostat__arrows {
-    right: calc(100% + var(--thermostat-arrows-gap));
-  }
-
-  .thermostat--right .thermostat__arrows {
-    left: calc(100% + var(--thermostat-arrows-gap));
-  }
-
-  .thermostat__arrow,
   .thermostat__mode {
     padding: var(--thermostat-button-padding);
     border: 0;
@@ -731,14 +1024,26 @@
     cursor: pointer;
   }
 
-  .thermostat__arrow {
-    font-size: var(--thermostat-arrow-size);
+  /* A column on the edge's side of the figures, between them and the edge. */
+  .thermostat__modes {
+    top: 50%;
+    flex-direction: column;
+    gap: var(--thermostat-modes-spacing);
+    transform: translateY(-50%);
   }
 
-  .thermostat__modes {
+  .thermostat--left .thermostat__modes {
+    right: calc(100% + var(--thermostat-modes-gap));
+  }
+
+  .thermostat--right .thermostat__modes {
+    left: calc(100% + var(--thermostat-modes-gap));
+  }
+
+  .thermostat--bottom .thermostat__modes {
     top: calc(100% + var(--thermostat-modes-gap));
     left: 50%;
-    gap: var(--thermostat-modes-spacing);
+    flex-direction: row;
     transform: translateX(-50%);
   }
 
@@ -770,6 +1075,71 @@
 
   .thermostat__mode--waiting {
     animation: thermostat-waiting var(--waiting-breathe) ease-in-out infinite;
+  }
+
+  /* --- The dial --- */
+
+  .thermostat__dial {
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .thermostat--right .thermostat__dial {
+    transform: scaleX(-1);
+  }
+
+  /* A frame is dimmer than what it frames: the hashes sit under the figures, the fifths a step up. */
+  .thermostat__hash {
+    stroke: var(--color-dim);
+    stroke-width: var(--thermostat-hash-line);
+    stroke-linecap: round;
+  }
+
+  .thermostat__hash--major {
+    stroke: var(--color-muted);
+  }
+
+  /* Pressable all along the dial, a finger's width either side of the middle of its hashes. */
+  .thermostat__ring {
+    fill: none;
+    stroke: transparent;
+    stroke-width: var(--thermostat-dial-reach);
+    pointer-events: stroke;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  /* The setpoint's mark, in the mode's colour, held level with the figures while the hashes move. */
+  .thermostat__mark {
+    stroke: var(--thermostat-colour);
+    stroke-width: var(--thermostat-mark-line);
+    stroke-linecap: round;
+    transition: stroke-width var(--held-grow-time) ease-out;
+  }
+
+  .thermostat__mark--held {
+    stroke-width: calc(var(--thermostat-mark-line) * var(--held-grow));
+  }
+
+  /* Being set: a glow in the mark's own colour swells and fades, from the drag until it settles. */
+  .thermostat__mark--breathing {
+    animation: thermostat-glow var(--glow-breathe) ease-in-out infinite;
+  }
+
+  @keyframes thermostat-glow {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 0 transparent) drop-shadow(0 0 0 transparent);
+    }
+
+    50% {
+      filter: drop-shadow(0 0 calc(var(--thermostat-mark-glow) / 3) var(--thermostat-colour))
+        drop-shadow(0 0 var(--thermostat-mark-glow) var(--thermostat-colour));
+    }
   }
 
   @keyframes thermostat-waiting {

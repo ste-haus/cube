@@ -63,13 +63,15 @@
   --thermostat-reach: 8vh;
   --thermostat-edge-padding: 0.8vh;
   /* Where the figures sit across what shows of it once it is out, from the edge. */
-  --thermostat-open-centre: 46%;
+  --thermostat-open-centre: 52%;
   /* Where its middle hangs: the top of the screen's lower third. */
   --thermostat-anchor: calc(100% * 2 / 3);
   --thermostat-open-height: 42vh;
   --thermostat-open-reach: 15.5vh;
   --thermostat-open-width: calc(2 * var(--thermostat-open-reach));
   --thermostat-curve: cubic-bezier(0.65, 0, 0.35, 1);
+  /* A setpoint pulled past its edge springs back to size on this, overshooting a little. */
+  --thermostat-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --thermostat-line: 0.2vh;
   --thermostat-wash: 12%;
   --thermostat-wash-core: 28%;
@@ -83,11 +85,35 @@
   --thermostat-crest-line: 0.3vh;
   --thermostat-current-size: 4.2vh;
   --thermostat-setpoint-size: 1.9vh;
-  --thermostat-arrow-size: 2.8vh;
-  --thermostat-arrow-gap: 0.4vh;
-  --thermostat-arrows-gap: 0.8vh;
+  --thermostat-hash-line: 0.2vh;
+  --thermostat-mark-line: 0.4vh;
+  --thermostat-mark-glow: 1.2vh;
+  --thermostat-dial-reach: 6vh;
   --thermostat-mode-size: 2.4vh;
-  --thermostat-modes-gap: 1.2vh;
+  --thermostat-modes-gap: 0.8vh;
+  /* Between the figures, on the bottom where they run in a row. */
+  --thermostat-row-gap: 1.2vh;
+  /* On the bottom, a flatter oval than at the side, wider and lower, so its top sits close over
+   * the row of figures: collapsed `bottom-reach` of it shows, out `bottom-open-reach`. */
+  --thermostat-bottom-length: 32vh;
+  --thermostat-bottom-depth: 15vh;
+  --thermostat-bottom-reach: 6.5vh;
+  --thermostat-bottom-open-length: 48vh;
+  --thermostat-bottom-open-reach: 13vh;
+  --thermostat-bottom-open-depth: calc(2 * var(--thermostat-bottom-open-reach));
+  /* Out on the bottom, how far up the edge the figures sit, with the modes under them. */
+  --thermostat-bottom-open-lift: 4vh;
+  /* The flame or snowflake beside the row sits on the figures' baseline, as a glyph would: a
+   * flame is heavy at its foot, so centred on the digits it reads as floating. The baseline is the
+   * large figure's descent up from the foot of the row (measured on the panel's Roboto at line
+   * height 1), and the icon's drawing starts its own margin (2 of its 24 units) up from the bottom
+   * of its box. */
+  --thermostat-figure-descent: 0.13;
+  --thermostat-icon-margin: calc(2 / 24);
+  --thermostat-bottom-action-lift: calc(
+    var(--thermostat-figure-descent) * var(--thermostat-current-size) -
+      var(--thermostat-icon-margin) * var(--thermostat-action-size)
+  );
   --thermostat-modes-spacing: 0.3vh;
   --thermostat-button-padding: 0.3vh;
 

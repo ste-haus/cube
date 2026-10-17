@@ -448,13 +448,14 @@ class ThermostatSide(StrEnum):
 
     LEFT = "left"
     RIGHT = "right"
+    BOTTOM = "bottom"
 
 
 class Thermostat(BaseModel):
     """A thermostat hanging off one edge of the dashboard face, over whatever is under it.
 
-    Collapsed, it shows the temperature with the range it is held to; tapped, it slides out with a
-    row of modes and a pair of arrows for the setpoint the mode is working to. The entity is a
+    Collapsed, it shows the temperature with the range it is held to; tapped, it slides out with
+    its modes and a dial for the setpoint the mode is working to. The entity is a
     `climate` entity with a high and a low setpoint.
     """
 
@@ -462,7 +463,10 @@ class Thermostat(BaseModel):
     side: ThermostatSide = ThermostatSide.LEFT
     offset: float = Field(
         default=0,
-        description="How far below the top of the screen's lower third it hangs, in percent of its height; negative is above",
+        description=(
+            "How far below the top of the screen's lower third it hangs, in percent of its height, negative above;"
+            " on the bottom, how far right of the middle, in percent of its width, negative left"
+        ),
     )
 
 
