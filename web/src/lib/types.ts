@@ -185,12 +185,15 @@ export interface Transcript {
   content_marker: string | null;
 }
 
-export type ThermostatSide = "left" | "right";
+export type ThermostatSide = "left" | "right" | "bottom";
 
 export interface Thermostat {
   entity_id: string;
   side: ThermostatSide;
-  /** Below the top of the screen's lower third, in percent of its height; negative is above. */
+  /**
+   * Below the top of the screen's lower third, in percent of its height, negative above; on the
+   * bottom, right of the middle, in percent of its width, negative left.
+   */
   offset: number;
 }
 
