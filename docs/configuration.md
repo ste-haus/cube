@@ -295,6 +295,26 @@ floorplans:
 
 `image` names an SVG in `resources/floorplans/`. The group an entity is listed under decides how it is drawn. [Floorplans](floorplans.md) covers this properly, including how to prepare a drawing.
 
+Each level can keep room clear above and below it on the dashboard face, its level dots included, with `padding`:
+
+```yaml
+floorplans:
+  downstairs:
+    image: downstairs
+    padding: &floorplan_padding
+      bottom: 5.7
+  upstairs:
+    image: upstairs
+    padding: *floorplan_padding
+```
+
+| Field | Default | Meaning |
+|---|---|---|
+| `padding.top` | `0` | Room kept clear above the floorplan, in percent of the screen's height |
+| `padding.bottom` | `0` | Room kept clear below it, its level dots included |
+
+The level showing decides it, easing to the next level's as it is swiped to, so levels that should line up as they are swiped between want the same; a YAML anchor, as above, keeps them so. The drawing is centred in what is left, so padding one end moves it towards the other by half as much. A thermostat on the bottom hangs over the level dots; a `bottom` of 5.7 lifts them just over it.
+
 ### weather
 
 ```yaml
@@ -411,7 +431,7 @@ thermostat:
 | `side` | `left` | The edge it hangs from: `left`, `right`, or `bottom` |
 | `offset` | `0` | How far below the top of the screen's lower third it hangs, in percent of the screen's height; negative moves it up. It is centred on that line unless moved. On the bottom it is centred along the edge instead, and `offset` moves it right, in percent of the screen's width; negative moves it left |
 
-Collapsed, it is an oval most of the way off the screen, showing the temperature with the high above it and the low below. A tap slides it out, keeping the figures where they are, and brings in a column of modes between them and the edge (off, heat, cool and auto, of those the thermostat offers) and a dial round the inside of its far side, with a hash for every degree and a longer one for every fifth. A tap on it again, a press anywhere else, or ten seconds without a touch puts it back. On the right, everything is mirrored. On the bottom, it is turned up off the edge: a wide oval with the low, the temperature and the high in a row, the modes in a row under them, and the dial across the top, cooler to the left.
+Collapsed, it is an oval most of the way off the screen, showing the temperature with the high above it and the low below. A tap slides it out, keeping the figures where they are, and brings in a column of modes between them and the edge (off, heat, cool and auto, of those the thermostat offers) and a dial round the inside of its far side, with a hash for every degree and a longer one for every fifth. A tap on it again, a press anywhere else, or ten seconds without a touch puts it back. On the right, everything is mirrored. On the bottom, it is turned up off the edge: a wide oval with the low, the temperature and the high in a row, the modes in a row under them, and the dial across the top, cooler to the left. It hangs where the floorplan's level dots are, so give the floorplan levels enough `padding.bottom` (see [floorplans](#floorplans)) to lift them over it.
 
 It is drawn in the mode's colour, a line of it round a wash of it: the primary colour for heat, the secondary for cool, and grey only for off; it keeps its colour while the equipment is idle. In auto it takes the colour of whatever the equipment is doing, and while it idles, of whichever it would do next: heat if the house is nearer the low setpoint, cool if nearer the high. While the equipment is heating or cooling, a flame or a snowflake shows over the figures and air flows off its open side.
 

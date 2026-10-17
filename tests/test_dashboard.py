@@ -1024,6 +1024,30 @@ def test_a_thermostat_hangs_on_the_left_unless_told():
     assert bottom.thermostat.side == "bottom"
 
 
+def test_a_floorplan_level_has_no_padding_unless_told():
+    dashboard = Dashboard.model_validate(
+        profiles()
+        | {
+            "floorplans": {
+                "downstairs": {"image": "downstairs", "padding": {"top": 1.5, "bottom": 5.7}},
+                "upstairs": {"image": "upstairs"},
+            }
+        }
+    )
+    padded = dashboard.floorplans["downstairs"].padding
+    plain = dashboard.floorplans["upstairs"].padding
+
+    assert (plain.top, plain.bottom) == (0, 0)
+    assert (padded.top, padded.bottom) == (1.5, 5.7)
+
+
+def test_a_floorplan_level_is_never_padded_negatively():
+    with pytest.raises(ValidationError):
+        Dashboard.model_validate(
+            profiles() | {"floorplans": {"downstairs": {"image": "downstairs", "padding": {"bottom": -1}}}}
+        )
+
+
 def test_a_thermostat_only_hangs_off_an_edge():
     with pytest.raises(ValidationError):
         Dashboard.model_validate(profiles() | {"thermostat": {"entity_id": THERMOSTAT, "side": "extra"}})

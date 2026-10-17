@@ -404,6 +404,12 @@ toggles:
 floorplans:
   downstairs:
     image: downstairs
+    # Room kept clear above and below it on the dashboard face, level dots included, in percent of
+    # the screen's height; 0 unless set. Give levels that should line up the same, with a YAML
+    # anchor if you like. A thermostat on the bottom wants `bottom` of about 5.7.
+    padding:
+      top: 0
+      bottom: 0
     # The brightness bar in a held light's colour window: `light` (the default), which follows the
     # light's colour and brightness, or `neutral`.
     fill: light
@@ -490,10 +496,10 @@ transcript:
   entity_id: input_text.example_transcript
 
 # A thermostat hanging off the edge of the dashboard face, over whatever is under it. A tap opens
-# it out with the modes and a pair of arrows for the setpoint the mode is working to. The entity
-# is a `climate` entity with a high and a low setpoint. `side` is `left` or `right`; `offset`
+# it out with the modes and a dial for the setpoint the mode is working to. The entity is a
+# `climate` entity with a high and a low setpoint. `side` is `left`, `right` or `bottom`; `offset`
 # moves it down from where it hangs, centred on the top of the screen's lower third, in percent of the
-# screen's height (negative moves it up).
+# screen's height (negative moves it up), or on the bottom, right along the edge in percent of its width.
 thermostat:
   entity_id: climate.example_home
   side: left

@@ -19,6 +19,7 @@
    */
 
   const ACTIVE = "active";
+  const SCREEN_HEIGHT = "vh";
   const INACTIVE = "inactive";
 
   /** States that count as "lit", "open", or "occupied", depending on the group. */
@@ -88,6 +89,8 @@
 
   const currentLevel = $derived(level.chosen ?? defaultLevel);
   const index = $derived(Math.max(levels.indexOf(currentLevel), 0));
+  // The level showing keeps its room clear, dots and all; levels that differ ease between theirs.
+  const padding = $derived(floorplans[currentLevel]?.padding ?? null);
 
   /*
    * The control last tapped, marked on the pane it is drawn on, so it slides away with its
@@ -392,7 +395,11 @@
   }
 </script>
 
-<section class="floorplan">
+<section
+  class="floorplan"
+  style:padding-top={padding ? `${padding.top}${SCREEN_HEIGHT}` : null}
+  style:padding-bottom={padding ? `${padding.bottom}${SCREEN_HEIGHT}` : null}
+>
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
   <div
     class="floorplan__viewport"
@@ -457,6 +464,10 @@
     align-items: center;
     min-height: 0;
     height: 100%;
+    box-sizing: border-box;
+    transition:
+      padding-top var(--floorplan-slide-duration) ease-in-out,
+      padding-bottom var(--floorplan-slide-duration) ease-in-out;
   }
 
   .floorplan__viewport {

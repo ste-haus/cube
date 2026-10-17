@@ -135,11 +135,18 @@ export interface ForecastDay {
   precipitation_probability: number | null;
 }
 
+/** Room kept clear above and below a floorplan level, in percent of the screen's height. */
+export interface FloorplanPadding {
+  top: number;
+  bottom: number;
+}
+
 export interface Floorplan {
   image: string;
   groups: Record<string, string[]>;
   /** What the brightness bar in a held light's colour window is filled with. */
   fill: SliderFill;
+  padding: FloorplanPadding;
 }
 
 export interface Gauge {

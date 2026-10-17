@@ -235,6 +235,17 @@ class SliderFill(StrEnum):
     LIGHT = "light"
 
 
+class FloorplanPadding(BaseModel):
+    """Room kept clear above and below a floorplan level on the dashboard face, in percent of the screen's height.
+
+    Each level has its own, so levels meant to line up as they are swiped between want the same. A
+    thermostat hung off the bottom wants `bottom` at least its own height, so the level dots sit above it.
+    """
+
+    top: float = Field(default=0, ge=0)
+    bottom: float = Field(default=0, ge=0)
+
+
 class Floorplan(BaseModel):
     """One floorplan level.
 
@@ -249,6 +260,7 @@ class Floorplan(BaseModel):
         default=SliderFill.LIGHT,
         description="What the brightness bar in a held light's colour window is filled with",
     )
+    padding: FloorplanPadding = Field(default_factory=FloorplanPadding)
 
     @property
     def entity_ids(self) -> list[str]:
