@@ -55,7 +55,7 @@
 </script>
 
 <section class="media-sessions">
-  <h3 class="media-sessions__heading">{media.title}</h3>
+  <h3 class="media-sessions__heading card-title">{media.title}</h3>
 
   <!-- Always drawn, so each row wipes in and out as it comes and goes, even the first and the last:
        a transition only plays for the block it belongs to, not for one around it. -->

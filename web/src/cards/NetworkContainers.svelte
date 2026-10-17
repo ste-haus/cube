@@ -30,7 +30,7 @@
 </script>
 
 <section class="network-containers" style:--network-containers-pulse="{PULSE_MS}{MILLISECONDS}">
-  <h3 class="network-containers__title">{containers.name}</h3>
+  <h3 class="network-containers__title card-title">{containers.name}</h3>
   <ul class="network-containers__list">
     {#each listed as container (container.name)}
       <li class="network-containers__container network-containers__container--{container.state}">

@@ -267,6 +267,21 @@
   --incident-banner-padding: 0.5rem 1rem;
   --incident-banner-gap: 0.8rem;
   --incidents-window-width: 46vw;
+  /* A critical switch's window: the switch, and the question turning it off asks first. */
+  --critical-switch-window-width: 30rem;
+  --critical-switch-window-padding: 2.5rem 2rem;
+  --critical-switch-window-gap: 1.6rem;
+  --critical-switch-question-size: 1.8rem;
+  /* Its control: two halves, on and off or the question's answers, the one size either way. */
+  --critical-switch-control-width: 22rem;
+  --critical-switch-control-height: 4.2rem;
+  --critical-switch-control-size: 1.6rem;
+  --critical-switch-slide: 250ms;
+  /* The thumb's margin inside the track, and the round of both: as round as a pill. */
+  --critical-switch-inset: 0.35rem;
+  --critical-switch-round: 999px;
+  --critical-switch-track: 2px;
+  --critical-switch-answer-gap: 1rem;
   --incidents-window-height: 62vh;
   /* How long a line too long for the incidents window takes to travel to its end, and as long back. */
   --incident-marquee-duration: 9s;

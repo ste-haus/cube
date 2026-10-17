@@ -8,6 +8,6 @@
 </script>
 
 <section class="network-card">
-  <h3 class="network-card__title">{stats.title}</h3>
+  <h3 class="network-card__title card-title">{stats.title}</h3>
   <StatRows rows={stats.rows} />
 </section>

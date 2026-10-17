@@ -153,6 +153,7 @@
 
 <section
   class="network-card network-rack"
+  class:card--alert={tier !== null}
   class:network-rack--caution={tier === CAUTION}
   class:network-rack--warning={tier === WARNING}
   style:--network-rack-tier={tierColour}
@@ -161,7 +162,7 @@
 >
   <!-- The title, and the readings opposite it, so the chart has the rest of the card. -->
   <header class="network-rack__header">
-    <h3 class="network-card__title">{rack.title}</h3>
+    <h3 class="network-card__title card-title">{rack.title}</h3>
 
     <div class="network-rack__now">
       {#if rack.upper_entity_id || rack.lower_entity_id}

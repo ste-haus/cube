@@ -334,9 +334,8 @@ faces:
             entity_id: binary_sensor.router_connection
             latency_entity_id: sensor.router_round_trip
             branches:
-              - name: DNS
-                entity_id: switch.dns_blocking
-                tap: true
+              - name: dns
+                entity_id: binary_sensor.dns_connection
               - name: nas
                 entity_id: binary_sensor.nas_connection
                 latency_entity_id: sensor.nas_round_trip
@@ -366,6 +365,9 @@ faces:
           attribute: dns
       stats:
         title: Vitals
+        switch:
+          entity_id: switch.dns_blocking
+          label: Ad blocking
         rows:
           - label: Wi-Fi clients
             icon: mdi:wifi
@@ -403,6 +405,8 @@ faces:
 | `rack` | `title`, `entity_id`, the temperature inside it, and optionally `unit`, `upper_entity_id`, `lower_entity_id`, `fan_entity_id` with `fan_max` (10 unless you say otherwise), and `caution_above` and `warning_above`. A `warning_above` under `caution_above` is refused when the config loads |
 | `media` | `entity_id`, a sensor whose `sessions` attribute lists the streams, and `title`, `Streaming` unless you say otherwise |
 
+`hosts`, `containers`, `stats`, `bus`, `rack` and `media` each take an optional `switch`, a critical switch held behind the card (see below). The map takes none, and one on it, or on any stop, is refused when the config loads: the map shows what is up, and switches nothing.
+
 **The clock.** The time to the second, in fixed-width figures so the line holds still as they run, and under it in grey, sized to run exactly as wide as the time, with `ntp_entity_id`, how far a host's clock is off its time source, signed, then the time in UTC. The clock is the panel's own, so the offset is the host's, not the panel's. Their words are the `clock_utc` and `clock_ntp` labels.
 
 **The map.** A stop names a `name` and optionally `name_entity_id`, whose state names it instead while it has one; `entity_id`, whether it is up, against `up_states`; `latency_entity_id`, milliseconds to it, shown at the right; and `branches`, more stops. A stop with branches is a station, drawn across the rails its branches leave on and named in capitals; every other stop is named in lower case. Each branch has a rail of its own, leaving its station side by side with the others, the first branch outermost, and turns off right into the column of stops at its own row. Because the outer branches turn off first, a branch that branches again takes the rails beside it afresh, so the map is as wide as its busiest station and no turn crosses a rail still in use. A stop with `tap: true` is something the line runs through, like a resolver every lookup passes, and is drawn as a dotted line across it; one among a station's branches sits just under the station and takes no rail. A rail is primary while the stop it leads to is up and grey while it is down; a stop that is down reads `Down`. While the face is looked at, sparks travel the network from one stop at the end of a branch to another, up to the station the two share and down the other side, by a way lit end to end and never ending at a station; at most three are out at once, each resting a random while between trips.
@@ -417,7 +421,13 @@ faces:
 
 **Streaming.** One row to each record in `sessions`: `device`, `user`, `title`, `series`, `state` (`playing` or anything else for paused), `position` and `duration` in seconds, `play_method` (`DirectPlay`, `DirectStream` or `Transcode`), `resolution`, and `bitrate` in bits a second. The title has a line of its own, travelling back and forth when it is too long for the card; under it, who, on what, at what resolution and rate, with how it plays pinned to the right, a transcode in the secondary colour; then how far in. A stream comes and goes as a row does, wiping in and out.
 
-Every figure on the face slides to a new value rather than jumping. The charts and strips are read from Home Assistant's history while the face is looked at, and again every five minutes; nothing on the face fetches or animates while it is turned away. Everything a network face reads is added to the allowlist, and it switches nothing.
+**Critical switches.** A card's `switch` is something that should not go off from a brush of the hand, like the network's ad blocking. It names `entity_id`, in a domain the panel may toggle; `label`, what it is called; optionally `confirm`, what turning it off asks first, `labels.critical_switch_confirm` ("Are you sure you want to turn off {label}?") unless you say otherwise; `advise_when_off`, `true` unless you say otherwise; and `hold_seconds`, how long the answer that turns it off is held, 1 unless you say otherwise.
+
+Hold the card and corners close in on it; once they meet, a window opens out of them with a switch in it, `labels.critical_switch_on` and `labels.critical_switch_off` side by side, its thumb under the one Home Assistant says it is, and a tap anywhere on it flips it: on in the primary colour, off in the card's advisory colour, or grey for a switch that does not advise. Letting go or sliding off before then does nothing, and a slide still turns the cube. Flipping it off while it is on asks first, with two buttons, `labels.critical_switch_cancel` and `labels.critical_switch_turn_off`, to answer, the second held for `hold_seconds` as it fills, and letting go before it is full sends nothing; while it asks, the window's band takes the card's off colour and its corners pulse in it, and only the answer sends. If the switch goes off some other way while it is asking, the question goes and the switch comes back. Flipping it on while it is off turns it on at once. While the switch is neither, unknown or unavailable, it cannot be flipped. Either way the window folds back into the card as soon as something is sent, and the corners breathe on the card until Home Assistant answers. A tap on the glass around it, or a minute untouched, closes it having sent nothing.
+
+While the switch is off and `advise_when_off` is set, the card's frame and title breathe in the secondary colour: an advisory, something left off on purpose, which does not rise to a caution and does not light the master. A card's own alert outranks it: a host down or on battery, or the rack past its caution, shows that instead for as long as it lasts.
+
+Every figure on the face slides to a new value rather than jumping. The charts and strips are read from Home Assistant's history while the face is looked at, and again every five minutes; nothing on the face fetches or animates while it is turned away. Everything a network face reads is added to the allowlist, and of it, only the critical switches may be switched.
 
 ### The label strip
 

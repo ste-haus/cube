@@ -159,12 +159,13 @@
   class="network-host"
   class:network-host--down={up === false}
   class:network-host--battery={ups !== null && !ups.onMains}
+  class:card--alert={up === false || (ups !== null && !ups.onMains)}
   style:--network-host-pulse="{PULSE_MS}{MILLISECONDS}"
   style:--network-host-flash="{FLASH_MS}{MILLISECONDS}"
   style:--network-host-offline={offlineColour}
 >
   <header class="network-host__header">
-    <h3 class="network-host__name">{ha.state(host.name_entity_id) ?? host.name ?? ""}</h3>
+    <h3 class="network-host__name card-title">{ha.state(host.name_entity_id) ?? host.name ?? ""}</h3>
     {#if uptime && up !== false}<span class="network-host__uptime-since">{uptime}</span>{/if}
     <span class="network-host__address">{address ?? ""}</span>
   </header>
