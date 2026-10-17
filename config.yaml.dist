@@ -398,19 +398,18 @@ toggles:
     icon: mdi:pine-tree
     visible_when: input_boolean.example_seasonal
 
-# Room kept clear above and below the floorplan on the dashboard face, in percent of the screen's
-# height, the same for every level. A thermostat on the bottom wants `bottom` of about 5.7, to lift
-# the level dots over it.
-floorplan_padding:
-  top: 0
-  bottom: 0
-
 # Floorplan levels. `image` names an SVG in `resources/floorplans/`; every element
 # in it must carry an entity id as its DOM id. Group names drive the CSS classes the browser
 # sets, so they must match the stylesheet that ships alongside the SVG.
 floorplans:
   downstairs:
     image: downstairs
+    # Room kept clear above and below it on the dashboard face, level dots included, in percent of
+    # the screen's height; 0 unless set. Give levels that should line up the same, with a YAML
+    # anchor if you like. A thermostat on the bottom wants `bottom` of about 5.7.
+    padding:
+      top: 0
+      bottom: 0
     # The brightness bar in a held light's colour window: `light` (the default), which follows the
     # light's colour and brightness, or `neutral`.
     fill: light

@@ -17,8 +17,6 @@
   import { faceVisibility } from "../lib/cube.svelte";
   import type { DashboardConfig } from "../lib/types";
 
-  const SCREEN_HEIGHT = "vh";
-
   let { config }: { config: DashboardConfig } = $props();
 
   const visibility = faceVisibility();
@@ -53,11 +51,7 @@
     <Toggles toggles={config.toggles} />
   </div>
 
-  <div
-    class="dashboard__center"
-    style:padding-top="{config.floorplan_padding.top}{SCREEN_HEIGHT}"
-    style:padding-bottom="{config.floorplan_padding.bottom}{SCREEN_HEIGHT}"
-  >
+  <div class="dashboard__center">
     <Floorplan floorplans={config.floorplans} initial={config.profile.floorplan} defaultXy={config.light.default_xy} labels={config.labels} />
   </div>
 

@@ -1024,17 +1024,28 @@ def test_a_thermostat_hangs_on_the_left_unless_told():
     assert bottom.thermostat.side == "bottom"
 
 
-def test_the_floorplan_has_no_padding_unless_told():
-    plain = Dashboard.model_validate(profiles())
-    padded = Dashboard.model_validate(profiles() | {"floorplan_padding": {"top": 1.5, "bottom": 5.7}})
+def test_a_floorplan_level_has_no_padding_unless_told():
+    dashboard = Dashboard.model_validate(
+        profiles()
+        | {
+            "floorplans": {
+                "downstairs": {"image": "downstairs", "padding": {"top": 1.5, "bottom": 5.7}},
+                "upstairs": {"image": "upstairs"},
+            }
+        }
+    )
+    padded = dashboard.floorplans["downstairs"].padding
+    plain = dashboard.floorplans["upstairs"].padding
 
-    assert (plain.floorplan_padding.top, plain.floorplan_padding.bottom) == (0, 0)
-    assert (padded.floorplan_padding.top, padded.floorplan_padding.bottom) == (1.5, 5.7)
+    assert (plain.top, plain.bottom) == (0, 0)
+    assert (padded.top, padded.bottom) == (1.5, 5.7)
 
 
-def test_the_floorplan_padding_is_never_negative():
+def test_a_floorplan_level_is_never_padded_negatively():
     with pytest.raises(ValidationError):
-        Dashboard.model_validate(profiles() | {"floorplan_padding": {"bottom": -1}})
+        Dashboard.model_validate(
+            profiles() | {"floorplans": {"downstairs": {"image": "downstairs", "padding": {"bottom": -1}}}}
+        )
 
 
 def test_a_thermostat_only_hangs_off_an_edge():

@@ -135,11 +135,18 @@ export interface ForecastDay {
   precipitation_probability: number | null;
 }
 
+/** Room kept clear above and below a floorplan level, in percent of the screen's height. */
+export interface FloorplanPadding {
+  top: number;
+  bottom: number;
+}
+
 export interface Floorplan {
   image: string;
   groups: Record<string, string[]>;
   /** What the brightness bar in a held light's colour window is filled with. */
   fill: SliderFill;
+  padding: FloorplanPadding;
 }
 
 export interface Gauge {
@@ -183,12 +190,6 @@ export interface Transcript {
   entity_id: string;
   syllables_per_second: number;
   content_marker: string | null;
-}
-
-/** Room kept clear above and below the floorplan, in percent of the screen's height. */
-export interface FloorplanPadding {
-  top: number;
-  bottom: number;
 }
 
 export type ThermostatSide = "left" | "right" | "bottom";
@@ -635,7 +636,6 @@ export interface DashboardConfig {
   agenda: Agenda;
   toggles: Toggle[];
   floorplans: Record<string, Floorplan>;
-  floorplan_padding: FloorplanPadding;
   weather: Weather | null;
   camera: Camera | null;
   go2rtc: Go2rtc | null;
