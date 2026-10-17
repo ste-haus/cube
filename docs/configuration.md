@@ -603,6 +603,11 @@ labels:
   incidents_today: Today
   clock_utc: UTC
   clock_ntp: NTP
+  critical_switch_confirm: Are you sure you want to turn off {label}?
+  critical_switch_on: "On"
+  critical_switch_off: "Off"
+  critical_switch_turn_off: Turn off
+  critical_switch_cancel: Cancel
 ```
 
 ### What the panel may switch
@@ -611,7 +616,7 @@ labels:
 toggleable_domains: [light, switch, group, input_boolean, cover]
 ```
 
-A tap is refused unless the entity is one some panel actually draws as a control — a light or a fan on the floorplan, a configured toggle, or a control on a [guest face](panels.md#the-guest-face) — **and** its domain is in this list. Everything else is read-only no matter what is sent.
+A tap is refused unless the entity is one some panel actually draws as a control — a light or a fan on the floorplan, a configured toggle, a control on a [guest face](panels.md#the-guest-face), or a critical switch on a [network face](panels.md#the-network-face) card — **and** its domain is in this list. Everything else is read-only no matter what is sent.
 
 Setting a value rather than switching is held to the same rule, with a fixed set of domains in place of this list: a `light`'s brightness, a `cover`'s position, the time an `input_datetime` holds, and a `climate` entity's mode and setpoints. The allowlist is the whole house's rather than one panel's, so a floorplan light can be dimmed as well as switched, even from a panel whose own floorplan does not draw it.
 

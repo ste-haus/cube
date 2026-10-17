@@ -162,6 +162,7 @@ NETWORK_STATES: dict[str, Any] = {
     "binary_sensor.example_gateway_connection": UP,
     "sensor.example_gateway_latency": "0.4",
     "switch.example_dns_blocking": UP,
+    "binary_sensor.example_dns_connection": UP,
     "binary_sensor.example_nas_connection": UP,
     "sensor.example_nas_latency": "0.5",
     "sensor.example_nas_ip": "192.0.2.10",

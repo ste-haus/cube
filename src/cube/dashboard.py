@@ -718,6 +718,18 @@ class Labels(BaseModel):
     incidents_today: str = Field(default="Today", description="An incident's window: the day it is")
     clock_utc: str = Field(default="UTC", description="The network face's clock: after the time in UTC")
     clock_ntp: str = Field(default="NTP", description="The network face's clock: before how far a host's clock is off its time source")
+    critical_switch_confirm: str = Field(
+        default="Are you sure you want to turn off {label}?",
+        description="A critical switch's window: what turning it off asks first, unless it says; `{label}` is replaced",
+    )
+    critical_switch_on: str = Field(default="On", description="A critical switch's window: the key that turns it on")
+    critical_switch_off: str = Field(default="Off", description="A critical switch's window: the key that turns it off")
+    critical_switch_turn_off: str = Field(
+        default="Turn off", description="A critical switch's window: the answer that turns it off"
+    )
+    critical_switch_cancel: str = Field(
+        default="Cancel", description="A critical switch's window: the button that leaves it on"
+    )
 
 
 BLANK_FACE_CONTENT = "blank"
@@ -1393,6 +1405,40 @@ class DepartureFaceOptions(CameraFaceOptions):
 DEFAULT_UP_STATES = ["on"]
 
 
+SWITCH_KEY = "switch"
+# As long as a master is held to clear it: the panel's one length for a deliberate press.
+DEFAULT_CRITICAL_HOLD_SECONDS = 1.0
+MAP_SWITCH_MESSAGE = "The network map takes no `switch`: it shows what is up, and switches nothing."
+
+
+class CriticalSwitch(BaseModel):
+    """A switch held behind a card, for something that should not go off by accident.
+
+    Holding the card opens a window with the switch in it. Turning it on goes straight through;
+    turning it off asks first, for as long as it is on. While it is off the card says so, unless
+    told not to.
+    """
+
+    entity_id: str = Field(description="What the switch toggles, in a domain the panel may toggle")
+    label: str = Field(description="What the switch is called, across its window's band")
+    confirm: str | None = Field(
+        default=None, description="What turning it off asks first; `labels.critical_switch_confirm` until it is given"
+    )
+    advise_when_off: bool = Field(
+        default=True, description="Breathe the card's frame and title in the secondary colour while it is off"
+    )
+    hold_seconds: float = Field(
+        default=DEFAULT_CRITICAL_HOLD_SECONDS, gt=0, description="How long the answer that turns it off is held down"
+    )
+
+
+def _refuse_a_switch(data: Any) -> Any:
+    if isinstance(data, dict) and SWITCH_KEY in data:
+        raise ValueError(MAP_SWITCH_MESSAGE)
+
+    return data
+
+
 class NetworkStop(BaseModel):
     """One stop on a network face's map.
 
@@ -1411,6 +1457,8 @@ class NetworkStop(BaseModel):
     tap: bool = Field(default=False, description="Drawn across the line rather than as a stop on it")
     branches: list["NetworkStop"] = Field(default_factory=list)
 
+    _no_switch = model_validator(mode="before")(_refuse_a_switch)
+
     @property
     def entities(self) -> list[str]:
         named = [entity_id for entity_id in (self.name_entity_id, self.entity_id, self.latency_entity_id) if entity_id]
@@ -1428,6 +1476,8 @@ class NetworkMap(BaseModel):
 
     upstream: list[NetworkStop] = Field(default_factory=list)
     line: list[NetworkStop] = Field(min_length=1)
+
+    _no_switch = model_validator(mode="before")(_refuse_a_switch)
 
     @property
     def entities(self) -> list[str]:
@@ -1537,6 +1587,9 @@ class NetworkHost(BaseModel):
         default=None,
         description="A UPS whose state is `normal` on mains, with `capacity` and `runtime_remaining` attributes",
     )
+    switch: CriticalSwitch | None = Field(
+        default=None, description="Held behind the card; the host's own alerts outrank its advisory"
+    )
 
     @model_validator(mode="after")
     def require_a_name(self) -> Self:
@@ -1559,6 +1612,7 @@ class NetworkHost(BaseModel):
             self.memory_entity_id,
             self.disk_entity_id,
             self.ups_entity_id,
+            self.switch.entity_id if self.switch else None,
         )
 
         return [entity_id for entity_id in named if entity_id]
@@ -1571,6 +1625,11 @@ class NetworkContainers(BaseModel):
     entity_id: str = Field(
         description="A sensor whose `containers` attribute lists each one's `name`, `state`, `status` and `uptime`"
     )
+    switch: CriticalSwitch | None = None
+
+    @property
+    def entities(self) -> list[str]:
+        return [self.entity_id] + ([self.switch.entity_id] if self.switch else [])
 
 
 class NetworkVip(BaseModel):
@@ -1597,10 +1656,11 @@ class NetworkStats(BaseModel):
 
     title: str
     rows: list[NetworkStat] = Field(min_length=1)
+    switch: CriticalSwitch | None = None
 
     @property
     def entities(self) -> list[str]:
-        return [row.entity_id for row in self.rows]
+        return [row.entity_id for row in self.rows] + ([self.switch.entity_id] if self.switch else [])
 
 
 # How fast a rack fan can run, as fan controllers count it: off at 0 and flat out at 10.
@@ -1624,6 +1684,9 @@ class NetworkRack(BaseModel):
     fan_max: int = Field(default=DEFAULT_FAN_MAX, gt=0, description="The top of the fan's scale")
     caution_above: float | None = None
     warning_above: float | None = None
+    switch: CriticalSwitch | None = Field(
+        default=None, description="Held behind the card; the rack's own caution and warning outrank its advisory"
+    )
 
     @model_validator(mode="after")
     def require_warning_past_caution(self) -> Self:
@@ -1638,7 +1701,13 @@ class NetworkRack(BaseModel):
 
     @property
     def entities(self) -> list[str]:
-        named = (self.entity_id, self.upper_entity_id, self.lower_entity_id, self.fan_entity_id)
+        named = (
+            self.entity_id,
+            self.upper_entity_id,
+            self.lower_entity_id,
+            self.fan_entity_id,
+            self.switch.entity_id if self.switch else None,
+        )
 
         return [entity_id for entity_id in named if entity_id]
 
@@ -1651,6 +1720,11 @@ class NetworkMedia(BaseModel):
 
     entity_id: str = Field(description="A sensor whose `sessions` attribute lists what is playing, and where")
     title: str = DEFAULT_MEDIA_TITLE
+    switch: CriticalSwitch | None = None
+
+    @property
+    def entities(self) -> list[str]:
+        return [self.entity_id] + ([self.switch.entity_id] if self.switch else [])
 
 
 class NetworkClock(BaseModel):
@@ -1682,13 +1756,21 @@ class NetworkFaceOptions(FaceOptions):
         entities += self.map.entities if self.map else []
         entities += self.wan.entities if self.wan else []
         entities += [entity_id for host in self.hosts for entity_id in host.entities]
-        entities += [containers.entity_id for containers in self.containers]
+        entities += [entity_id for containers in self.containers for entity_id in containers.entities]
         entities += [vip.entity_id for vip in self.vips]
         entities += self.stats.entities if self.stats else []
         entities += self.bus.entities if self.bus else []
         entities += self.rack.entities if self.rack else []
 
-        return entities + ([self.media.entity_id] if self.media else [])
+        return entities + (self.media.entities if self.media else [])
+
+    @property
+    def controls(self) -> list[str]:
+        """The critical switches held behind its cards."""
+
+        cards = (*self.hosts, *self.containers, self.stats, self.bus, self.rack, self.media)
+
+        return [card.switch.entity_id for card in cards if card is not None and card.switch is not None]
 
 
 # The renderers that read `options` as something more than a passthrough, and the shape each

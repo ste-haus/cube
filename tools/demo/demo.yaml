@@ -83,9 +83,8 @@ profiles:
                 entity_id: binary_sensor.example_gateway_connection
                 latency_entity_id: sensor.example_gateway_latency
                 branches:
-                  - name: DNS
-                    entity_id: switch.example_dns_blocking
-                    tap: true
+                  - name: dns
+                    entity_id: binary_sensor.example_dns_connection
                   - name: nas
                     entity_id: binary_sensor.example_nas_connection
                     latency_entity_id: sensor.example_nas_latency
@@ -160,6 +159,9 @@ profiles:
               attribute: lb
           stats:
             title: Vitals
+            switch:
+              entity_id: switch.example_dns_blocking
+              label: Ad blocking
             rows:
               - label: Wi-Fi clients
                 icon: mdi:wifi

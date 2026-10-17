@@ -433,9 +433,23 @@ export interface NetworkStat {
   unit: string | null;
 }
 
+/** A switch held behind a card: turning it on goes straight through, turning it off asks first. */
+export interface CriticalSwitch {
+  entity_id: string;
+  /** What it is called, across its window's band. */
+  label: string;
+  /** What turning it off asks, or null for `labels.critical_switch_confirm`. */
+  confirm: string | null;
+  /** Whether the card breathes in the secondary colour while it is off. */
+  advise_when_off: boolean;
+  /** How long the answer that turns it off is held down. */
+  hold_seconds: number;
+}
+
 export interface NetworkStats {
   title: string;
   rows: NetworkStat[];
+  switch: CriticalSwitch | null;
 }
 
 export interface NetworkRack {
@@ -450,11 +464,13 @@ export interface NetworkRack {
   fan_max: number;
   caution_above: number | null;
   warning_above: number | null;
+  switch: CriticalSwitch | null;
 }
 
 export interface NetworkContainers {
   name: string;
   entity_id: string;
+  switch: CriticalSwitch | null;
 }
 
 export interface NetworkHost {
@@ -479,6 +495,7 @@ export interface NetworkHost {
   disk_entity_id: string | null;
   /** `normal` while on mains, with `capacity` and `runtime_remaining` attributes. */
   ups_entity_id: string | null;
+  switch: CriticalSwitch | null;
 }
 
 /** One stream from the media server, as the media sensor's `sessions` attribute lists it. */
@@ -501,6 +518,7 @@ export interface MediaSession {
 export interface NetworkMedia {
   entity_id: string;
   title: string;
+  switch: CriticalSwitch | null;
 }
 
 export interface NetworkClock {
@@ -600,6 +618,11 @@ export interface Labels {
   incidents_today: string;
   clock_utc: string;
   clock_ntp: string;
+  critical_switch_confirm: string;
+  critical_switch_on: string;
+  critical_switch_off: string;
+  critical_switch_turn_off: string;
+  critical_switch_cancel: string;
 }
 
 export interface Theme {
