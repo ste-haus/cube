@@ -15,11 +15,9 @@
   import WeatherSummary from "../cards/WeatherSummary.svelte";
   import { agenda } from "../lib/agenda.svelte";
   import { faceVisibility } from "../lib/cube.svelte";
-  import type { DashboardConfig, ThermostatSide } from "../lib/types";
+  import type { DashboardConfig } from "../lib/types";
 
-  // Hung off the bottom, the thermostat sits where the floorplan's level dots would, so the
-  // centre column stops short of it.
-  const THERMOSTAT_BOTTOM: ThermostatSide = "bottom";
+  const SCREEN_HEIGHT = "vh";
 
   let { config }: { config: DashboardConfig } = $props();
 
@@ -39,7 +37,7 @@
   });
 </script>
 
-<div class="dashboard" class:dashboard--thermostat-bottom={config.thermostat?.side === THERMOSTAT_BOTTOM}>
+<div class="dashboard">
   <header class="dashboard__header">
     <Indicators indicators={config.indicators} statusIndicators={config.status_indicators} />
   </header>
@@ -55,7 +53,11 @@
     <Toggles toggles={config.toggles} />
   </div>
 
-  <div class="dashboard__center">
+  <div
+    class="dashboard__center"
+    style:padding-top="{config.floorplan_padding.top}{SCREEN_HEIGHT}"
+    style:padding-bottom="{config.floorplan_padding.bottom}{SCREEN_HEIGHT}"
+  >
     <Floorplan floorplans={config.floorplans} initial={config.profile.floorplan} defaultXy={config.light.default_xy} labels={config.labels} />
   </div>
 

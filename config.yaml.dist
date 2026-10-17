@@ -398,6 +398,13 @@ toggles:
     icon: mdi:pine-tree
     visible_when: input_boolean.example_seasonal
 
+# Room kept clear above and below the floorplan on the dashboard face, in percent of the screen's
+# height, the same for every level. A thermostat on the bottom wants `bottom` of about 5.7, to lift
+# the level dots over it.
+floorplan_padding:
+  top: 0
+  bottom: 0
+
 # Floorplan levels. `image` names an SVG in `resources/floorplans/`; every element
 # in it must carry an entity id as its DOM id. Group names drive the CSS classes the browser
 # sets, so they must match the stylesheet that ships alongside the SVG.
@@ -490,10 +497,10 @@ transcript:
   entity_id: input_text.example_transcript
 
 # A thermostat hanging off the edge of the dashboard face, over whatever is under it. A tap opens
-# it out with the modes and a pair of arrows for the setpoint the mode is working to. The entity
-# is a `climate` entity with a high and a low setpoint. `side` is `left` or `right`; `offset`
+# it out with the modes and a dial for the setpoint the mode is working to. The entity is a
+# `climate` entity with a high and a low setpoint. `side` is `left`, `right` or `bottom`; `offset`
 # moves it down from where it hangs, centred on the top of the screen's lower third, in percent of the
-# screen's height (negative moves it up).
+# screen's height (negative moves it up), or on the bottom, right along the edge in percent of its width.
 thermostat:
   entity_id: climate.example_home
   side: left

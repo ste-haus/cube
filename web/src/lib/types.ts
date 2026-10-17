@@ -185,6 +185,12 @@ export interface Transcript {
   content_marker: string | null;
 }
 
+/** Room kept clear above and below the floorplan, in percent of the screen's height. */
+export interface FloorplanPadding {
+  top: number;
+  bottom: number;
+}
+
 export type ThermostatSide = "left" | "right" | "bottom";
 
 export interface Thermostat {
@@ -629,6 +635,7 @@ export interface DashboardConfig {
   agenda: Agenda;
   toggles: Toggle[];
   floorplans: Record<string, Floorplan>;
+  floorplan_padding: FloorplanPadding;
   weather: Weather | null;
   camera: Camera | null;
   go2rtc: Go2rtc | null;

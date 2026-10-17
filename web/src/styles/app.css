@@ -484,13 +484,6 @@ body {
   grid-area: center;
   min-height: 0;
 }
-
-/* The thermostat on the bottom hangs where the column ends, under its level dots, so the column
- * stops at the card's top, the panel's own padding already being under it. Out, the card covers
- * the dots for as long as it is out. */
-.dashboard--thermostat-bottom .dashboard__center {
-  padding-bottom: calc(var(--thermostat-bottom-reach) - var(--panel-padding));
-}
 .dashboard__right {
   grid-area: right;
   min-height: 0;
