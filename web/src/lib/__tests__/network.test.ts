@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { averaged, bootedAt, BUSY, CAUTION, FULL, RESTING, loadOf, END, INTERCHANGE, STOP, TAP, TERMINUS, WARNING, formatLatency, formatRuntime, formatSpan, formatStat, heartbeatSlices, layoutMap, routeBetween, tierOf, uptimeSlices } from "../network";
+import { averaged, bootedAt, BUSY, CAUTION, FULL, RESTING, loadOf, END, INTERCHANGE, STOP, INLINE, TERMINUS, WARNING, formatLatency, formatRuntime, formatSpan, formatStat, heartbeatSlices, layoutMap, routeBetween, tierOf, uptimeSlices } from "../network";
 import type { HistoryState, NetworkStop } from "../types";
 
 function stop(name: string, extra: Partial<NetworkStop> = {}): NetworkStop {
@@ -10,7 +10,7 @@ function stop(name: string, extra: Partial<NetworkStop> = {}): NetworkStop {
     entity_id: null,
     up_states: ["on"],
     latency_entity_id: null,
-    tap: false,
+    inline: false,
     branches: [],
     ...extra,
   };
@@ -21,7 +21,7 @@ describe("layoutMap", () => {
     upstream: [stop("one"), stop("two")],
     line: [
       stop("head"),
-      stop("dns", { tap: true }),
+      stop("dns", { inline: true }),
       stop("router", { branches: [stop("outer"), stop("hub", { branches: [stop("a"), stop("b")] }), stop("inner")] }),
       stop("last"),
     ],
@@ -48,7 +48,7 @@ describe("layoutMap", () => {
   });
 
   it("names each kind of stop", () => {
-    expect(row("dns").kind).toBe(TAP);
+    expect(row("dns").kind).toBe(INLINE);
     expect(row("router")).toMatchObject({ kind: INTERCHANGE, span: 4 });
     expect(row("hub")).toMatchObject({ kind: INTERCHANGE, span: 3 });
     expect(row("last").kind).toBe(END);
@@ -63,7 +63,7 @@ describe("layoutMap", () => {
     expect(into("hub").turns).toBe(false);
   });
 
-  it("runs the line through a tap to the next stop, in that stop's colour", () => {
+  it("runs the line through an inline stop to the next stop, in that stop's colour", () => {
     const into = layout.segments.find((segment) => segment.stop.name === "router")!;
 
     expect([into.from, into.to]).toEqual([at("head"), at("router")]);
@@ -71,17 +71,17 @@ describe("layoutMap", () => {
   });
 });
 
-describe("a tap among a hub's branches", () => {
+describe("an inline stop among a hub's branches", () => {
   const layout = layoutMap({
     upstream: [],
-    line: [stop("head"), stop("gateway", { branches: [stop("dns", { tap: true }), stop("a"), stop("b")] })],
+    line: [stop("head"), stop("gateway", { branches: [stop("dns", { inline: true }), stop("a"), stop("b")] })],
   });
 
   it("sits just under the hub and takes no rail of its own", () => {
     expect(layout.rows.map((row) => [row.stop.name, row.kind, row.rail])).toEqual([
       ["head", STOP, 0],
       ["gateway", INTERCHANGE, 0],
-      ["dns", TAP, 0],
+      ["dns", INLINE, 0],
       ["a", TERMINUS, 2],
       ["b", TERMINUS, 1],
     ]);
@@ -94,7 +94,7 @@ describe("routeBetween", () => {
     upstream: [stop("cloud")],
     line: [
       stop("head"),
-      stop("dns", { tap: true }),
+      stop("dns", { inline: true }),
       stop("router", { branches: [stop("nas"), stop("hub", { branches: [stop("a"), stop("b")] })] }),
       stop("last"),
     ],
@@ -115,7 +115,7 @@ describe("routeBetween", () => {
     expect(named(routeBetween(layout, at("head"), at("last")))).toEqual(["vrouter", "vlast"]);
   });
 
-  it("has no route to or from a tap, or to itself", () => {
+  it("has no route to or from an inline stop, or to itself", () => {
     expect(routeBetween(layout, at("dns"), at("a"))).toBeNull();
     expect(routeBetween(layout, at("a"), at("a"))).toBeNull();
   });

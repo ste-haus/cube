@@ -1443,8 +1443,8 @@ class NetworkStop(BaseModel):
     """One stop on a network face's map.
 
     A stop with `branches` is an interchange: each branch leaves it on a rail of its own to the
-    right, and a branch can branch again. A `tap` is something the line runs through rather
-    than stops at, such as the DNS every lookup passes, and is drawn across the line.
+    right, and a branch can branch again. An `inline` stop is something the line runs through
+    rather than stops at, such as the DNS every lookup passes, and is drawn across the line.
     """
 
     name: str
@@ -1454,7 +1454,7 @@ class NetworkStop(BaseModel):
     entity_id: str | None = Field(default=None, description="Whether the stop is up, read against `up_states`")
     up_states: list[str] = Field(default_factory=lambda: list(DEFAULT_UP_STATES))
     latency_entity_id: str | None = Field(default=None, description="Milliseconds to the stop, shown at the right")
-    tap: bool = Field(default=False, description="Drawn across the line rather than as a stop on it")
+    inline: bool = Field(default=False, description="Drawn across the line rather than as a stop on it")
     branches: list["NetworkStop"] = Field(default_factory=list)
 
     _no_switch = model_validator(mode="before")(_refuse_a_switch)

@@ -371,7 +371,7 @@ export interface DepartureFaceOptions {
   incidents_entity_id: string | null;
 }
 
-/** A stop on the network map; one with branches is an interchange, and a tap is drawn across the line. */
+/** A stop on the network map; one with branches is an interchange, and an inline stop is drawn across the line. */
 export interface NetworkStop {
   name: string;
   /** Named by this entity's state, `name` until it has one. */
@@ -379,7 +379,7 @@ export interface NetworkStop {
   entity_id: string | null;
   up_states: string[];
   latency_entity_id: string | null;
-  tap: boolean;
+  inline: boolean;
   branches: NetworkStop[];
 }
 
