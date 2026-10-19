@@ -18,11 +18,11 @@ export const STOP = "stop";
 /** A stop whose branches leave it, drawn across all their rails. */
 export const INTERCHANGE = "interchange";
 /** Something the line runs through, drawn across it. */
-export const TAP = "tap";
+export const INLINE = "inline";
 /** The last stop on the line. */
 export const END = "end";
 
-export type StopKind = typeof TERMINUS | typeof STOP | typeof INTERCHANGE | typeof TAP | typeof END;
+export type StopKind = typeof TERMINUS | typeof STOP | typeof INTERCHANGE | typeof INLINE | typeof END;
 
 export interface MapRow {
   stop: NetworkStop;
@@ -55,13 +55,13 @@ export function layoutMap(map: NetworkMap): MapLayout {
   const segments: MapSegment[] = [];
 
   function placeBranches(parent: NetworkStop, parentRail: number, parentRow: number): void {
-    // A tap among the branches is drawn across the hub's rails where it falls, and takes none.
-    const count = parent.branches.filter((branch) => !branch.tap).length;
+    // An inline stop among the branches is drawn across the hub's rails where it falls, and takes none.
+    const count = parent.branches.filter((branch) => !branch.inline).length;
     let index = 0;
 
     parent.branches.forEach((branch) => {
-      if (branch.tap) {
-        rows.push({ stop: branch, kind: TAP, rail: parentRail, span: 1 });
+      if (branch.inline) {
+        rows.push({ stop: branch, kind: INLINE, rail: parentRail, span: 1 });
         return;
       }
 
@@ -74,7 +74,7 @@ export function layoutMap(map: NetworkMap): MapLayout {
         stop: branch,
         kind: interchange ? INTERCHANGE : TERMINUS,
         rail,
-        span: 1 + branch.branches.filter((each) => !each.tap).length,
+        span: 1 + branch.branches.filter((each) => !each.inline).length,
       });
 
       if (interchange) {
@@ -101,19 +101,19 @@ export function layoutMap(map: NetworkMap): MapLayout {
     const branched = stop.branches.length > 0;
     let kind: StopKind = STOP;
 
-    if (stop.tap) {
-      kind = TAP;
+    if (stop.inline) {
+      kind = INLINE;
     } else if (branched || isHead) {
       kind = INTERCHANGE;
     } else if (index === last && index > 0) {
       kind = END;
     }
 
-    const span = Math.max(isHead ? map.upstream.length : 1, 1 + stop.branches.filter((each) => !each.tap).length);
+    const span = Math.max(isHead ? map.upstream.length : 1, 1 + stop.branches.filter((each) => !each.inline).length);
     rows.push({ stop, kind, rail: LINE_RAIL, span });
 
-    // A tap is passed through, so the rail runs on to the next real stop and takes its colour.
-    if (!stop.tap) {
+    // An inline stop is passed through, so the rail runs on to the next real stop and takes its colour.
+    if (!stop.inline) {
       if (previous !== null) {
         segments.push({ rail: LINE_RAIL, from: previous, to: row, stop, turns: false });
       }
@@ -237,7 +237,7 @@ export interface RouteStep {
  * The way across the map from one row to another, as the segments it runs: up from the first
  * to the hub the two share, then down to the second. Every stop's segment runs from its hub, so
  * the segments are the map's tree and there is exactly one way. Null where either row has no
- * place on it, as a tap has not.
+ * place on it, as an inline stop has not.
  */
 export function routeBetween(layout: MapLayout, from: number, to: number): RouteStep[] | null {
   const into = new Map<number, number>();

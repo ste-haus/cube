@@ -1,6 +1,6 @@
 <script lang="ts">
   import { faceVisibility } from "../lib/cube.svelte";
-  import { END, INTERCHANGE, STOP, TAP, TERMINUS, formatLatency, layoutMap, routeBetween, stopIsUp } from "../lib/network";
+  import { END, INTERCHANGE, STOP, INLINE, TERMINUS, formatLatency, layoutMap, routeBetween, stopIsUp } from "../lib/network";
   import type { MapSegment, RouteStep } from "../lib/network";
   import { ha } from "../lib/state.svelte";
   import type { NetworkMap, NetworkStop } from "../lib/types";
@@ -33,7 +33,7 @@
   const DOT_RADIUS = 0.085;
   const PILL_HEIGHT = 0.26;
   const PILL_OVERHANG = 0.14;
-  const TAP_DASH = "0.02 0.09";
+  const INLINE_DASH = "0.02 0.09";
   const LABELLED = "Network map";
 
   /* How fast a spark travels, how many are out at once, and how long each rests between trips on
@@ -241,7 +241,7 @@
     </defs>
 
     {#each layout.rows as row, index (index)}
-      {#if row.kind === TAP}
+      {#if row.kind === INLINE}
         <line
           x1="0"
           x2={terminusX}
@@ -249,7 +249,7 @@
           y2={rowY(index)}
           stroke={colorOf(row.stop)}
           stroke-width={TRACK_WIDTH / 2}
-          stroke-dasharray={TAP_DASH}
+          stroke-dasharray={INLINE_DASH}
           stroke-linecap="round"
         />
       {/if}
@@ -279,7 +279,7 @@
         />
       {:else if row.kind === TERMINUS}
         <circle class="network-map__dot" cx={terminusX} cy={y} r={DOT_RADIUS} />
-      {:else if row.kind === STOP || row.kind === END || row.kind === TAP}
+      {:else if row.kind === STOP || row.kind === END || row.kind === INLINE}
         <circle class="network-map__dot" cx={railX(row.rail)} cy={y} r={DOT_RADIUS} />
       {/if}
     {/each}
