@@ -31,7 +31,7 @@ camera.driveway                   # the whole thing, when there is nothing to ad
 | `polling_interval` | Seconds between stills for a polled camera; defaults to sixty |
 | `stream` | For `go2rtc`: a stream go2rtc already has, by name; defaults to the entity's object id |
 
-A polled camera asks for its next still only once the last has arrived, so one slower to answer than its interval sets its own pace rather than queuing requests behind it. Sixty seconds suits what most still cameras are — a traffic image, a file something rewrites every so often — and a camera worth watching as it happens is worth streaming instead.
+A polled camera asks for its next still only once the last has arrived, so one slower to answer than its interval sets its own pace rather than queuing requests behind it. A still that differs from the picture showing fades in over it; one that is the same file is dropped, so an animated GIF keeps playing across polls instead of restarting at each. Sixty seconds suits what most still cameras are — a traffic image, a file something rewrites every so often — and a camera worth watching as it happens is worth streaming instead.
 
 ## Tapping a camera
 

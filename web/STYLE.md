@@ -119,6 +119,8 @@ A notice is one line: one too long for the list ends in an ellipsis rather than 
 
 An icon that lights up when its thing is on eases between grey and its colour over `--colour-fade` (400 ms) rather than snapping, so the switch reads as a change: a toggle chip's icon, the alarm's bell as it slides. An icon that turns into another fades across into it, both drawn in the one place, rather than swapping: the route window's phone becomes a ticked phone, or a crossed-out one, over `--travel-send-fade` (250 ms).
 
+A polled camera's picture changes by crossfading: the new still fades in over the old over `--camera-crossfade` (1 s), and the old goes once it is covered. A still that is the same file as the one showing changes nothing, so an animated picture plays on through its polls rather than starting over at each one.
+
 ### How the cube changes face
 
 How a face change looks says who asked for it. A swipe rotates, in the swipe's direction, because the finger is moving the cube. A tap on the face map cuts straight to the face, because the answer to a direct request is the face itself. A change nobody at the panel asked for, the idle return home or Home Assistant naming a new face through `face_entity`, fades: the outgoing face fades out over `FADE_MS` (250 ms) on top of the incoming one, which is already in place underneath. `FADE_MS` lives in `src/lib/cube.svelte.ts` and reaches the stylesheet as `--face-fade`. A fade that is due while the cube is mid-rotation waits for the rotation to end rather than being dropped.

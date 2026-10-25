@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { containedBox, DEFAULT_RATIO, ratioOf } from "../picture";
+import { containedBox, DEFAULT_RATIO, ratioOf, samePicture } from "../picture";
 
 const FRAME = { left: 100, top: 50, width: 400, height: 400 };
 const WIDE = { width: 1600, height: 900 };
@@ -36,5 +36,25 @@ describe("ratioOf", () => {
 
   it("assumes the usual camera before the first frame", () => {
     expect(ratioOf(NOTHING_YET)).toBe(DEFAULT_RATIO);
+  });
+});
+
+describe("samePicture", () => {
+  const PICTURE = new Uint8Array([71, 73, 70, 56, 57, 97]);
+
+  it("takes the same bytes as the same picture", () => {
+    expect(samePicture(PICTURE, new Uint8Array(PICTURE))).toBe(true);
+  });
+
+  it("takes a changed byte as a new picture", () => {
+    expect(samePicture(PICTURE, new Uint8Array([71, 73, 70, 56, 57, 98]))).toBe(false);
+  });
+
+  it("takes a different length as a new picture", () => {
+    expect(samePicture(PICTURE, PICTURE.slice(1))).toBe(false);
+  });
+
+  it("takes anything as new when nothing is shown yet", () => {
+    expect(samePicture(null, PICTURE)).toBe(false);
   });
 });

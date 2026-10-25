@@ -63,3 +63,16 @@ export function containedBox(frame: Box, natural: Size, position: string): Box {
     height,
   };
 }
+
+/**
+ * Whether two fetched pictures are the same file. A camera polled for a still it already has
+ * keeps showing the one it has, so an animated picture plays on rather than starting over at
+ * every poll.
+ */
+export function samePicture(shown: Uint8Array | null, fetched: Uint8Array): boolean {
+  if (shown === null || shown.length !== fetched.length) {
+    return false;
+  }
+
+  return shown.every((byte, index) => byte === fetched[index]);
+}
