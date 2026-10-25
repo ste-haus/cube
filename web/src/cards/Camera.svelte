@@ -1,14 +1,24 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import { onDestroy, type Snippet } from "svelte";
   import { cameraSnapshotUrl } from "../lib/api";
   import { faceVisibility, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { go2rtcServer, playStream } from "../lib/go2rtc";
-  import { containedBox, ratioOf, type Box } from "../lib/picture";
+  import { containedBox, ratioOf, samePicture, type Box } from "../lib/picture";
   import type { Camera, StreamType } from "../lib/types";
   import CameraWindow from "./CameraWindow.svelte";
 
   const MS_PER_SECOND = 1000;
   const GO2RTC: StreamType = "go2rtc";
+  const CONTENT_TYPE_HEADER = "Content-Type";
+  // A new still fades in over the one it replaces, which goes once it is covered
+  const CROSSFADE_MS = 1000;
+
+  interface Still {
+    key: number;
+    url: string;
+    loaded: boolean;
+    fading: boolean;
+  }
 
   /**
    * `expanded` is the camera drawn inside its own window: no title, and nothing to tap. `banner`
@@ -40,6 +50,17 @@
   let pending: number | null = null;
   let video = $state<HTMLVideoElement | null>(null);
   const frame = $derived(live ? video : image);
+
+  /*
+   * A polled camera's stills are fetched as files rather than pointed at by the frame, so one
+   * that is the same file as the picture showing is dropped: the picture stays where it is, and
+   * an animated one plays on rather than restarting at every poll. One that differs is stacked
+   * over the picture showing, fades in once it has decoded, and takes the stills under it away
+   * when it is fully in.
+   */
+  let stills = $state<Still[]>([]);
+  let shown: Uint8Array | null = null;
+  let nextKey = 0;
 
   function cancel(): void {
     if (pending !== null) {
@@ -107,6 +128,79 @@
     return playStream(video, server.url, camera.stream);
   });
 
+  $effect(() => {
+    if (live) {
+      return;
+    }
+
+    const controller = new AbortController();
+    fetchStill(cameraSnapshotUrl(camera.entity_id, tick), controller.signal);
+
+    return () => controller.abort();
+  });
+
+  async function fetchStill(url: string, signal: AbortSignal): Promise<void> {
+    let fetched: Uint8Array<ArrayBuffer>;
+    let type: string;
+
+    try {
+      const response = await fetch(url, { signal });
+      if (!response.ok) {
+        arrived();
+
+        return;
+      }
+
+      fetched = new Uint8Array(await response.arrayBuffer());
+      type = response.headers.get(CONTENT_TYPE_HEADER) ?? "";
+    } catch {
+      // An abort means the next still has already been asked for
+      if (!signal.aborted) {
+        arrived();
+      }
+
+      return;
+    }
+
+    if (samePicture(shown, fetched)) {
+      arrived();
+
+      return;
+    }
+
+    shown = fetched;
+    stills.push({ key: nextKey++, url: URL.createObjectURL(new Blob([fetched], { type })), loaded: false, fading: false });
+  }
+
+  function landed(still: Still, event: Event): void {
+    image = event.currentTarget as HTMLImageElement;
+    still.loaded = true;
+    // The first still has nothing under it to fade over
+    still.fading = stills.indexOf(still) > 0;
+    arrived();
+  }
+
+  function failed(still: Still): void {
+    URL.revokeObjectURL(still.url);
+    stills.splice(stills.indexOf(still), 1);
+    shown = null;
+    arrived();
+  }
+
+  function covered(still: Still): void {
+    still.fading = false;
+
+    for (const under of stills.splice(0, stills.indexOf(still))) {
+      URL.revokeObjectURL(under.url);
+    }
+  }
+
+  onDestroy(() => {
+    for (const still of stills) {
+      URL.revokeObjectURL(still.url);
+    }
+  });
+
   function press(event: PointerEvent): void {
     pressedAt = { x: event.clientX, y: event.clientY };
   }
@@ -138,7 +232,14 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-<section class="camera" class:camera--expandable={!expanded} class:camera--away={away} onpointerdown={press} onclick={open}>
+<section
+  class="camera"
+  class:camera--expandable={!expanded}
+  class:camera--away={away}
+  style:--camera-crossfade="{CROSSFADE_MS}ms"
+  onpointerdown={press}
+  onclick={open}
+>
   {#if camera.title && !expanded}
     <h2 class="panel-title panel-title--right">{camera.title}</h2>
   {/if}
@@ -154,14 +255,20 @@
       playsinline
     ></video>
   {:else}
-    <img
-      class="camera__frame"
-      bind:this={image}
-      src={cameraSnapshotUrl(camera.entity_id, tick)}
-      alt={camera.title ?? "Camera"}
-      onload={arrived}
-      onerror={arrived}
-    />
+    <div class="camera__stills">
+      {#each stills as still (still.key)}
+        <img
+          class="camera__frame"
+          class:camera__frame--waiting={!still.loaded}
+          class:camera__frame--fading={still.fading}
+          src={still.url}
+          alt={camera.title ?? "Camera"}
+          onload={(event) => landed(still, event)}
+          onerror={() => failed(still)}
+          onanimationend={() => covered(still)}
+        />
+      {/each}
+    </div>
   {/if}
 </section>
 
@@ -187,6 +294,34 @@
 
   .camera--away .camera__frame {
     visibility: hidden;
+  }
+
+  /* The stills share one cell, so the one fading in lies exactly over the one it replaces, and
+   * the cell takes the frame's place in the column. */
+  .camera__stills {
+    display: grid;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .camera__stills > .camera__frame {
+    grid-area: 1 / 1;
+  }
+
+  .camera__frame--waiting {
+    opacity: 0;
+  }
+
+  .camera__frame--fading {
+    animation: camera-crossfade var(--camera-crossfade) ease-in-out;
+  }
+
+  @keyframes camera-crossfade {
+    from {
+      opacity: 0;
+    }
   }
 
   .camera__frame {
