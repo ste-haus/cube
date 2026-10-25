@@ -15,11 +15,14 @@
   import WeatherSummary from "../cards/WeatherSummary.svelte";
   import { agenda } from "../lib/agenda.svelte";
   import { faceVisibility } from "../lib/cube.svelte";
+  import { ha } from "../lib/state.svelte";
+  import { shownMap } from "../lib/travel";
   import type { DashboardConfig } from "../lib/types";
 
   let { config }: { config: DashboardConfig } = $props();
 
   const visibility = faceVisibility();
+  const camera = $derived(config.camera ? shownMap(config.camera, (entityId) => ha.isOn(entityId)) : null);
 
   /* Calendars are fetched per panel, so a face turned away should not be asking for them. The
    * poll loads once on the way back, which is sooner than the interval would have come round
@@ -63,8 +66,10 @@
       </div>
       <WeatherSummary weather={config.weather} />
     {/if}
-    {#if config.camera}
-      <Camera camera={config.camera} />
+    {#if camera}
+      {#key camera.entity_id}
+        <Camera {camera} />
+      {/key}
     {/if}
     <Gauges row={config.fuel} />
   </div>

@@ -363,6 +363,17 @@ The panel polls stills rather than holding a stream open, which is easier on Hom
 
 A camera can play live video from go2rtc instead, with `stream_type: go2rtc` — see [Camera faces](cameras.md#live-video). This block is the one camera the dashboard itself draws; a whole face can be given over to cameras, and [Camera faces](cameras.md) take the same block per tile.
 
+It can also be a list, to fall back to another camera when the first is no good, written as a departure face's [`map`](panels.md#the-departure-face): each camera but the last names `visible_when`, an entity, and the dashboard shows the first whose entity is `on`, and the last, which names none, otherwise. The load refuses a list that does not end that way. A camera swapped in replaces the one before it, title and all, and the one swapped out stops fetching.
+
+```yaml
+camera:
+  - entity_id: camera.traffic
+    title: Traffic
+    visible_when: binary_sensor.map_stack
+  - entity_id: camera.traffic_google
+    title: Traffic
+```
+
 ### go2rtc
 
 ```yaml
