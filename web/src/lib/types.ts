@@ -411,10 +411,12 @@ export interface NetworkWan {
 /** One container, as a containers sensor's `containers` attribute lists it. */
 export interface Container {
   name: string;
-  /** `ok`, `completed`, `stopped`, `warning` or `error`. */
+  /** `ok`, `busy`, `completed`, `stopped`, `warning` or `error`. */
   state: string;
   status: string;
   uptime: string;
+  /** Shown in place of the uptime when it is set. */
+  detail?: string | null;
 }
 
 export interface NetworkVip {
@@ -467,9 +469,18 @@ export interface NetworkRack {
   switch: CriticalSwitch | null;
 }
 
+export interface NetworkContainersSummary {
+  label: string;
+  entity_id: string;
+  attribute: string | null;
+}
+
 export interface NetworkContainers {
   name: string;
   entity_id: string;
+  /** The hosts' columns the card spans, and the columns its list runs down. */
+  columns: number;
+  summary: NetworkContainersSummary | null;
   switch: CriticalSwitch | null;
 }
 
@@ -518,6 +529,10 @@ export interface MediaSession {
 export interface NetworkMedia {
   entity_id: string;
   title: string;
+  /** The hosts' columns the card spans. */
+  columns: number;
+  /** Leave the card out while nothing is playing. */
+  hide_idle: boolean;
   switch: CriticalSwitch | null;
 }
 

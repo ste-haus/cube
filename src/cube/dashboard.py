@@ -1627,18 +1627,37 @@ class NetworkHost(BaseModel):
         return [entity_id for entity_id in named if entity_id]
 
 
+DEFAULT_CONTAINERS_COLUMNS = 2
+
+
+class NetworkContainersSummary(BaseModel):
+    """A last row under a card's containers: what it is, and a reading shown as it is."""
+
+    label: str
+    entity_id: str
+    attribute: str | None = Field(default=None, description="Read the value from this attribute rather than the state")
+
+
 class NetworkContainers(BaseModel):
     """A host's containers, from one sensor listing them."""
 
     name: str = Field(description="The host they run on, as the card is titled")
     entity_id: str = Field(
-        description="A sensor whose `containers` attribute lists each one's `name`, `state`, `status` and `uptime`"
+        description="A sensor whose `containers` attribute lists each one's `name`, `state`, `status`, `uptime` and optionally `detail`"
     )
+    columns: int = Field(
+        default=DEFAULT_CONTAINERS_COLUMNS,
+        ge=1,
+        description="The hosts' columns the card spans, and the columns its list runs down",
+    )
+    summary: NetworkContainersSummary | None = None
     switch: CriticalSwitch | None = None
 
     @property
     def entities(self) -> list[str]:
-        return [self.entity_id] + ([self.switch.entity_id] if self.switch else [])
+        entities = [self.entity_id] + ([self.summary.entity_id] if self.summary else [])
+
+        return entities + ([self.switch.entity_id] if self.switch else [])
 
 
 class NetworkVip(BaseModel):
@@ -1722,6 +1741,7 @@ class NetworkRack(BaseModel):
 
 
 DEFAULT_MEDIA_TITLE = "Streaming"
+DEFAULT_MEDIA_COLUMNS = 1
 
 
 class NetworkMedia(BaseModel):
@@ -1729,6 +1749,8 @@ class NetworkMedia(BaseModel):
 
     entity_id: str = Field(description="A sensor whose `sessions` attribute lists what is playing, and where")
     title: str = DEFAULT_MEDIA_TITLE
+    columns: int = Field(default=DEFAULT_MEDIA_COLUMNS, ge=1, description="The hosts' columns the card spans")
+    hide_idle: bool = Field(default=False, description="Leave the card out while nothing is playing")
     switch: CriticalSwitch | None = None
 
     @property
