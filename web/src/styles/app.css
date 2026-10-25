@@ -185,10 +185,19 @@
 
   /* The network face: the map's rows and type, and the host cards beside it. */
   --network-map-size: 0.95rem;
+  --network-map-station-prefix: "// ";
   --network-map-label-gap: 0.6rem;
   --network-map-reading-gap: 1.6rem;
   --network-card-title-size: 1.5rem;
   --network-containers-columns: 2;
+  /* A container at work swings between these. */
+  --network-containers-busy-high: #ffffff;
+  --network-containers-busy-low: var(--color-muted);
+  /* Slower than the trouble pulse, so a row at work never reads as one that needs looking at. */
+  --network-containers-busy-pulse: 2s;
+  /* One lap of the spinner a container at work turns, ten frames to it; two laps to each beat of
+   * its pulse, so the two stay in step. */
+  --network-containers-spin: calc(var(--network-containers-busy-pulse) / 2);
   --network-face-wide-columns: 2;
   --media-marquee-duration: 9s;
   --network-rack-chart-min: 5rem;
@@ -1099,7 +1108,8 @@ body {
   gap: var(--panel-gap);
 }
 
-/* Two of the hosts' columns, its card filling the line's height as its neighbours do. */
+/* Two of the hosts' columns unless its card says otherwise, filling the line's height as its
+ * neighbours do. */
 .network-face__wide {
   display: flex;
   grid-column: span var(--network-face-wide-columns);

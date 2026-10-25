@@ -7,39 +7,58 @@
    * A host's containers, in columns: a mark for each one's state, its name, and for how long.
    * The mark is the state, so its words are left to the console. The marks are the console
    * banner's own, so the wall and the console agree.
-   * Running is primary, as an up stop on the map is; a one-shot that finished and one that was
-   * stopped rest in grey, since both were meant; one in trouble is secondary and pulses until it
-   * recovers.
+   * Running is primary, as an up stop on the map is; one at work turns a braille spinner for its
+   * mark and pulses between white and grey while it is; a one-shot that finished and one that was stopped
+   * rest in grey, since both were meant; one in trouble is secondary and pulses until it recovers.
+   * A record's `detail`, when it has one, stands where its uptime would. A summary, when the card
+   * names one, closes the list on a line of its own.
    */
 
   const CONTAINERS_ATTRIBUTE = "containers";
 
   const MARKS: Record<string, string> = {
     ok: "√",
+    // Drawn by the spinner's frames instead; see `network-containers-spin`.
+    busy: "",
     completed: "♦",
     stopped: "■",
     warning: "▲",
     error: "●",
   };
   const UNKNOWN_MARK = "?";
+  const UNKNOWN_SUMMARY = "—";
   const MILLISECONDS = "ms";
 
   let { containers }: { containers: NetworkContainers } = $props();
 
   const listed = $derived(ha.attribute<Container[]>(containers.entity_id, CONTAINERS_ATTRIBUTE) ?? []);
+  const summary = $derived(
+    containers.summary ? ha.reading({ entity_id: containers.summary.entity_id, attribute: containers.summary.attribute }) : null,
+  );
 </script>
 
-<section class="network-containers" style:--network-containers-pulse="{PULSE_MS}{MILLISECONDS}">
+<section
+  class="network-containers"
+  style:--network-containers-pulse="{PULSE_MS}{MILLISECONDS}"
+  style:--network-containers-columns={containers.columns}
+>
   <h3 class="network-containers__title card-title">{containers.name}</h3>
   <ul class="network-containers__list">
     {#each listed as container (container.name)}
       <li class="network-containers__container network-containers__container--{container.state}">
         <span class="network-containers__mark">{MARKS[container.state] ?? UNKNOWN_MARK}</span>
         <span class="network-containers__name">{container.name}</span>
-        <span class="network-containers__uptime">{container.uptime}</span>
+        <span class="network-containers__uptime">{container.detail ?? container.uptime}</span>
       </li>
     {/each}
   </ul>
+  {#if containers.summary}
+    <p class="network-containers__container network-containers__summary">
+      <span class="network-containers__mark"></span>
+      <span class="network-containers__name">{containers.summary.label}</span>
+      <span class="network-containers__uptime">{summary ?? UNKNOWN_SUMMARY}</span>
+    </p>
+  {/if}
 </section>
 
 <style>
@@ -98,6 +117,28 @@
     color: var(--color-primary);
   }
 
+  /* At work: the whole row swings slowly between full white and grey. */
+  .network-containers__container--busy {
+    animation: network-containers-busy var(--network-containers-busy-pulse) ease-in-out infinite;
+  }
+
+  .network-containers__container--busy .network-containers__mark::before {
+    content: "\280B";
+    animation: network-containers-spin var(--network-containers-spin) steps(1, end) infinite;
+  }
+
+  .network-containers__container--busy .network-containers__mark,
+  .network-containers__container--busy .network-containers__name,
+  .network-containers__container--busy .network-containers__uptime {
+    color: inherit;
+  }
+
+  /* Under the list, a little clear of it, and never part of its columns. */
+  .network-containers__summary {
+    margin: 0.5em 0 0;
+    font-size: var(--network-host-small-size);
+  }
+
   .network-containers__container--completed .network-containers__mark {
     color: var(--color-muted);
   }
@@ -120,6 +161,61 @@
   .network-containers__container--warning .network-containers__name,
   .network-containers__container--error .network-containers__name {
     color: var(--color-secondary);
+  }
+
+  /* The frames of a dot running round a braille cell. */
+  @keyframes network-containers-spin {
+    0% {
+      content: "\280B";
+    }
+
+    10% {
+      content: "\2819";
+    }
+
+    20% {
+      content: "\2839";
+    }
+
+    30% {
+      content: "\2838";
+    }
+
+    40% {
+      content: "\283C";
+    }
+
+    50% {
+      content: "\2834";
+    }
+
+    60% {
+      content: "\2826";
+    }
+
+    70% {
+      content: "\2827";
+    }
+
+    80% {
+      content: "\2807";
+    }
+
+    90%,
+    100% {
+      content: "\280F";
+    }
+  }
+
+  @keyframes network-containers-busy {
+    0%,
+    100% {
+      color: var(--network-containers-busy-high);
+    }
+
+    50% {
+      color: var(--network-containers-busy-low);
+    }
   }
 
   /* Down nearly to nothing and back, with a glow of its own colour at the top of each beat. */

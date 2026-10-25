@@ -7,11 +7,13 @@ from pydantic import ValidationError
 
 from cube.dashboard import (
     CUBE_FACES,
+    DEFAULT_CONTAINERS_COLUMNS,
     DEFAULT_CRITICAL_HOLD_SECONDS,
     DEFAULT_FAN_MAX,
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_LATENCY_BUSY_MS,
     DEFAULT_LATENCY_FULL_MS,
+    DEFAULT_MEDIA_COLUMNS,
     DEFAULT_MEDIA_TITLE,
     DEFAULT_WAN_HISTORY_MINUTES,
     MAX_WAN_HISTORY_MINUTES,
@@ -35,6 +37,7 @@ NAS_METRICS = "sensor.nas_metrics"
 UPS = "sensor.ups"
 HEARTBEAT = "sensor.server_heartbeat"
 SERVER_STATUS = "sensor.server_status"
+SERVER_THROUGHPUT = "sensor.server_throughput"
 VIPS = "sensor.vips"
 WIFI = "sensor.wifi_clients"
 STATE_CHANGES = "sensor.state_changes"
@@ -78,7 +81,13 @@ def everything() -> Dashboard:
                 {"name": "nas", "connection_entity_id": NAS, "metrics_entity_id": NAS_METRICS, "ups_entity_id": UPS},
                 {"name": "server", "heartbeat_entity_id": HEARTBEAT},
             ],
-            containers=[{"name": "server", "entity_id": SERVER_STATUS}],
+            containers=[
+                {
+                    "name": "server",
+                    "entity_id": SERVER_STATUS,
+                    "summary": {"label": "Tokens", "entity_id": SERVER_THROUGHPUT},
+                }
+            ],
             vips=[{"name": "DNS", "entity_id": VIPS, "attribute": "dns"}],
             stats={"title": "Vitals", "rows": [{"label": "Wi-Fi", "entity_id": WIFI}]},
             bus={"title": "Bus", "rows": [{"label": "Changes", "entity_id": STATE_CHANGES}]},
@@ -103,6 +112,7 @@ READ = {
     UPS,
     HEARTBEAT,
     SERVER_STATUS,
+    SERVER_THROUGHPUT,
     VIPS,
     WIFI,
     STATE_CHANGES,
@@ -149,6 +159,19 @@ def test_the_defaults_are_as_documented():
     assert options["hosts"][1]["heartbeat_seconds"] == DEFAULT_HEARTBEAT_SECONDS
     assert options["rack"]["fan_max"] == DEFAULT_FAN_MAX
     assert options["media"]["title"] == DEFAULT_MEDIA_TITLE
+    assert options["media"]["columns"] == DEFAULT_MEDIA_COLUMNS
+    assert options["media"]["hide_idle"] is False
+    assert options["containers"][0]["columns"] == DEFAULT_CONTAINERS_COLUMNS
+
+
+def test_a_card_spans_at_least_one_column():
+    with pytest.raises(ValidationError):
+        Dashboard.model_validate(
+            network_face(containers=[{"name": "server", "entity_id": SERVER_STATUS, "columns": 0}])
+        )
+
+    with pytest.raises(ValidationError):
+        Dashboard.model_validate(network_face(media={"entity_id": SESSIONS, "columns": 0}))
 
 
 def test_a_map_needs_a_line():

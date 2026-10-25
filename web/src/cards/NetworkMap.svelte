@@ -373,14 +373,19 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* A station's name in capitals, every other stop's in lower case, so the hubs stand out. */
+  /* Every name in lower case, a station's set heavier, spaced out and marked off, so the hubs
+   * stand out. Medium is the heaviest Roboto bundled; anything above it would be synthesized. */
   .network-map__name {
     text-transform: lowercase;
   }
 
   .network-map__stop--station .network-map__name {
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.1em;
+  }
+
+  .network-map__stop--station .network-map__name::before {
+    content: var(--network-map-station-prefix);
   }
 
   .network-map__stop--down .network-map__name {
