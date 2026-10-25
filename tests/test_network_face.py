@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from cube.dashboard import (
     CUBE_FACES,
     DEFAULT_CONTAINERS_COLUMNS,
+    DEFAULT_CONTAINERS_SIZE,
     DEFAULT_CRITICAL_HOLD_SECONDS,
     DEFAULT_FAN_MAX,
     DEFAULT_HEARTBEAT_SECONDS,
@@ -85,7 +86,7 @@ def everything() -> Dashboard:
                 {
                     "name": "server",
                     "entity_id": SERVER_STATUS,
-                    "summary": {"label": "Tokens", "entity_id": SERVER_THROUGHPUT},
+                    "summary": {"label": "Tokens", "icon": "mdi:poker-chip", "entity_id": SERVER_THROUGHPUT},
                 }
             ],
             vips=[{"name": "DNS", "entity_id": VIPS, "attribute": "dns"}],
@@ -162,6 +163,14 @@ def test_the_defaults_are_as_documented():
     assert options["media"]["columns"] == DEFAULT_MEDIA_COLUMNS
     assert options["media"]["hide_idle"] is False
     assert options["containers"][0]["columns"] == DEFAULT_CONTAINERS_COLUMNS
+    assert options["containers"][0]["size"] == DEFAULT_CONTAINERS_SIZE
+
+
+def test_a_containers_card_is_small_or_regular():
+    with pytest.raises(ValidationError):
+        Dashboard.model_validate(
+            network_face(containers=[{"name": "server", "entity_id": SERVER_STATUS, "size": "huge"}])
+        )
 
 
 def test_a_card_spans_at_least_one_column():

@@ -471,6 +471,7 @@ export interface NetworkRack {
 
 export interface NetworkContainersSummary {
   label: string;
+  icon: string | null;
   entity_id: string;
   attribute: string | null;
 }
@@ -480,6 +481,8 @@ export interface NetworkContainers {
   entity_id: string;
   /** The hosts' columns the card spans, and the columns its list runs down. */
   columns: number;
+  /** `small` to fit a long list, or `regular` to match a card of readings' rows. */
+  size: "small" | "regular";
   summary: NetworkContainersSummary | null;
   switch: CriticalSwitch | null;
 }

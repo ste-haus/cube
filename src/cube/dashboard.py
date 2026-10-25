@@ -1628,12 +1628,14 @@ class NetworkHost(BaseModel):
 
 
 DEFAULT_CONTAINERS_COLUMNS = 2
+DEFAULT_CONTAINERS_SIZE = "small"
 
 
 class NetworkContainersSummary(BaseModel):
-    """A last row under a card's containers: what it is, and a reading shown as it is."""
+    """A last row under a card's containers: an icon, what it is, and a reading shown as it is."""
 
     label: str
+    icon: str | None = None
     entity_id: str
     attribute: str | None = Field(default=None, description="Read the value from this attribute rather than the state")
 
@@ -1649,6 +1651,10 @@ class NetworkContainers(BaseModel):
         default=DEFAULT_CONTAINERS_COLUMNS,
         ge=1,
         description="The hosts' columns the card spans, and the columns its list runs down",
+    )
+    size: Literal["small", "regular"] = Field(
+        default=DEFAULT_CONTAINERS_SIZE,
+        description="`small` to fit a long list, or `regular` to set its rows as a card of readings sets its own",
     )
     summary: NetworkContainersSummary | None = None
     switch: CriticalSwitch | None = None
