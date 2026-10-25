@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from "../lib/Icon.svelte";
   import { ha } from "../lib/state.svelte";
   import { PULSE_MS } from "../lib/travel";
   import type { Container, NetworkContainers } from "../lib/types";
@@ -38,7 +39,7 @@
 </script>
 
 <section
-  class="network-containers"
+  class="network-containers network-containers--{containers.size}"
   style:--network-containers-pulse="{PULSE_MS}{MILLISECONDS}"
   style:--network-containers-columns={containers.columns}
 >
@@ -54,7 +55,9 @@
   </ul>
   {#if containers.summary}
     <p class="network-containers__container network-containers__summary">
-      <span class="network-containers__mark"></span>
+      <span class="network-containers__mark network-containers__icon">
+        {#if containers.summary.icon}<Icon name={containers.summary.icon} />{/if}
+      </span>
       <span class="network-containers__name">{containers.summary.label}</span>
       <span class="network-containers__uptime">{summary ?? UNKNOWN_SUMMARY}</span>
     </p>
@@ -133,10 +136,25 @@
     color: inherit;
   }
 
-  /* Under the list, a little clear of it, and never part of its columns. */
+  /* Under the list, spaced as one more of its rows, and never part of its columns. */
   .network-containers__summary {
-    margin: 0.5em 0 0;
+    margin: 0;
     font-size: var(--network-host-small-size);
+  }
+
+  /* Grey, as a card of readings draws its icons. */
+  .network-containers__icon {
+    color: var(--color-dim);
+  }
+
+  /* The type and spacing of a card of readings' rows, so a card beside one lines up with it. */
+  .network-containers--regular .network-containers__list,
+  .network-containers--regular .network-containers__summary {
+    font-size: var(--network-host-detail-size);
+  }
+
+  .network-containers--regular .network-containers__container {
+    margin-bottom: 0.3em;
   }
 
   .network-containers__container--completed .network-containers__mark {
