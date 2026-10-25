@@ -770,7 +770,7 @@ CameraRow = Annotated[list[CameraEntry], Field(min_length=1)]
 
 
 class MapCamera(Camera):
-    """One of a departure face's maps: shown while `visible_when` is on, or, last, whenever none is."""
+    """One of a list of maps, the dashboard's or a departure face's: shown while `visible_when` is on, or, last, whenever none is."""
 
     visible_when: str | None = Field(
         default=None,
@@ -786,6 +786,19 @@ def as_maps(value: Any) -> Any:
 
 MapCameraEntry = Annotated[MapCamera, BeforeValidator(as_camera)]
 MapCameras = Annotated[list[MapCameraEntry], BeforeValidator(as_maps), Field(min_length=1)]
+
+MAP_FALLBACK_MESSAGE = (
+    "{owner} ends with the camera it shows when no other is on, the only one without `visible_when`."
+)
+
+
+def require_a_map_to_fall_back_to(maps: list[MapCamera], owner: str) -> None:
+    """Refuses a list of maps that could leave nothing showing, or a map that could never show."""
+
+    *swapped_in, fallback = maps
+
+    if fallback.visible_when or any(camera.visible_when is None for camera in swapped_in):
+        raise ValueError(MAP_FALLBACK_MESSAGE.format(owner=owner))
 
 # What a popup's window is shaped to until it is told otherwise: most cameras are 16:9.
 DEFAULT_POPUP_RATIO = 16 / 9
@@ -1166,9 +1179,8 @@ class GuestFaceOptions(FaceOptions):
         return controls
 
 
-MAP_FALLBACK_MESSAGE = (
-    "A departure face's `map` ends with the camera it shows when no other is on, the only one without `visible_when`."
-)
+DEPARTURE_MAP_OWNER = "A departure face's `map`"
+DASHBOARD_CAMERA_OWNER = "The dashboard's `camera`"
 USUAL_WITHOUT_DEPARTURE_MESSAGE = "`usual_entity_id` is for a route with no `departure_entity_id`; a trip is coloured by when to leave."
 
 
@@ -1378,10 +1390,7 @@ class DepartureFaceOptions(CameraFaceOptions):
 
     @model_validator(mode="after")
     def require_a_map_to_fall_back_to(self) -> Self:
-        *swapped_in, fallback = self.map
-
-        if fallback.visible_when or any(camera.visible_when is None for camera in swapped_in):
-            raise ValueError(MAP_FALLBACK_MESSAGE)
+        require_a_map_to_fall_back_to(self.map, DEPARTURE_MAP_OWNER)
 
         return self
 
@@ -1950,7 +1959,7 @@ class Dashboard(BaseModel):
     toggles: list[Toggle] = Field(default_factory=list)
     floorplans: dict[str, Floorplan] = Field(default_factory=dict)
     weather: Weather | None = None
-    camera: Camera | None = None
+    camera: MapCameras | None = None
     go2rtc: Go2rtc | None = None
     fuel: GaugeRow = Field(default_factory=GaugeRow)
     transcript: Transcript | None = None
@@ -2039,6 +2048,13 @@ class Dashboard(BaseModel):
                     raise ValueError(RADAR_WITHOUT_ZONE_MESSAGE.format(profile=key, face=name))
 
         self._require_go2rtc()
+
+        return self
+
+    @model_validator(mode="after")
+    def require_a_camera_to_fall_back_to(self) -> Self:
+        if self.camera:
+            require_a_map_to_fall_back_to(self.camera, DASHBOARD_CAMERA_OWNER)
 
         return self
 
@@ -2135,7 +2151,7 @@ class Dashboard(BaseModel):
         if self.go2rtc is not None:
             return
 
-        cameras = [self.camera] if self.camera else []
+        cameras: list[Camera] = list(self.camera or [])
         cameras += [
             camera for profile in self.profiles.values() for face in profile.faces.values() for camera in face.cameras
         ]
@@ -2154,7 +2170,7 @@ class Dashboard(BaseModel):
         of them rather than the single camera that card draws.
         """
 
-        entities = {self.camera.entity_id} if self.camera else set()
+        entities = {camera.entity_id for camera in self.camera or []}
         entities.update(popup.camera.entity_id for popup in self.popups)
 
         for profile in self.profiles.values():
@@ -2223,6 +2239,7 @@ class Dashboard(BaseModel):
                 entities.add(self.weather.zone_entity_id)
 
         entities.update(self.camera_entities)
+        entities.update(camera.visible_when for camera in self.camera or [] if camera.visible_when)
 
         if self.transcript:
             entities.add(self.transcript.entity_id)

@@ -170,7 +170,7 @@ export interface Camera {
   stream: string | null;
 }
 
-/** One of a departure face's maps: shown while `visible_when` is on; the last, with none, otherwise. */
+/** One of a list of maps, the dashboard's or a departure face's: shown while `visible_when` is on; the last, with none, otherwise. */
 export interface MapCamera extends Camera {
   visible_when: string | null;
 }
@@ -660,7 +660,7 @@ export interface DashboardConfig {
   toggles: Toggle[];
   floorplans: Record<string, Floorplan>;
   weather: Weather | null;
-  camera: Camera | null;
+  camera: MapCamera[] | null;
   go2rtc: Go2rtc | null;
   fuel: GaugeRow;
   transcript: Transcript | null;

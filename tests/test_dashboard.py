@@ -61,7 +61,7 @@ def test_allowlist_covers_every_referenced_entity(dashboard):
     for notice in dashboard.notices:
         assert notice.entity_id in allowed
 
-    assert dashboard.camera.entity_id in allowed
+    assert {camera.entity_id for camera in dashboard.camera} <= allowed
     assert dashboard.transcript.entity_id in allowed
     assert dashboard.mcw.warning_entity_id in allowed
     assert dashboard.mcw.caution_entity_id in allowed
@@ -615,6 +615,52 @@ def test_the_dashboard_camera_stays_reachable_alongside_the_faces():
     dashboard = Dashboard.model_validate(document)
 
     assert dashboard.camera_entities == frozenset({FRONT_DOOR, DRIVEWAY})
+
+
+DASHBOARD_MAP_ON = "binary_sensor.map_stack"
+
+
+def test_the_dashboard_camera_may_be_a_bare_camera():
+    document = profiles()
+    document["camera"] = DRIVEWAY
+
+    dashboard = Dashboard.model_validate(document)
+
+    assert [camera.entity_id for camera in dashboard.camera] == [DRIVEWAY]
+    assert dashboard.camera[0].visible_when is None
+
+
+def dashboard_camera_falling_back() -> Dashboard:
+    document = profiles()
+    document["camera"] = [{"entity_id": FRONT_DOOR, "visible_when": DASHBOARD_MAP_ON}, DRIVEWAY]
+
+    return Dashboard.model_validate(document)
+
+
+def test_the_dashboard_camera_may_fall_back_to_another():
+    dashboard = dashboard_camera_falling_back()
+
+    assert [camera.entity_id for camera in dashboard.camera] == [FRONT_DOOR, DRIVEWAY]
+    assert dashboard.camera[0].visible_when == DASHBOARD_MAP_ON
+
+
+def test_every_camera_the_dashboard_may_show_can_be_fetched():
+    assert {FRONT_DOOR, DRIVEWAY} <= dashboard_camera_falling_back().camera_entities
+
+
+def test_what_swaps_the_dashboard_camera_is_subscribed_and_not_controlled():
+    dashboard = dashboard_camera_falling_back()
+
+    assert DASHBOARD_MAP_ON in dashboard.allowed_entities
+    assert not dashboard.may_toggle(DASHBOARD_MAP_ON)
+
+
+def test_the_dashboard_cameras_end_with_one_to_fall_back_to():
+    document = profiles()
+    document["camera"] = [DRIVEWAY, {"entity_id": FRONT_DOOR, "visible_when": DASHBOARD_MAP_ON}]
+
+    with pytest.raises(ValidationError, match="shows when no other is on"):
+        Dashboard.model_validate(document)
 
 
 def test_a_face_the_config_never_names_reaches_no_camera():
