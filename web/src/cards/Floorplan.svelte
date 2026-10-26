@@ -11,7 +11,7 @@
   import type { Box } from "../lib/picture";
   import { keepTrying } from "../lib/retry";
   import { ha } from "../lib/state.svelte";
-  import type { Floorplan, Labels, SliderFill } from "../lib/types";
+  import type { BinStates, Floorplan, Labels, SliderFill } from "../lib/types";
 
   /*
    * The floorplan SVG carries an entity id as the DOM id of every element it draws, and the
@@ -185,7 +185,7 @@
     return CLASS_PREFIXES[group] ?? group.replace(/s$/, "");
   }
 
-  function classFor(group: string, entityId: string, binStates: Record<string, string>): string {
+  function classFor(group: string, entityId: string, binStates: BinStates): string {
     const state = ha.state(entityId);
     const prefix = prefixFor(group);
 

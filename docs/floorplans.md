@@ -62,7 +62,7 @@ Group names are also the CSS class the panel sets, so a drawing and a stylesheet
 
 ### Bin states
 
-A bin is drawn by one of four states, and the stylesheet has a rule for each:
+The bundled stylesheet draws four bin states:
 
 | State | Where the bin is |
 |---|---|
@@ -71,18 +71,20 @@ A bin is drawn by one of four states, and the stylesheet has a rule for each:
 | `away` | Out at the curb |
 | `picked_up` | Emptied and still at the curb: it wants bringing in |
 
-A bin sensor reporting anything else is drawn inactive. If yours report their own words, map them onto these on the level rather than renaming them in Home Assistant:
+If your sensors call any of these something else, name what they call it on the level rather than renaming the states in Home Assistant:
 
 ```yaml
 floorplans:
   downstairs:
     image: downstairs
     bin_states:
-      out: take_out
-      in: picked_up
+      take_out: out
+      picked_up: in
 ```
 
-A state the map does not mention is drawn as itself, so only the ones that differ need listing. Mapping onto anything but the four is refused when the config loads.
+Only the ones that differ need listing, and a key other than the four is refused when the config loads.
+
+Any other state is set as a class as it is, with anything that cannot appear in a class name swapped for `_`, so states of your own can be styled in `resources/floorplan.css`. A bin whose state is `unknown` or `unavailable` is drawn inactive.
 
 ## Levels, left to right
 

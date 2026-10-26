@@ -1,18 +1,26 @@
-/** The states a bin is drawn by; the floorplan stylesheet has a rule for each. */
-export const BIN_STATES = new Set(["home", "away", "take_out", "picked_up"]);
+import type { BinStates } from "./types";
+
+/** What Home Assistant reports for an entity it cannot read. */
+const UNREADABLE_STATES = new Set(["unknown", "unavailable"]);
+
+// A state becomes a class, so anything that would not survive as one is swapped out: a space,
+// for one, would split it into two classes.
+const UNSAFE_CLASS_CHARACTERS = /[^A-Za-z0-9_-]/g;
+const SAFE_CLASS_CHARACTER = "_";
 
 /**
- * The state a bin is drawn as, or null when the stylesheet has no rule for it.
+ * The class a bin is drawn with, or null when its state cannot be read.
  *
- * A level's `bin_states` maps an installation's own states onto these first, so a house whose
- * sensors say something else can be drawn without renaming anything in Home Assistant.
+ * A level's `bin_states` renames an installation's own states onto the four the bundled
+ * stylesheet draws. Any other state is passed through as itself, so a house with states of its
+ * own can style them in `resources/floorplan.css`.
  */
-export function binState(state: string | null, binStates: Record<string, string>): string | null {
-  if (state === null) {
+export function binState(state: string | null, binStates: BinStates): string | null {
+  if (!state || UNREADABLE_STATES.has(state)) {
     return null;
   }
 
-  const drawn = binStates[state] ?? state;
+  const renamed = Object.entries(binStates).find(([, own]) => own === state)?.[0];
 
-  return BIN_STATES.has(drawn) ? drawn : null;
+  return (renamed ?? state).replace(UNSAFE_CLASS_CHARACTERS, SAFE_CLASS_CHARACTER);
 }

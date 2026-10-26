@@ -113,7 +113,7 @@ Two stylesheets ship with the panel: `web/src/styles/floorplan.css` holds the ge
 |---|---|
 | `lights`, `windows`, `fans`, `motion`, `sensors`, `vehicles` | `<group> active` when the state is one of `on`, `open`, `motion`, `movement`; otherwise `<group> inactive` |
 | `doors` | `door open` for `open` or `open_exterior`, `door locked`, `door unlocked`, otherwise `door inactive <state>` |
-| `bins` | `sensor <state>` for `home`, `away`, `take_out`, `picked_up`, after the level's `bin_states`; otherwise `sensor inactive` |
+| `bins` | `sensor <state>`, after the level's `bin_states`; `sensor inactive` when the state is `unknown` or `unavailable`. The bundled stylesheet draws `home`, `away`, `take_out` and `picked_up` |
 
 Lights additionally take their `brightness` as opacity and their `rgb_color` as fill.
 

@@ -15,6 +15,7 @@ import yaml
 from pydantic import (
     BaseModel,
     BeforeValidator,
+    ConfigDict,
     Discriminator,
     Field,
     PrivateAttr,
@@ -246,9 +247,18 @@ class FloorplanPadding(BaseModel):
     bottom: float = Field(default=0, ge=0)
 
 
-# The states a bin is drawn by; the floorplan stylesheet has a rule for each.
-BIN_STATES = frozenset({"home", "away", "take_out", "picked_up"})
-UNKNOWN_BIN_STATE_MESSAGE = "`bin_states` maps `{state}` to `{target}`, which is not one of {known}."
+class BinStates(BaseModel):
+    """What a level's bin sensors call each state the bundled stylesheet draws, where they call it something else.
+
+    Any other state a sensor reports is drawn as itself, so only the renames need listing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    home: str | None = None
+    away: str | None = None
+    take_out: str | None = None
+    picked_up: str | None = None
 
 
 class Floorplan(BaseModel):
@@ -266,22 +276,7 @@ class Floorplan(BaseModel):
         description="What the brightness bar in a held light's colour window is filled with",
     )
     padding: FloorplanPadding = Field(default_factory=FloorplanPadding)
-    bin_states: dict[str, str] = Field(
-        default_factory=dict,
-        description="A bin's own Home Assistant states, each mapped to the state it is drawn as",
-    )
-
-    @field_validator("bin_states")
-    @classmethod
-    def read_bin_states(cls, value: dict[str, str]) -> dict[str, str]:
-        """Refuses a mapping onto a state the stylesheet has no rule for, which would draw nothing."""
-
-        for state, target in value.items():
-            if target not in BIN_STATES:
-                known = ", ".join(f"`{name}`" for name in sorted(BIN_STATES))
-                raise ValueError(UNKNOWN_BIN_STATE_MESSAGE.format(state=state, target=target, known=known))
-
-        return value
+    bin_states: BinStates = Field(default_factory=BinStates)
 
     @property
     def entity_ids(self) -> list[str]:

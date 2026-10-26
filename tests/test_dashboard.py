@@ -1094,26 +1094,27 @@ def test_a_floorplan_level_is_never_padded_negatively():
         )
 
 
-def test_a_floorplan_level_maps_no_bin_states_unless_told():
-    own_states = {"out": "take_out", "in": "picked_up"}
+def test_a_floorplan_level_renames_no_bin_states_unless_told():
     dashboard = Dashboard.model_validate(
         profiles()
         | {
             "floorplans": {
-                "downstairs": {"image": "downstairs", "bin_states": own_states},
+                "downstairs": {"image": "downstairs", "bin_states": {"take_out": "out", "picked_up": "in"}},
                 "upstairs": {"image": "upstairs"},
             }
         }
     )
+    renamed = dashboard.floorplans["downstairs"].bin_states
+    plain = dashboard.floorplans["upstairs"].bin_states
 
-    assert dashboard.floorplans["downstairs"].bin_states == own_states
-    assert dashboard.floorplans["upstairs"].bin_states == {}
+    assert (renamed.take_out, renamed.picked_up, renamed.home) == ("out", "in", None)
+    assert (plain.home, plain.away, plain.take_out, plain.picked_up) == (None, None, None, None)
 
 
-def test_a_bin_state_is_never_mapped_onto_one_the_panel_does_not_draw():
-    with pytest.raises(ValidationError, match="`bin_states` maps `out` to `outside`"):
+def test_a_bin_state_the_stylesheet_does_not_draw_cannot_be_renamed():
+    with pytest.raises(ValidationError, match="outside"):
         Dashboard.model_validate(
-            profiles() | {"floorplans": {"downstairs": {"image": "downstairs", "bin_states": {"out": "outside"}}}}
+            profiles() | {"floorplans": {"downstairs": {"image": "downstairs", "bin_states": {"outside": "out"}}}}
         )
 
 
