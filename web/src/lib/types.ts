@@ -621,6 +621,8 @@ export interface Labels {
   incidents_other: string;
   incidents_others: string;
   incidents_unnamed: string;
+  /** The road an incident is at, with `{road}` in it: "near I-5". */
+  incidents_near: string;
   /** A lone incident's title when HERE gives it no type. */
   incidents_type_unknown: string;
   incidents_closed: string;

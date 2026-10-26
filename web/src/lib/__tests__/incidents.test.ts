@@ -8,6 +8,7 @@ import {
   incidentsTitle,
   incidentTime,
   incidentWhen,
+  nearOf,
   roadOf,
   typeName,
   wantsLightType,
@@ -114,6 +115,18 @@ describe("roadOf", () => {
     expect(roadOf(location, LABELS.incidents_unnamed)).toBe("At exit 4");
     expect(roadOf(summary, LABELS.incidents_unnamed)).toBe("Crash");
     expect(roadOf(nothing, LABELS.incidents_unnamed)).toBe("Unnamed road");
+  });
+});
+
+describe("nearOf", () => {
+  it("names the cross street, or nothing without one", () => {
+    const [crossed, uncrossed] = incidentsOf([
+      incident("Samish Way", "critical", { cross_street: "I-5" }),
+      incident("Samish Way", "critical"),
+    ]);
+
+    expect(nearOf(crossed, { incidents_near: "near {road}" })).toBe("near I-5");
+    expect(nearOf(uncrossed, { incidents_near: "near {road}" })).toBeNull();
   });
 });
 

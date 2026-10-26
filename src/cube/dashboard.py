@@ -689,6 +689,9 @@ class Labels(BaseModel):
         description="The incident banner's tail for the roads it has no room to name; `{count}` is replaced",
     )
     incidents_unnamed: str = Field(default="Unnamed road", description="An incident with no road or location")
+    incidents_near: str = Field(
+        default="near {road}", description="An incident's window: the road it is at; `{road}` is replaced"
+    )
     incidents_type_unknown: str = Field(
         default="Incident", description="A lone incident's title, in place of its type, when it has none"
     )
