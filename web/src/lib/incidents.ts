@@ -190,6 +190,11 @@ export function roadOf(incident: Incident, unnamed: string): string {
   return incident.road ?? incident.location ?? incident.summary ?? unnamed;
 }
 
+/** The road an incident is at, "near I-5" from `labels.incidents_near`, or null without one. */
+export function nearOf(incident: Incident, labels: { incidents_near: string }): string | null {
+  return incident.cross_street ? fill(labels.incidents_near, { road: incident.cross_street }) : null;
+}
+
 /** An incident's type as words, "Disabled vehicle", or `unknown` for one HERE does not give. */
 export function typeName(incident: Incident, unknown: string): string {
   const words = (incident.type ?? "")

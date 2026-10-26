@@ -6,6 +6,7 @@
     incidentIcon,
     incidentsTitle,
     incidentWhen,
+    nearOf,
     roadOf,
     severityColour,
     severityOf,
@@ -115,6 +116,7 @@
   <ul class="incidents-window" onpointerdowncapture={restartIdle} onscroll={restartIdle}>
     {#each sorted as incident, index (incident.id ?? index)}
       {@const road = roadOf(incident, labels.incidents_unnamed)}
+      {@const near = nearOf(incident, labels)}
       {@const tint = severityColour(severityOf(incident), criticalColour)}
       {@const times = incidentWhen(incident, now, labels)}
       <li class="incidents-window__incident">
@@ -125,7 +127,7 @@
             <span class="incidents-window__line incidents-window__road">
               <span class="incidents-window__run"
                 >{road}{#if incident.direction}<span class="incidents-window__direction">{incident.direction}</span
-                  >{/if}</span
+                  >{/if}{#if near}<span class="incidents-window__near">{near}</span>{/if}</span
               >
             </span>
             {#if incident.criticality}
@@ -224,7 +226,8 @@
     line-height: 1.2;
   }
 
-  .incidents-window__direction {
+  .incidents-window__direction,
+  .incidents-window__near {
     margin-left: 0.6em;
     color: var(--color-muted);
   }
