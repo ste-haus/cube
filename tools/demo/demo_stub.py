@@ -123,7 +123,7 @@ STATES: dict[str, Any] = {
     "binary_sensor.example_living_room_window": "off",
     "binary_sensor.example_hallway_motion": "on",
     "binary_sensor.example_washer": "on",
-    "sensor.example_bin": "out",
+    "sensor.example_bin": "take_out",
     "switch.example_living_room_fan": "on",
     "binary_sensor.example_driveway_occupied": "on",
     # What a tap on a route opens: what traffic adds, how far, and where.

@@ -1094,6 +1094,30 @@ def test_a_floorplan_level_is_never_padded_negatively():
         )
 
 
+def test_a_floorplan_level_renames_no_bin_states_unless_told():
+    dashboard = Dashboard.model_validate(
+        profiles()
+        | {
+            "floorplans": {
+                "downstairs": {"image": "downstairs", "bin_states": {"take_out": "out", "picked_up": "in"}},
+                "upstairs": {"image": "upstairs"},
+            }
+        }
+    )
+    renamed = dashboard.floorplans["downstairs"].bin_states
+    plain = dashboard.floorplans["upstairs"].bin_states
+
+    assert (renamed.take_out, renamed.picked_up, renamed.home) == ("out", "in", None)
+    assert (plain.home, plain.away, plain.take_out, plain.picked_up) == (None, None, None, None)
+
+
+def test_a_bin_state_the_stylesheet_does_not_draw_cannot_be_renamed():
+    with pytest.raises(ValidationError, match="outside"):
+        Dashboard.model_validate(
+            profiles() | {"floorplans": {"downstairs": {"image": "downstairs", "bin_states": {"outside": "out"}}}}
+        )
+
+
 def test_a_thermostat_only_hangs_off_an_edge():
     with pytest.raises(ValidationError):
         Dashboard.model_validate(profiles() | {"thermostat": {"entity_id": THERMOSTAT, "side": "extra"}})

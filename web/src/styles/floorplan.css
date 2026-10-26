@@ -269,7 +269,7 @@
   opacity: 1;
 }
 
-.floorplan__canvas [type="bin"][id$="_bin"].out, .floorplan__canvas [type="bin"][id$="_away"].in {
+.floorplan__canvas [type="bin"][id$="_bin"].take_out, .floorplan__canvas [type="bin"][id$="_away"].picked_up {
   fill: var(--floorplan-active);
   opacity: 1;
   animation: floorplan-pulse 3s linear infinite;

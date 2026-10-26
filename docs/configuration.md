@@ -315,6 +315,8 @@ floorplans:
 
 The level showing decides it, easing to the next level's as it is swiped to, so levels that should line up as they are swiped between want the same; a YAML anchor, as above, keeps them so. The drawing is centred in what is left, so padding one end moves it towards the other by half as much. A thermostat on the bottom hangs over the level dots; a `bottom` of 5.7 lifts them just over it.
 
+A level whose bin sensors report their own states maps them onto the ones the panel draws with `bin_states`, as [bin states](floorplans.md#bin-states) describes.
+
 ### weather
 
 ```yaml

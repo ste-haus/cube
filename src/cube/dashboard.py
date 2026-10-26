@@ -15,6 +15,7 @@ import yaml
 from pydantic import (
     BaseModel,
     BeforeValidator,
+    ConfigDict,
     Discriminator,
     Field,
     PrivateAttr,
@@ -246,6 +247,20 @@ class FloorplanPadding(BaseModel):
     bottom: float = Field(default=0, ge=0)
 
 
+class BinStates(BaseModel):
+    """What a level's bin sensors call each state the bundled stylesheet draws, where they call it something else.
+
+    Any other state a sensor reports is drawn as itself, so only the renames need listing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    home: str | None = None
+    away: str | None = None
+    take_out: str | None = None
+    picked_up: str | None = None
+
+
 class Floorplan(BaseModel):
     """One floorplan level.
 
@@ -261,6 +276,7 @@ class Floorplan(BaseModel):
         description="What the brightness bar in a held light's colour window is filled with",
     )
     padding: FloorplanPadding = Field(default_factory=FloorplanPadding)
+    bin_states: BinStates = Field(default_factory=BinStates)
 
     @property
     def entity_ids(self) -> list[str]:
