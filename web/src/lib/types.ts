@@ -147,6 +147,8 @@ export interface Floorplan {
   /** What the brightness bar in a held light's colour window is filled with. */
   fill: SliderFill;
   padding: FloorplanPadding;
+  /** A bin's own Home Assistant states, each mapped to the state it is drawn as. */
+  bin_states: Record<string, string>;
 }
 
 export interface Gauge {

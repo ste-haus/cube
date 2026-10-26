@@ -55,10 +55,34 @@ Listing an entity under a group in `config.yaml` decides how it is drawn:
 | `motion` | Flares while movement is detected |
 | `fans` | Spins while running |
 | `sensors` | Marked while active |
-| `bins` | Coloured by where the bin is: home, away, out, in |
+| `bins` | Coloured by where the bin is: `home`, `away`, `take_out`, `picked_up` (see [bin states](#bin-states)) |
 | `vehicles` | Marked while a vehicle is present |
 
 Group names are also the CSS class the panel sets, so a drawing and a stylesheet have to agree on them.
+
+### Bin states
+
+A bin is drawn by one of four states, and the stylesheet has a rule for each:
+
+| State | Where the bin is |
+|---|---|
+| `home` | At the house, with nothing to do |
+| `take_out` | At the house on collection day: it wants taking out |
+| `away` | Out at the curb |
+| `picked_up` | Emptied and still at the curb: it wants bringing in |
+
+A bin sensor reporting anything else is drawn inactive. If yours report their own words, map them onto these on the level rather than renaming them in Home Assistant:
+
+```yaml
+floorplans:
+  downstairs:
+    image: downstairs
+    bin_states:
+      out: take_out
+      in: picked_up
+```
+
+A state the map does not mention is drawn as itself, so only the ones that differ need listing. Mapping onto anything but the four is refused when the config loads.
 
 ## Levels, left to right
 

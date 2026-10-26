@@ -1094,6 +1094,29 @@ def test_a_floorplan_level_is_never_padded_negatively():
         )
 
 
+def test_a_floorplan_level_maps_no_bin_states_unless_told():
+    own_states = {"out": "take_out", "in": "picked_up"}
+    dashboard = Dashboard.model_validate(
+        profiles()
+        | {
+            "floorplans": {
+                "downstairs": {"image": "downstairs", "bin_states": own_states},
+                "upstairs": {"image": "upstairs"},
+            }
+        }
+    )
+
+    assert dashboard.floorplans["downstairs"].bin_states == own_states
+    assert dashboard.floorplans["upstairs"].bin_states == {}
+
+
+def test_a_bin_state_is_never_mapped_onto_one_the_panel_does_not_draw():
+    with pytest.raises(ValidationError, match="`bin_states` maps `out` to `outside`"):
+        Dashboard.model_validate(
+            profiles() | {"floorplans": {"downstairs": {"image": "downstairs", "bin_states": {"out": "outside"}}}}
+        )
+
+
 def test_a_thermostat_only_hangs_off_an_edge():
     with pytest.raises(ValidationError):
         Dashboard.model_validate(profiles() | {"thermostat": {"entity_id": THERMOSTAT, "side": "extra"}})

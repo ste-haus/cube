@@ -2,6 +2,7 @@
   import HueWindow from "./HueWindow.svelte";
   import Reticle from "./Reticle.svelte";
   import { floorplanStylesUrl, floorplanUrl } from "../lib/api";
+  import { binState } from "../lib/bins";
   import { swipeable, type Direction, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { COLOUR_HOLD_MS, takesHue } from "../lib/hue";
   import { nextLevel } from "../lib/levels";
@@ -48,9 +49,6 @@
     unlocked: "unlocked",
     locked: "locked",
   };
-
-  /** Bins report where they are rather than whether they are on. */
-  const BIN_STATES = new Set(["home", "away", "out", "in"]);
 
   /** Carries a drawing's own placement into the spin, which would otherwise replace it. */
   const OWN_TRANSFORM_PROPERTY = "--floorplan-own-transform";
@@ -174,7 +172,7 @@
       for (const [group, entities] of Object.entries(plan.groups)) {
         for (const entityId of entities) {
           for (const element of root.querySelectorAll(`#${CSS.escape(entityId)}`)) {
-            element.setAttribute("class", classFor(group, entityId));
+            element.setAttribute("class", classFor(group, entityId, plan.bin_states));
             paintLight(element as SVGElement, group, entityId);
             keepPlacement(element as SVGGraphicsElement, group);
           }
@@ -187,7 +185,7 @@
     return CLASS_PREFIXES[group] ?? group.replace(/s$/, "");
   }
 
-  function classFor(group: string, entityId: string): string {
+  function classFor(group: string, entityId: string, binStates: Record<string, string>): string {
     const state = ha.state(entityId);
     const prefix = prefixFor(group);
 
@@ -197,8 +195,9 @@
       return known ? `${prefix} ${known}` : `${prefix} ${INACTIVE} ${state ?? ""}`.trim();
     }
 
+    // Bins report where they are rather than whether they are on.
     if (group === "bins") {
-      return `${prefix} ${state && BIN_STATES.has(state) ? state : INACTIVE}`;
+      return `${prefix} ${binState(state, binStates) ?? INACTIVE}`;
     }
 
     return `${prefix} ${state && ACTIVE_STATES.has(state) ? ACTIVE : INACTIVE}`;
