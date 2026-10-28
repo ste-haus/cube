@@ -6,12 +6,18 @@
   import { containedBox, ratioOf, samePicture, type Box } from "../lib/picture";
   import type { Camera, StreamType } from "../lib/types";
   import CameraWindow from "./CameraWindow.svelte";
+  import Reticle from "./Reticle.svelte";
 
   const MS_PER_SECOND = 1000;
   const GO2RTC: StreamType = "go2rtc";
   const CONTENT_TYPE_HEADER = "Content-Type";
   // A new still fades in over the one it replaces, which goes once it is covered
   const CROSSFADE_MS = 1000;
+  const MAP_HOLD_MS = 600;
+  const PRIMARY_BUTTON = 0;
+  const RETICLE_RELEASE_MS = 260;
+  const RETICLE_PADDING_PX = 7;
+  const BOTH_SIDES = 2;
 
   interface Still {
     key: number;
@@ -24,7 +30,12 @@
    * `expanded` is the camera drawn inside its own window: no title, and nothing to tap. `banner`
    * is something the caller lays between the title and the picture.
    */
-  let { camera, expanded = false, banner }: { camera: Camera; expanded?: boolean; banner?: Snippet } = $props();
+  let { camera, expanded = false, banner, onhold }: {
+    camera: Camera;
+    expanded?: boolean;
+    banner?: Snippet;
+    onhold?: (from: Box) => void;
+  } = $props();
 
   const visibility = faceVisibility();
   const server = go2rtcServer();
@@ -38,6 +49,39 @@
   let away = $state(false);
   let image = $state<HTMLImageElement | null>(null);
   let pressedAt: { x: number; y: number } | null = null;
+  let heldLong = false;
+  let holdTimer: number | null = null;
+  let cameraElement = $state<HTMLElement | null>(null);
+  let reticle = $state<{ box: Box; holding: boolean; serial: number } | null>(null);
+  let holdSerial = 0;
+
+  function cancelHold(): void {
+    if (holdTimer !== null) {
+      window.clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+    window.removeEventListener("pointermove", moveHold);
+    window.removeEventListener("pointerup", cancelHold);
+    window.removeEventListener("pointercancel", cancelHold);
+    if (reticle?.holding) reticle.holding = false;
+  }
+
+  $effect(() => {
+    if (reticle === null || reticle.holding) return;
+    const timer = window.setTimeout(() => (reticle = null), RETICLE_RELEASE_MS);
+    return () => window.clearTimeout(timer);
+  });
+
+  function moveHold(event: PointerEvent): void {
+    if (pressedAt && Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > TAP_SLOP_PX) {
+      cancelHold();
+    }
+  }
+
+  $effect(() => {
+    if (!visibility.showing || !onhold) cancelHold();
+    return cancelHold;
+  });
 
   const watching = $derived(visibility.showing && opened === null);
 
@@ -196,20 +240,59 @@
   }
 
   onDestroy(() => {
+    cancelHold();
     for (const still of stills) {
       URL.revokeObjectURL(still.url);
     }
   });
 
   function press(event: PointerEvent): void {
+    cancelHold();
+    heldLong = false;
     pressedAt = { x: event.clientX, y: event.clientY };
+    if (!onhold || expanded || event.button !== PRIMARY_BUTTON || !event.isPrimary) return;
+    if (event.target instanceof Element && event.target.closest("button")) return;
+    if (frame === null || cameraElement === null) return;
+
+    const natural = frame instanceof HTMLVideoElement
+      ? { width: frame.videoWidth, height: frame.videoHeight }
+      : { width: frame.naturalWidth, height: frame.naturalHeight };
+    const box = containedBox(frame.getBoundingClientRect(), natural, getComputedStyle(frame).objectPosition);
+    const within = cameraElement.getBoundingClientRect();
+    const marked = {
+      left: box.left - RETICLE_PADDING_PX,
+      top: box.top - RETICLE_PADDING_PX,
+      width: box.width + BOTH_SIDES * RETICLE_PADDING_PX,
+      height: box.height + BOTH_SIDES * RETICLE_PADDING_PX,
+    };
+    reticle = {
+      serial: ++holdSerial,
+      holding: true,
+      box: {
+        ...marked,
+        left: marked.left - within.left,
+        top: marked.top - within.top,
+      },
+    };
+
+    holdTimer = window.setTimeout(() => {
+      cancelHold();
+      if (!onhold || frame === null || !visibility.showing) return;
+      heldLong = true;
+      reticle = null;
+      onhold(marked);
+    }, MAP_HOLD_MS);
+    window.addEventListener("pointermove", moveHold);
+    window.addEventListener("pointerup", cancelHold);
+    window.addEventListener("pointercancel", cancelHold);
   }
 
   function open(event: MouseEvent): void {
+    cancelHold();
     const moved = pressedAt ? Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) : 0;
     pressedAt = null;
 
-    if (expanded || opened !== null || frame === null || moved > TAP_SLOP_PX) {
+    if (heldLong || expanded || opened !== null || frame === null || moved > TAP_SLOP_PX) {
       return;
     }
 
@@ -233,12 +316,15 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <section
+  bind:this={cameraElement}
   class="camera"
   class:camera--expandable={!expanded}
   class:camera--away={away}
+  class:camera--holdable={!!onhold}
   style:--camera-crossfade="{CROSSFADE_MS}ms"
   onpointerdown={press}
   onclick={open}
+  oncontextmenu={(event) => { if (onhold) event.preventDefault(); }}
 >
   {#if camera.title && !expanded}
     <h2 class="panel-title panel-title--right">{camera.title}</h2>
@@ -270,6 +356,19 @@
       {/each}
     </div>
   {/if}
+  {#if reticle}
+    {#key reticle.serial}
+      <div
+        class="camera__hold-reticle"
+        style:left="{reticle.box.left}px"
+        style:top="{reticle.box.top}px"
+        style:width="{reticle.box.width}px"
+        style:height="{reticle.box.height}px"
+      >
+        <Reticle holding={reticle.holding} releasing={!reticle.holding} holdMs={MAP_HOLD_MS} releaseMs={RETICLE_RELEASE_MS} />
+      </div>
+    {/key}
+  {/if}
 </section>
 
 {#if opened}
@@ -278,10 +377,23 @@
 
 <style>
   .camera {
+    position: relative;
     display: flex;
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+  }
+
+  .camera__hold-reticle {
+    --reticle-bracket-size: 1.6rem;
+    --reticle-bracket-weight: 3px;
+
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .camera--holdable {
+    overflow: visible;
   }
 
   /* When the column is tight the frame scales down whole rather than losing its bottom edge,

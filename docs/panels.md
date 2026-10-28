@@ -234,6 +234,18 @@ Everything a guest face draws is added to the allowlists, so there is nothing to
 
 ### The departure face
 
+To inspect and rebuild the routes drawn on a travel map, configure `route_tools` in the departure face's options:
+
+```yaml
+route_tools:
+  entity_id: binary_sensor.travel_routes_live
+  map_entity_id: camera.travel
+```
+
+Hold that map for 600 ms to open its route controls; brackets close in during the hold, and a short tap still enlarges the image. The window lists the routes in the sensor's `routes` attribute, with their name in the map's `color`, a line formatted as `<first address line or text before the first comma> · <distance> · via <count> points`, and their cache timestamp in local `YYYY-MM-DD HH:mm:ss` format. Commutes use the destination zone’s friendly name, such as Home or Lab, matching the travel-time window; event trips use the shortened address or a zone name when available. Each borderless refresh icon opens a confirmation window titled **Regenerate base route**, with its header, brackets and filling pill in the selected route’s colour; holding **Regenerate** for one second fills its pill and calls `pyscript.traffic_base_regenerate` with the route's `trip` identifier. A tap, early release or movement cancels the hold without a call. It waits for the response and reports success or failure; all regeneration buttons are disabled while a request is outstanding. Only trips currently listed in that configured sensor's `trips` attribute can be regenerated from the panel. The fallback traffic maps retain their ordinary camera behaviour.
+
+The service must preserve a working base on failure, clear readings tied to a replaced base, and publish fresh map data on success. Regeneration uses the configured vias; an incorrect pin needs correcting in Home Assistant before rebuilding. Reloading a secret-backed pin may require restarting Home Assistant.
+
 What to look at on the way out. The clock, the header's indicators, and the weather now with today's high and low sit exactly where they do on the dashboard, so turning between the two moves none of them. Under them, a traffic map headed from the left and, beside it, the trips under way headed from the right with the [`fuel`](configuration.md#fuel) gauges straight under them and the forecast, headed `labels.forecast`, under those, as one block against the top and centred across the face, stopping short of the face map's dots at the foot of the panel. The forecast and the weather need the [`weather`](configuration.md#weather) block, and are left out without it.
 
 ```yaml

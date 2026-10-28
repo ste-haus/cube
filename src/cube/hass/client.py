@@ -89,7 +89,13 @@ class HassClient:
         await self._call(protocol.call_service(self._next_message_id(), domain, service, entity_id, service_data))
 
     async def query_service(
-        self, domain: str, service: str, entity_id: str, service_data: dict[str, Any] | None = None
+        self,
+        domain: str,
+        service: str,
+        entity_id: str | None,
+        service_data: dict[str, Any] | None = None,
+        *,
+        timeout_seconds: float | None = None,
     ) -> dict[str, Any]:
         """Calls a service for what it answers rather than for what it does.
 
@@ -101,10 +107,10 @@ class HassClient:
             self._next_message_id(), domain, service, entity_id, service_data, return_response=True
         )
 
-        return protocol.service_response(await self._call(message))
+        return protocol.service_response(await self._call(message, timeout_seconds=timeout_seconds))
 
-    async def _call(self, message: dict[str, Any]) -> dict[str, Any]:
-        result = await self._send_awaiting_result(message)
+    async def _call(self, message: dict[str, Any], *, timeout_seconds: float | None = None) -> dict[str, Any]:
+        result = await self._send_awaiting_result(message, timeout_seconds=timeout_seconds)
 
         if not result.get(protocol.SUCCESS, False):
             error = result.get(protocol.ERROR, {})
@@ -218,7 +224,9 @@ class HassClient:
 
             queue.put_nowait(update)
 
-    async def _send_awaiting_result(self, message: dict[str, Any]) -> dict[str, Any]:
+    async def _send_awaiting_result(
+        self, message: dict[str, Any], *, timeout_seconds: float | None = None
+    ) -> dict[str, Any]:
         connection = self._connection
         if connection is None:
             raise HassError("Not connected to Home Assistant")
@@ -230,7 +238,8 @@ class HassClient:
         await connection.send(json.dumps(message))
 
         try:
-            return await asyncio.wait_for(pending, timeout=self._settings.request_timeout_seconds)
+            timeout = self._settings.request_timeout_seconds if timeout_seconds is None else timeout_seconds
+            return await asyncio.wait_for(pending, timeout=timeout)
         except TimeoutError as error:
             raise HassError("Home Assistant did not answer in time") from error
         finally:

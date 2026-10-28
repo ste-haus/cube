@@ -7,6 +7,7 @@
   import Indicators from "../cards/Indicators.svelte";
   import Transcript from "../cards/Transcript.svelte";
   import TravelTimes from "../cards/TravelTimes.svelte";
+  import RouteToolsWindow from "../cards/RouteToolsWindow.svelte";
   import Visualizer from "../cards/Visualizer.svelte";
   import Weather from "../cards/Weather.svelte";
   import WeatherExtremes from "../cards/WeatherExtremes.svelte";
@@ -16,6 +17,7 @@
   import { ha } from "../lib/state.svelte";
   import { shownMap } from "../lib/travel";
   import type { DashboardConfig, DepartureFaceOptions } from "../lib/types";
+  import type { Box } from "../lib/picture";
 
   /*
    * What to look at on the way out: the traffic, how long the trips under way will take, and
@@ -39,6 +41,12 @@
 
   const visibility = faceVisibility();
   const map = $derived(shownMap(options.map, (entityId) => ha.isOn(entityId)));
+  let routeToolsFrom = $state<Box | null>(null);
+  const routeTools = $derived(options.route_tools?.map_entity_id === map.entity_id ? options.route_tools : null);
+
+  $effect(() => {
+    if (!routeTools) routeToolsFrom = null;
+  });
 
   /* The forecast is fetched per panel, so only while this face is being looked at. */
   $effect(() => {
@@ -73,7 +81,7 @@
   <div class="departure-face__main">
     <div class="departure-face__map">
       {#key map.entity_id}
-        <Camera camera={map}>
+        <Camera camera={map} onhold={routeTools ? (from) => (routeToolsFrom = from) : undefined}>
           {#snippet banner()}
             {#if options.incidents_entity_id}
               <IncidentBanner
@@ -103,6 +111,14 @@
     <Transcript transcript={config.transcript} mediaPlayer={config.profile.media_player} />
   {/if}
 </div>
+
+{#if routeToolsFrom && routeTools}
+  <RouteToolsWindow
+    entityId={routeTools.entity_id}
+    from={routeToolsFrom}
+    onclose={() => (routeToolsFrom = null)}
+  />
+{/if}
 
 {#if config.visualizer && visibility.showing}
   <Visualizer visualizer={config.visualizer} mediaPlayer={config.profile.media_player} />

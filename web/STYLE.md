@@ -168,4 +168,6 @@ A face that is turned away does not animate and does not fetch. A settled face i
 
 ## Checking it
 
+The departure face's travel map opens its route controls after a 600 ms hold, with the shared `Reticle` brackets closing in over the hold and springing back on cancellation. A short tap still enlarges the map; movement beyond the tap slop cancels the hold. The route controls use an interactive solid-band `PanelWindow`, with route titles in their map colours, quiet route details and a borderless refresh icon per route that opens a confirmation window with the existing one-second filling-pill hold gesture before regeneration, then reports progress and the result without implying congestion is already refreshed.
+
 Unit tests cover the logic (`pending`, `picture`), not the motion. To see an animation in the real app, run the demo stub and proxy from `tools/demo/run.sh` and drive headless Chrome over the DevTools protocol: tap with `Input.dispatchMouseEvent`, capture with `Page.captureScreenshot`, and hold `/api/toggle` with `Fetch.enable` to see the waiting state, since the stub answers instantly.

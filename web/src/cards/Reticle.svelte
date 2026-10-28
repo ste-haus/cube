@@ -40,8 +40,8 @@
 
 <style>
   .reticle {
-    --bracket-size: 0.8rem;
-    --bracket-weight: 2px;
+    --bracket-size: var(--reticle-bracket-size, 0.8rem);
+    --bracket-weight: var(--reticle-bracket-weight, 2px);
     --bracket-color: var(--color-foreground);
     --reticle-lock: 180ms;
     --reticle-breathe: var(--waiting-breathe);

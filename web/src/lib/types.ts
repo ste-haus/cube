@@ -350,6 +350,7 @@ export interface TravelTime {
 export type MapsLink = "apple" | "google";
 
 export interface DepartureFaceOptions {
+  route_tools?: { entity_id: string; map_entity_id: string } | null;
   map: MapCamera[];
   travel_times: TravelTime[];
   /** Minutes before a trip's time to leave that it is imminent, and that it is soon. */

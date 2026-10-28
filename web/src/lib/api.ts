@@ -6,6 +6,21 @@ const API_ROOT = "/api";
 const FACE_ROOT = "/faces";
 const PROFILE_PARAMETER = "profile";
 
+const JSON_CONTENT_TYPE = "application/json";
+const POST_METHOD = "POST";
+
+export async function regenerateBaseRoute(entityId: string, trip: string): Promise<void> {
+  const response = await fetch(`${API_ROOT}/travel-routes/regenerate`, {
+    method: POST_METHOD,
+    headers: { "Content-Type": JSON_CONTENT_TYPE },
+    body: JSON.stringify({ entity_id: entityId, trip }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail ?? "Could not regenerate base route");
+  }
+}
+
 const WS_SCHEME = "ws:";
 const WSS_SCHEME = "wss:";
 const HTTPS_PROTOCOL = "https:";

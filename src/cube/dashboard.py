@@ -1304,6 +1304,13 @@ DEFAULT_LEAVE_NOW_ICON = "mdi:run-fast"
 DEFAULT_DEPARTED_ICON = "mdi:account-arrow-right-outline"
 
 
+class RouteTools(BaseModel):
+    """The map whose displayed base routes can be rebuilt from a panel."""
+
+    entity_id: str
+    map_entity_id: str
+
+
 class DepartureFaceOptions(CameraFaceOptions):
     """What to look at on the way out: the traffic, and how long the trips under way will take.
 
@@ -1318,6 +1325,7 @@ class DepartureFaceOptions(CameraFaceOptions):
     """
 
     map: MapCameras
+    route_tools: RouteTools | None = None
     travel_times: list[TravelTime] = Field(min_length=1)
     send_event: str | None = Field(
         default=None,
@@ -1411,6 +1419,9 @@ class DepartureFaceOptions(CameraFaceOptions):
     def require_a_map_to_fall_back_to(self) -> Self:
         require_a_map_to_fall_back_to(self.map, DEPARTURE_MAP_OWNER)
 
+        if self.route_tools and self.route_tools.map_entity_id not in [camera.entity_id for camera in self.map]:
+            raise ValueError("Route tools must name one of the departure face's maps")
+
         return self
 
     @property
@@ -1421,8 +1432,9 @@ class DepartureFaceOptions(CameraFaceOptions):
     def entities(self) -> list[str]:
         routes = [entity_id for travel in self.travel_times for entity_id in travel.entities]
         maps = [camera.visible_when for camera in self.map if camera.visible_when]
+        tools = [self.route_tools.entity_id] if self.route_tools else []
 
-        return routes + maps + ([self.incidents_entity_id] if self.incidents_entity_id else [])
+        return routes + maps + tools + ([self.incidents_entity_id] if self.incidents_entity_id else [])
 
     @property
     def events(self) -> list[str]:
