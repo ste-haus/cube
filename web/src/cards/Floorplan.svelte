@@ -3,8 +3,8 @@
   import Reticle from "./Reticle.svelte";
   import { floorplanStylesUrl, floorplanUrl } from "../lib/api";
   import { binState } from "../lib/bins";
-  import { swipeable, type Direction, TAP_SLOP_PX } from "../lib/cube.svelte";
-  import { COLOUR_HOLD_MS, takesHue } from "../lib/hue";
+  import { HOLD_MS, RETICLE_RELEASE_MS, swipeable, type Direction, TAP_SLOP_PX } from "../lib/cube.svelte";
+  import { takesHue } from "../lib/hue";
   import { nextLevel } from "../lib/levels";
   import { Lapsing, PANE_RESET_MS } from "../lib/panes.svelte";
   import { pending } from "../lib/pending.svelte";
@@ -56,10 +56,9 @@
 
   const BRIGHTNESS_MAX = 255;
 
-  // The reticle a tapped control is marked with until Home Assistant answers: how far it stands
-  // off the control, and how long it takes to let go once the answer is in.
+  // How far the reticle a tapped control is marked with until Home Assistant answers stands off
+  // the control.
   const RETICLE_PADDING_PX = 7;
-  const RELEASE_MS = 260;
 
   // A light held rather than tapped opens its colour, if it has one.
   const COLOR_MODES_ATTRIBUTE = "supported_color_modes";
@@ -118,7 +117,7 @@
       return;
     }
 
-    const release = window.setTimeout(() => (reticle = null), RELEASE_MS);
+    const release = window.setTimeout(() => (reticle = null), RETICLE_RELEASE_MS);
 
     return () => window.clearTimeout(release);
   });
@@ -346,7 +345,7 @@
           reticle = null;
           colouring = { entityId, fill: plan.fill, from: padded(element) };
         }
-      }, COLOUR_HOLD_MS);
+      }, HOLD_MS);
 
       window.addEventListener("pointermove", moved);
       window.addEventListener("pointerup", ended);
@@ -421,7 +420,7 @@
                 style:width="{reticle.box.width}px"
                 style:height="{reticle.box.height}px"
               >
-                <Reticle holding={reticle.holding} releasing={!held} holdMs={COLOUR_HOLD_MS} releaseMs={RELEASE_MS} />
+                <Reticle holding={reticle.holding} releasing={!held} holdMs={HOLD_MS} releaseMs={RETICLE_RELEASE_MS} />
               </div>
             {/key}
           {/if}

@@ -41,6 +41,10 @@ const IDLE_RESET_MS = 2 * 60 * 1000;
 const SWIPE_THRESHOLD_PX = 50;
 /** Further than this between press and release is a swipe across something, not a tap on it. */
 export const TAP_SLOP_PX = 10;
+/** How long something is held to open what lies behind it rather than act on a tap. */
+export const HOLD_MS = 600;
+/** How quickly a reticle springs back out once it is let go. */
+export const RETICLE_RELEASE_MS = 260;
 const TOUCH_ACTION_NONE = "none";
 
 /** How long a face takes to fade out over the one replacing it. Reaches the stylesheet as `--face-fade`. */

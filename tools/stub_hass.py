@@ -11,7 +11,7 @@ import argparse
 import asyncio
 import colorsys
 import random
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -146,6 +146,16 @@ MCW_CLEARED_MINUTES_AGO = 30
 MINUTES_PER_DAY = 24 * 60
 FIRE_EVENT_DOMAIN = "pyscript"
 FIRE_EVENT_SERVICE = "fire_event"
+# The hass repo's base route rebuild, which the departure face's route controls call
+REGENERATE_DOMAIN = "pyscript"
+REGENERATE_SERVICE = "traffic_base_regenerate"
+ROUTES_ATTRIBUTE = "routes"
+TRIP_FIELD = "trip"
+CACHED_AT_FIELD = "cached_at"
+LENGTH_FIELD = "length_m"
+OK_FIELD = "ok"
+ERROR_FIELD = "error"
+UNKNOWN_TRIP_ERROR = "Could not replace the route: it is not a commute or an event under way"
 SAMPLE_WARNINGS = (
     ("binary_sensor.mcw_warning_water_leak", "Water leak: Kitchen sink", 75),
     ("binary_sensor.mcw_warning_ups_runtime_low", "UPS runtime low: UPS 3301 4 min", 40),
@@ -192,6 +202,29 @@ def sample_master(samples: tuple[tuple[str, str, int], ...]) -> dict[str, Any]:
         protocol.STATE: ON if lit else OFF,
         protocol.ATTRIBUTES: {MCW_ALERTS_ATTRIBUTE: alerts, MCW_LAST_CLEARED_ATTRIBUTE: last_cleared},
     }
+
+
+def regenerate_route(states: dict[str, dict[str, Any]], trip: str | None) -> tuple[dict[str, Any], list[str]]:
+    """Rebuild a trip's base the way the hass repo answers: its `routes` entry built now, or an error.
+
+    Returns the answer and the entities whose `routes` changed, to broadcast.
+    """
+
+    now = datetime.now(UTC).isoformat()
+    touched = []
+    rebuilt = None
+
+    for entity_id, state in states.items():
+        for route in state.get(protocol.ATTRIBUTES, {}).get(ROUTES_ATTRIBUTE) or []:
+            if route.get(TRIP_FIELD) == trip:
+                route[CACHED_AT_FIELD] = now
+                rebuilt = route
+                touched.append(entity_id)
+
+    if rebuilt is None:
+        return {OK_FIELD: False, ERROR_FIELD: UNKNOWN_TRIP_ERROR}, []
+
+    return {OK_FIELD: True, TRIP_FIELD: trip, CACHED_AT_FIELD: now, LENGTH_FIELD: rebuilt.get(LENGTH_FIELD)}, touched
 
 
 def clear_master(state: dict[str, Any]) -> None:
@@ -456,14 +489,16 @@ def sample_hourly_forecast() -> list[dict[str, Any]]:
 
 
 def sample_forecast() -> list[dict[str, Any]]:
-    midnight = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now().astimezone().date()
 
     days = []
     for offset in range(SAMPLE_FORECAST_DAYS):
         low = random.randint(*FORECAST_LOW_RANGE)
+        # Each day's own local midnight, so a DST change can't put two days on one date
+        midnight = datetime.combine(today + timedelta(days=offset), time.min).astimezone()
         days.append(
             {
-                "datetime": (midnight + timedelta(days=offset)).isoformat(),
+                "datetime": midnight.isoformat(),
                 "condition": random.choice(SAMPLE_FORECAST_CONDITIONS),
                 "temperature": low + random.randint(*FORECAST_SPREAD_RANGE),
                 "templow": low,
@@ -612,8 +647,25 @@ def create_stub(dashboard: Dashboard) -> FastAPI:
                     },
                 }
             )
+        elif (
+            message_type == protocol.CALL_SERVICE
+            and message.get(protocol.RETURN_RESPONSE)
+            and message.get("domain") == REGENERATE_DOMAIN
+            and message.get("service") == REGENERATE_SERVICE
+        ):
+            answer, touched = regenerate_route(states, (message.get(protocol.SERVICE_DATA) or {}).get(TRIP_FIELD))
+            if touched:
+                await broadcast(touched)
+            await socket.send_json(
+                {
+                    protocol.ID: message_id,
+                    protocol.TYPE: protocol.RESULT,
+                    protocol.SUCCESS: True,
+                    protocol.RESULT_PAYLOAD: {protocol.RESPONSE: answer},
+                }
+            )
         elif message_type == protocol.CALL_SERVICE and message.get(protocol.RETURN_RESPONSE):
-            # The only service cube asks an answer of is the forecast, by the day or by the hour.
+            # Otherwise the only service cube asks an answer of is the forecast, by the day or by the hour.
             entity_id = message.get("target", {}).get("entity_id")
             kind = message.get(protocol.SERVICE_DATA, {}).get(FORECAST_TYPE_KEY)
             forecast = sample_hourly_forecast() if kind == HOURLY_FORECAST_TYPE else sample_forecast()

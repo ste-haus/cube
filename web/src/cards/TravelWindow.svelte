@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { TAP_SLOP_PX } from "../lib/cube.svelte";
+  import { HOLD_MS, RETICLE_RELEASE_MS, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { fetchHistory, fireEvent } from "../lib/api";
-  import { COLOUR_HOLD_MS } from "../lib/hue";
   import Icon from "../lib/Icon.svelte";
   import { PANE_RESET_MS } from "../lib/panes.svelte";
   import type { Box } from "../lib/picture";
@@ -68,10 +67,10 @@
   const TRENDING_UP_ICON = "mdi:trending-up";
   const TRENDING_DOWN_ICON = "mdi:trending-down";
   // How long the phone says it has sent, or could not, before it offers to again.
+  // A detail after the main value it is about; see STYLE.md
+  const DETAIL_SEPARATOR = " · ";
   const SENT_MS = 4000;
   const MILLISECONDS = "ms";
-  // The reticle round the event lets go as quickly as the floorplan's does.
-  const RETICLE_RELEASE_MS = 260;
   const PRIMARY_BUTTON = 0;
 
   let {
@@ -299,7 +298,7 @@
 
     pressedAt = { x: event.clientX, y: event.clientY };
     lock = "holding";
-    holdTimer = after(COLOUR_HOLD_MS, () => {
+    holdTimer = after(HOLD_MS, () => {
       holdTimer = null;
       void send();
     });
@@ -451,7 +450,7 @@
               <Reticle
                 holding={lock === "holding"}
                 releasing={lock === "releasing"}
-                holdMs={COLOUR_HOLD_MS}
+                holdMs={HOLD_MS}
                 releaseMs={RETICLE_RELEASE_MS}
               />
             </span>
@@ -508,8 +507,8 @@
           >
           {#if checked}
             <span class="travel-window__checked"
-              >({labels.travel_checked_note} <time datetime={checked.toISOString()}>{timeAgo(checked, ticking)}</time
-              >)</span
+              >{DETAIL_SEPARATOR}{labels.travel_checked_note}
+              <time datetime={checked.toISOString()}>{timeAgo(checked, ticking)}</time></span
             >
           {/if}
         </dd>
@@ -588,7 +587,6 @@
   }
 
   .travel-window__checked {
-    margin-left: 0.6em;
     color: var(--color-muted);
   }
 

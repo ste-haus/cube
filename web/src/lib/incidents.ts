@@ -1,4 +1,4 @@
-import { strftime } from "./format";
+import { daysUntil, strftime } from "./format";
 
 /*
  * Traffic incidents, as Home Assistant lists them in a sensor's `incidents` attribute: HERE's
@@ -290,19 +290,11 @@ function momentOf(text: string | null): Date | null {
   return moment === null || Number.isNaN(moment.getTime()) ? null : moment;
 }
 
-function fill(template: string, values: Record<string, string>): string {
+export function fill(template: string, values: Record<string, string>): string {
   return Object.entries(values).reduce(
     (filled, [key, value]) => filled.replace(`{${key}}`, value),
     template,
   );
-}
-
-// Calendar days from `now` to `then`; rounded, since a day across a clock change is not 24 hours.
-function daysUntil(then: Date, now: Date): number {
-  const midnight = (date: Date) =>
-    new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-
-  return Math.round((midnight(then) - midnight(now)) / DAY_MS);
 }
 
 /** A day ahead: today, its weekday within the week, or its date further off. */

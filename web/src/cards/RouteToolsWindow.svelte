@@ -1,70 +1,133 @@
+<script module lang="ts">
+  // Shared by every opening of the window, so closing and reopening it mid-request can't start
+  // a second one
+  const pending = $state<{ trip: string | null }>({ trip: null });
+</script>
+
 <script lang="ts">
+  import { fade } from "svelte/transition";
+  import HoldQuestion from "./HoldQuestion.svelte";
   import PanelWindow from "./PanelWindow.svelte";
-  import ConfirmationWindow from "./ConfirmationWindow.svelte";
   import { regenerateBaseRoute } from "../lib/api";
+  import { fill, wantsLightType } from "../lib/incidents";
   import type { Box } from "../lib/picture";
-  import { routeCachedAt, routeSummary, type BaseRouteDetails } from "../lib/routes";
+  import { routeCachedAt, routeQuestion, routeSummary, type BaseRouteDetails } from "../lib/routes";
   import { ha } from "../lib/state.svelte";
+  import type { DistanceUnit, Labels } from "../lib/types";
+  import { strikeOut, writeIn } from "../lib/wipe";
+
+  /*
+   * The routes on the travel map, each with what its base was built from and a way to rebuild it.
+   *
+   * A route's refresh icon asks first, in place: the row's details are struck out and the question
+   * written in where they were, its answer held for `CONFIRM_HOLD_MS`. While it asks, the band and
+   * brackets take the route's colour and the other rows dim, as a critical switch's window does
+   * while it asks. Either answer writes the details back.
+   *
+   * What a rebuild comes to stands in the cached line's place for `RESULT_MS`, then fades back to
+   * it. It is the open window's alone: one opened afterwards shows the cached line.
+   */
 
   const ROUTES_ATTRIBUTE = "routes";
   const EMPTY_ROUTES: BaseRouteDetails[] = [];
-  const TITLE = "Travel routes";
-  const FAILURE_MESSAGE = "Could not regenerate base route";
-  const SUCCESS_MESSAGE = "Base regenerated. New route will be used for the next poll.";
-  const CONFIRM_TITLE = "Regenerate base route";
-  const CONFIRM_LABEL = "Regenerate";
+  const CONFIRM_HOLD_MS = 1000;
+  const MINUTE_MS = 60_000;
+  const RESULT_MS = 10_000;
+  // As long as --colour-fade, so the line changes at the pace the window's colours do
+  const RESULT_FADE_MS = 400;
 
-  let { entityId, from, onclose }: {
+  let { entityId, unit, labels, from, onclose }: {
     entityId: string;
+    unit: DistanceUnit;
+    labels: Labels;
     from: Box;
     onclose: () => void;
   } = $props();
   const routes = $derived(ha.attribute<BaseRouteDetails[]>(entityId, ROUTES_ATTRIBUTE) ?? EMPTY_ROUTES);
-  let busy = $state<string | null>(null);
+  const busy = $derived(pending.trip);
   let messages = $state<Record<string, string>>({});
-  let confirmation = $state<{ route: BaseRouteDetails; from: Box } | null>(null);
+  const messageTimers: Record<string, number> = {};
+
+  $effect(() => () => Object.values(messageTimers).forEach((timer) => window.clearTimeout(timer)));
+
+  function show(trip: string, message: string): void {
+    window.clearTimeout(messageTimers[trip]);
+    messages[trip] = message;
+    messageTimers[trip] = window.setTimeout(() => delete messages[trip], RESULT_MS);
+  }
+  /* Ages are told by the day and times to the minute, so the window's clock moves on by the minute. */
+  let now = $state(new Date());
 
   $effect(() => {
-    if (confirmation && !routes.some(route => route.trip === confirmation?.route.trip)) confirmation = null;
+    const tick = window.setInterval(() => (now = new Date()), MINUTE_MS);
+
+    return () => window.clearInterval(tick);
   });
 
-  function ask(route: BaseRouteDetails, event: MouseEvent): void {
-    if (busy !== null || confirmation !== null) return;
-    confirmation = { route, from: (event.currentTarget as HTMLElement).getBoundingClientRect() };
+  let asking = $state<string | null>(null);
+  const askingRoute = $derived(routes.find((route) => route.trip === asking) ?? null);
+
+  // A route gone from the map takes its question with it
+  $effect(() => {
+    if (asking !== null && askingRoute === null) asking = null;
+  });
+
+  function ask(route: BaseRouteDetails): void {
+    if (busy !== null || asking !== null) return;
+    asking = route.trip;
+  }
+
+  function confirm(trip: string): void {
+    if (asking !== trip) return;
+    asking = null;
+    void regenerate(trip);
   }
 
   async function regenerate(trip: string): Promise<void> {
-    if (busy !== null) return;
-    busy = trip;
-    messages[trip] = "";
+    if (pending.trip !== null) return;
+    pending.trip = trip;
+    window.clearTimeout(messageTimers[trip]);
+    delete messages[trip];
     try {
       await regenerateBaseRoute(entityId, trip);
-      messages[trip] = SUCCESS_MESSAGE;
+      show(trip, labels.route_tools_regenerated);
     } catch (error) {
-      messages[trip] = error instanceof Error ? error.message : FAILURE_MESSAGE;
+      show(trip, (error instanceof Error && error.message) || labels.route_tools_failed);
     } finally {
-      busy = null;
+      pending.trip = null;
     }
   }
 </script>
 
 {#snippet header()}
-  <h2>{TITLE}</h2>
+  <h2>{labels.route_tools_title}</h2>
 {/snippet}
 
-<PanelWindow {from} label={TITLE} {header} {onclose} width="var(--incidents-window-width)" band="solid" interactive>
+<PanelWindow
+  {from}
+  label={labels.route_tools_title}
+  {header}
+  {onclose}
+  width="var(--incidents-window-width)"
+  band="solid"
+  tint={askingRoute?.color ?? null}
+  bracketColor={askingRoute?.color ?? null}
+  lightType={askingRoute !== null && wantsLightType(askingRoute.color)}
+  interactive
+>
   <div class="route-tools">
     {#each routes as route (route.trip)}
-      <section class="route-tools__route">
+      <section class="route-tools__route" class:route-tools__route--dimmed={asking !== null && asking !== route.trip}>
         <div class="route-tools__heading">
           <h3 style:color={route.color}>{route.name}</h3>
           <button
             type="button"
-            disabled={busy !== null || confirmation !== null}
-            aria-label={busy === route.trip ? `Regenerating base for ${route.name}` : `Regenerate base for ${route.name}`}
-            title={`Regenerate base for ${route.name}`}
+            class:route-tools__refresh--hidden={asking === route.trip}
+            disabled={busy !== null || asking !== null}
+            aria-label={fill(busy === route.trip ? labels.route_tools_regenerating : labels.route_tools_regenerate_route, { name: route.name })}
+            title={fill(labels.route_tools_regenerate_route, { name: route.name })}
             aria-busy={busy === route.trip}
-            onclick={(event) => ask(route, event)}
+            onclick={() => ask(route)}
           >
             <svg
               class="route-tools__refresh-icon"
@@ -82,29 +145,47 @@
             </svg>
           </button>
         </div>
-        <p class="route-tools__summary">{routeSummary(route)}</p>
-        <p>Cached {routeCachedAt(route.cached_at)}</p>
-        {#if messages[route.trip]}
-          <p class="route-tools__result" role="status">{messages[route.trip]}</p>
-        {/if}
+        <div class="route-tools__body">
+          <!-- The details' room is always held, so the row keeps its height while it asks -->
+          <div class="route-tools__view route-tools__view--room" aria-hidden="true">
+            <p>{routeSummary(route, unit, labels)}</p>
+            <p>{routeCachedAt(route.cached_at, now, labels)}</p>
+          </div>
+          {#if asking === route.trip}
+            <div class="route-tools__view" in:writeIn out:strikeOut>
+              <HoldQuestion
+                question={routeQuestion(route.cached_at, now, labels)}
+                cancelLabel={labels.route_tools_cancel}
+                confirmLabel={labels.route_tools_regenerate}
+                colour={route.color}
+                holdMs={CONFIRM_HOLD_MS}
+                layout="inline"
+                oncancel={() => (asking = null)}
+                onconfirm={() => confirm(route.trip)}
+              />
+            </div>
+          {:else}
+            <div class="route-tools__view" in:writeIn out:strikeOut>
+              <p>{routeSummary(route, unit, labels)}</p>
+              <!-- The result and the cached line share one cell, so one fades over the other -->
+              <div class="route-tools__status">
+                {#if messages[route.trip]}
+                  <p class="route-tools__result" role="status" transition:fade={{ duration: RESULT_FADE_MS }}>
+                    {messages[route.trip]}
+                  </p>
+                {:else}
+                  <p transition:fade={{ duration: RESULT_FADE_MS }}>{routeCachedAt(route.cached_at, now, labels)}</p>
+                {/if}
+              </div>
+            </div>
+          {/if}
+        </div>
       </section>
     {:else}
-      <p>No routes are currently displayed.</p>
+      <p>{labels.route_tools_empty}</p>
     {/each}
   </div>
 </PanelWindow>
-
-{#if confirmation}
-  <ConfirmationWindow
-    from={confirmation.from}
-    title={CONFIRM_TITLE}
-    color={confirmation.route.color}
-    question={`Regenerate the base route for ${confirmation.route.name}?`}
-    confirmLabel={CONFIRM_LABEL}
-    onconfirm={() => { if (confirmation) void regenerate(confirmation.route.trip); }}
-    onclose={() => (confirmation = null)}
-  />
-{/if}
 
 <style>
   .route-tools {
@@ -125,7 +206,34 @@
     font-size: var(--travel-detail-size);
   }
   .route-tools__heading {
-    display: contents;
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: var(--route-tools-gap);
+  }
+
+  /* The details and the question share one cell, so one wipes out over the other in place. */
+  .route-tools__body {
+    display: grid;
+  }
+
+  .route-tools__view {
+    display: grid;
+    gap: var(--route-tools-detail-gap);
+    grid-area: 1 / 1;
+    align-content: center;
+  }
+
+  .route-tools__view--room {
+    visibility: hidden;
+  }
+
+  .route-tools__status {
+    display: grid;
+  }
+
+  .route-tools__status > p {
+    grid-area: 1 / 1;
   }
 
   h2, h3, p {
@@ -140,24 +248,23 @@
   }
 
   h3 {
-    grid-column: 1;
+    min-width: 0;
     font-size: var(--travel-window-event-size);
     line-height: 1.2;
   }
 
   p {
-    grid-column: 1 / -1;
     color: var(--color-muted);
-  }
-
-  .route-tools__summary {
-    grid-column: 1;
   }
 
   .route-tools__route {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--route-tools-detail-gap) var(--route-tools-gap);
+    gap: var(--route-tools-detail-gap);
+    transition: opacity var(--colour-fade);
+  }
+
+  .route-tools__route--dimmed {
+    opacity: var(--waiting-opacity);
   }
 
   .route-tools__route + .route-tools__route {
@@ -165,10 +272,8 @@
     padding-top: var(--route-tools-gap);
   }
 
-  button {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    align-self: start;
+  .route-tools__heading button {
+    flex: none;
     font: inherit;
     color: var(--color-foreground);
     background: transparent;
@@ -180,7 +285,12 @@
     cursor: pointer;
   }
 
-  button:disabled {
+  /* Hidden, not removed, so the heading keeps its height while its row asks. */
+  .route-tools__refresh--hidden {
+    visibility: hidden;
+  }
+
+  .route-tools__heading button:disabled {
     color: var(--color-dim);
     cursor: wait;
   }

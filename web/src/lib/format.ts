@@ -21,6 +21,11 @@ const DEFAULT_ORDINAL_SUFFIX = "th";
 
 const TWO_DIGITS = 2;
 const HOURS_PER_HALF_DAY = 12;
+const MS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+const DAY_MS = HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
 
 export function compassPoint(bearing: number): string {
   const index = Math.round(bearing / DEGREES_PER_POINT) % COMPASS_POINTS.length;
@@ -237,4 +242,14 @@ export function revealedBy(schedule: number[], beats: number): number {
   }
 
   return count;
+}
+
+/**
+ * Calendar days from `now` to `then`, negative for a day gone: midnight to midnight, rounded,
+ * since a day across a clock change is not 24 hours.
+ */
+export function daysUntil(then: Date, now: Date): number {
+  const midnight = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+  return Math.round((midnight(then) - midnight(now)) / DAY_MS);
 }

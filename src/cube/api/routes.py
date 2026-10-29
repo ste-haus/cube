@@ -6,16 +6,15 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
 from cube.api.dependencies import CurrentHub
+from cube.hass import protocol
 from cube.hass.client import HassError
 
 router = APIRouter(prefix="/api")
 
 TOOLS_OPTION = "route_tools"
 ENTITY_FIELD = "entity_id"
-ATTRIBUTES_FIELD = "attributes"
 TRIPS_FIELD = "trips"
 TRIP_FIELD = "trip"
-STATE_FIELD = "state"
 LIVE_STATE = "on"
 SERVICE_DOMAIN = "pyscript"
 REGENERATE_SERVICE = "traffic_base_regenerate"
@@ -39,9 +38,9 @@ async def regenerate(request: RegenerateRequest, hub: CurrentHub) -> dict[str, A
         if face.options.get(TOOLS_OPTION)
     )
     entity = hub.client.states.get(request.entity_id) or {}
-    displayed = entity.get(ATTRIBUTES_FIELD, {}).get(TRIPS_FIELD, [])
+    displayed = entity.get(protocol.ATTRIBUTES, {}).get(TRIPS_FIELD, [])
 
-    if not allowed or entity.get(STATE_FIELD) != LIVE_STATE or request.trip not in displayed:
+    if not allowed or entity.get(protocol.STATE) != LIVE_STATE or request.trip not in displayed:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=FORBIDDEN_DETAIL)
 
     try:
@@ -56,6 +55,7 @@ async def regenerate(request: RegenerateRequest, hub: CurrentHub) -> dict[str, A
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
 
     if not result.get(OK_FIELD):
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=result.get(ERROR_FIELD))
+        # Empty rather than None, which FastAPI would fill with "Bad Gateway": the panel says it failed
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=result.get(ERROR_FIELD) or "")
 
     return result

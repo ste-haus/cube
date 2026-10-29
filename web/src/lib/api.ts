@@ -16,8 +16,18 @@ export async function regenerateBaseRoute(entityId: string, trip: string): Promi
     body: JSON.stringify({ entity_id: entityId, trip }),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail ?? "Could not regenerate base route");
+    // Without a detail the caller says it failed in its own words
+    throw new Error((await errorDetail(response)) ?? "");
+  }
+}
+
+// A proxy in front of the API can answer with a page rather than FastAPI's JSON
+async function errorDetail(response: Response): Promise<string | null> {
+  try {
+    const body = await response.json();
+    return typeof body?.detail === "string" ? body.detail : null;
+  } catch {
+    return null;
   }
 }
 

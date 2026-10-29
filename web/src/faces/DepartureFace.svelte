@@ -15,6 +15,7 @@
   import { forecast } from "../lib/forecast.svelte";
   import { DEFAULT_CRITICAL_COLOUR } from "../lib/incidents";
   import { ha } from "../lib/state.svelte";
+  import { routeUnit } from "../lib/routes";
   import { shownMap } from "../lib/travel";
   import type { DashboardConfig, DepartureFaceOptions } from "../lib/types";
   import type { Box } from "../lib/picture";
@@ -37,12 +38,21 @@
    * whoever is looking at the panel, whichever face that is.
    */
 
+  const UNIT_ATTRIBUTE = "unit_of_measurement";
+
   let { config, options }: { config: DashboardConfig; options: DepartureFaceOptions } = $props();
 
   const visibility = faceVisibility();
   const map = $derived(shownMap(options.map, (entityId) => ha.isOn(entityId)));
   let routeToolsFrom = $state<Box | null>(null);
   const routeTools = $derived(options.route_tools?.map_entity_id === map.entity_id ? options.route_tools : null);
+  const routeDistanceUnit = $derived(
+    routeUnit(
+      options.travel_times
+        .filter((travel) => travel.distance_entity_id)
+        .map((travel) => ha.attribute<string>(travel.distance_entity_id as string, UNIT_ATTRIBUTE)),
+    ),
+  );
 
   $effect(() => {
     if (!routeTools) routeToolsFrom = null;
@@ -115,6 +125,8 @@
 {#if routeToolsFrom && routeTools}
   <RouteToolsWindow
     entityId={routeTools.entity_id}
+    unit={routeDistanceUnit}
+    labels={config.labels}
     from={routeToolsFrom}
     onclose={() => (routeToolsFrom = null)}
   />

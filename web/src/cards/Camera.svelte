@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, type Snippet } from "svelte";
   import { cameraSnapshotUrl } from "../lib/api";
-  import { faceVisibility, TAP_SLOP_PX } from "../lib/cube.svelte";
+  import { faceVisibility, HOLD_MS, RETICLE_RELEASE_MS, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { go2rtcServer, playStream } from "../lib/go2rtc";
   import { containedBox, ratioOf, samePicture, type Box } from "../lib/picture";
   import type { Camera, StreamType } from "../lib/types";
@@ -13,9 +13,7 @@
   const CONTENT_TYPE_HEADER = "Content-Type";
   // A new still fades in over the one it replaces, which goes once it is covered
   const CROSSFADE_MS = 1000;
-  const MAP_HOLD_MS = 600;
   const PRIMARY_BUTTON = 0;
-  const RETICLE_RELEASE_MS = 260;
   const RETICLE_PADDING_PX = 7;
   const BOTH_SIDES = 2;
 
@@ -281,7 +279,7 @@
       heldLong = true;
       reticle = null;
       onhold(marked);
-    }, MAP_HOLD_MS);
+    }, HOLD_MS);
     window.addEventListener("pointermove", moveHold);
     window.addEventListener("pointerup", cancelHold);
     window.addEventListener("pointercancel", cancelHold);
@@ -365,7 +363,7 @@
         style:width="{reticle.box.width}px"
         style:height="{reticle.box.height}px"
       >
-        <Reticle holding={reticle.holding} releasing={!reticle.holding} holdMs={MAP_HOLD_MS} releaseMs={RETICLE_RELEASE_MS} />
+        <Reticle holding={reticle.holding} releasing={!reticle.holding} holdMs={HOLD_MS} releaseMs={RETICLE_RELEASE_MS} />
       </div>
     {/key}
   {/if}

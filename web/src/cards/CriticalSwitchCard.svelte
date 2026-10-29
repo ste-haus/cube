@@ -2,9 +2,8 @@
   import type { Snippet } from "svelte";
   import CriticalSwitchWindow from "./CriticalSwitchWindow.svelte";
   import Reticle from "./Reticle.svelte";
-  import { TAP_SLOP_PX } from "../lib/cube.svelte";
+  import { HOLD_MS, RETICLE_RELEASE_MS, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { advising } from "../lib/critical";
-  import { COLOUR_HOLD_MS } from "../lib/hue";
   import { pending } from "../lib/pending.svelte";
   import type { Box } from "../lib/picture";
   import { ha } from "../lib/state.svelte";
@@ -29,8 +28,7 @@
 
   const MILLISECONDS = "ms";
   const PRIMARY_BUTTON = 0;
-  // How quickly the reticle springs back out, and how far it stands off the card's edge.
-  const RELEASE_MS = 260;
+  // How far the reticle stands off the card's edge.
   const RETICLE_PADDING_PX = 7;
   const PIXELS = "px";
 
@@ -67,7 +65,7 @@
       return;
     }
 
-    const release = window.setTimeout(() => (showing = false), RELEASE_MS);
+    const release = window.setTimeout(() => (showing = false), RETICLE_RELEASE_MS);
 
     return () => window.clearTimeout(release);
   });
@@ -96,7 +94,7 @@
         holding = false;
         unlisten();
         opened = boxOf(node);
-      }, COLOUR_HOLD_MS);
+      }, HOLD_MS);
 
       window.addEventListener("pointermove", moved);
       window.addEventListener("pointerup", ended);
@@ -165,7 +163,7 @@
     {#if showing && opened === null}
       {#key serial}
         <div class="critical-switch-card__reticle">
-          <Reticle {holding} releasing={!locked} holdMs={COLOUR_HOLD_MS} releaseMs={RELEASE_MS} />
+          <Reticle {holding} releasing={!locked} holdMs={HOLD_MS} releaseMs={RETICLE_RELEASE_MS} />
         </div>
       {/key}
     {/if}

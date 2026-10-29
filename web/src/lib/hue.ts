@@ -22,9 +22,6 @@ const RADIANS_PER_DEGREE = Math.PI / 180;
 /** A hue picked on the ring is the colour at its fullest. */
 export const FULL_SATURATION = 100;
 
-/** How long a light is held to open its colour window rather than switch it. */
-export const COLOUR_HOLD_MS = 600;
-
 const PERCENT = 100;
 const RGB_MAX = 255;
 const HEX_RADIX = 16;

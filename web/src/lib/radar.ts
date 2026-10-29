@@ -22,7 +22,7 @@ const MERCATOR_DIVISOR = 4 * Math.PI;
 const EQUATOR_METRES = 40075016.686;
 const MS_PER_SECOND = 1000;
 
-const METRES_PER: Record<DistanceUnit, number> = {
+export const METRES_PER: Record<DistanceUnit, number> = {
   mi: 1609.344,
   km: 1000,
 };

@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { TAP_SLOP_PX } from "../lib/cube.svelte";
+  import { HOLD_MS, TAP_SLOP_PX } from "../lib/cube.svelte";
   import HueWindow from "./HueWindow.svelte";
   import Icon from "../lib/Icon.svelte";
   import { Breath } from "../lib/breath.svelte";
   import { SlidingLevel } from "../lib/level.svelte";
   import { liveBrightness } from "../lib/live";
-  import { COLOUR_HOLD_MS, takesHue } from "../lib/hue";
+  import { takesHue } from "../lib/hue";
   import type { Box } from "../lib/picture";
   import { pending } from "../lib/pending.svelte";
   import { DIAL_SWEEP_DEGREES, percentRound, pointRound, sliderPercent } from "../lib/slider";
@@ -146,7 +146,7 @@
         breath.start();
       } else {
         gesture = "tap";
-        holdTimer = window.setTimeout(held, COLOUR_HOLD_MS);
+        holdTimer = window.setTimeout(held, HOLD_MS);
         // Kept, so the release comes back here even once a hold has opened the colour window over
         // the bulb, rather than landing on the window's glass.
         dial.setPointerCapture(event.pointerId);
@@ -222,7 +222,7 @@
   class:light-dial--on={on}
   class:light-dial--switching={switching}
   class:light-dial--holding={gesture === "tap" && colourable}
-  style:--light-hold="{COLOUR_HOLD_MS}{MILLISECONDS}"
+  style:--light-hold="{HOLD_MS}{MILLISECONDS}"
   role="slider"
   tabindex="-1"
   aria-valuemin={0}

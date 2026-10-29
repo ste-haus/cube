@@ -11,6 +11,7 @@ from cube.api.routes import REGENERATE_TIMEOUT_SECONDS
 from cube.app import create_app
 from cube.config import Settings
 from cube.dashboard import CUBE_FACES, Dashboard
+from cube.hass import protocol
 from cube.hass.client import HassError
 
 ROUTES_ENTITY = "binary_sensor.travel_routes_live"
@@ -20,7 +21,8 @@ OTHER_TRIP = "home_to_lab"
 ROUTE = "/api/travel-routes/regenerate"
 TOOLS = {"entity_id": ROUTES_ENTITY, "map_entity_id": MAP_ENTITY}
 REQUEST = {"entity_id": ROUTES_ENTITY, "trip": TRIP}
-LIVE_STATE = {"state": "on", "attributes": {"trips": [TRIP]}}
+# As the client holds it: Home Assistant's compressed keys
+LIVE_STATE = {protocol.STATE: "on", protocol.ATTRIBUTES: {"trips": [TRIP]}}
 OK = 200
 FORBIDDEN = 403
 BAD_GATEWAY = 502
@@ -75,7 +77,7 @@ def test_a_displayed_route_calls_the_fixed_response_service(settings, tmp_path):
     [
         (None, LIVE_STATE, REQUEST),
         (TOOLS, LIVE_STATE, REQUEST | {"trip": OTHER_TRIP}),
-        (TOOLS, {"state": "off", "attributes": {"trips": [TRIP]}}, REQUEST),
+        (TOOLS, {protocol.STATE: "off", protocol.ATTRIBUTES: {"trips": [TRIP]}}, REQUEST),
         (TOOLS, LIVE_STATE, REQUEST | {"entity_id": "binary_sensor.other"}),
     ],
 )
@@ -105,3 +107,13 @@ def test_a_failed_rebuild_is_not_reported_as_success(settings, tmp_path):
         response = client.post(ROUTE, json=REQUEST)
         assert response.status_code == BAD_GATEWAY
         assert response.json()["detail"] == "Old base kept"
+
+
+def test_a_failure_home_assistant_does_not_explain_leaves_the_words_to_the_panel(settings, tmp_path):
+    with TestClient(create_app(configured(settings, tmp_path))) as client:
+        upstream = client.app.state.hub.client
+        upstream.states[ROUTES_ENTITY] = LIVE_STATE
+        upstream.query_service = AsyncMock(return_value={})
+        response = client.post(ROUTE, json=REQUEST)
+        assert response.status_code == BAD_GATEWAY
+        assert response.json()["detail"] == ""

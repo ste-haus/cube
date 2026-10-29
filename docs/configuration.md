@@ -585,7 +585,7 @@ labels:
   travel_distance: Distance
   travel_destination: Destination
   travel_checked: Checked
-  travel_checked_note: checked
+  travel_checked_note: Checked
   travel_all_day: All day
   travel_countdown: T
   travel_away: Away
@@ -622,6 +622,34 @@ labels:
   critical_switch_off: "Off"
   critical_switch_turn_off: Turn off
   critical_switch_cancel: Cancel
+  route_tools_title: Travel routes
+  route_tools_empty: No routes are currently displayed.
+  route_tools_via: "via {count} points"
+  route_tools_cached: "Cached {when}"
+  route_tools_when: "{day} · {time}"
+  route_tools_age: "{age} ago · {weekday} {time}"
+  route_tools_today: today
+  route_tools_yesterday: yesterday
+  route_tools_just_now: just now
+  route_tools_day: day
+  route_tools_days: days
+  route_tools_week: week
+  route_tools_weeks: weeks
+  route_tools_month: month
+  route_tools_months: months
+  route_tools_year: year
+  route_tools_years: years
+  route_tools_confirm_age: "Replace the route from {age} ago?"
+  route_tools_confirm_unknown: "Replace this route?"
+  route_tools_unknown: Unknown
+  route_tools_unknown_destination: Unknown destination
+  route_tools_regenerate_route: "Replace the route for {name}"
+  route_tools_regenerating: "Replacing the route for {name}"
+  route_tools_regenerated: Route replaced · conditions in ~5 min
+  route_tools_failed: Could not replace the route
+  route_tools_confirm: "Replace {day}'s route?"
+  route_tools_regenerate: Replace
+  route_tools_cancel: Keep
 ```
 
 ### What the panel may switch
