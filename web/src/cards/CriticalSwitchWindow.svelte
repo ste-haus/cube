@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TransitionConfig } from "svelte/transition";
+  import HoldQuestion from "./HoldQuestion.svelte";
   import PanelWindow from "./PanelWindow.svelte";
   import { SWITCH_OFF, SWITCH_ON, confirmation, flip, offColour, stillAsking } from "../lib/critical";
   import { wantsLightType } from "../lib/incidents";
@@ -9,7 +9,7 @@
   import { ha } from "../lib/state.svelte";
   import { PULSE_MS, beatPhase } from "../lib/travel";
   import type { CriticalSwitch, Labels } from "../lib/types";
-  import { WIPE_MS } from "../lib/wipe";
+  import { strikeOut, writeIn } from "../lib/wipe";
 
   /*
    * A critical switch, in a window opened out of the card it is held behind.
@@ -33,15 +33,10 @@
    * glass around it, or a minute untouched, closes it having changed nothing.
    */
 
-  // Half the wipe each way: the one view is struck out before the other is written in.
-  const WIPE_SHARE = 0.5;
-  const VIEW_WIPE_MS = WIPE_MS * WIPE_SHARE;
-  const PERCENT = 100;
   const MILLISECONDS = "ms";
   const PULSE_LOW = "var(--travel-pulse-opacity)";
   const UNCOLOURED_OFF = "var(--color-muted)";
   const SIDES = [SWITCH_ON, SWITCH_OFF] as const;
-  const PRIMARY_BUTTON = 0;
   const MILLISECONDS_PER_SECOND = 1000;
 
   let {
@@ -61,12 +56,11 @@
 
   let panel = $state<PanelWindow | null>(null);
   let asking = $state(false);
-  let holding = $state(false);
-  let holdTimer: number | null = null;
 
   const switchState = $derived(ha.state(critical.entity_id));
   const question = $derived(confirmation(critical, labels.critical_switch_confirm));
   const colour = $derived(offColour(critical, advisoryColour));
+  const holdMs = $derived(critical.hold_seconds * MILLISECONDS_PER_SECOND);
   const words = $derived({ [SWITCH_ON]: labels.critical_switch_on, [SWITCH_OFF]: labels.critical_switch_off });
 
   // Phased by the page's clock, as every pulse on the panel is, so they keep time.
@@ -119,62 +113,17 @@
     }
   }
 
+  // Only while the question still stands: an answer held as it was wiped away sends nothing.
   function turnOff(): void {
+    if (!asking) {
+      return;
+    }
+
     asking = false;
 
     if (stillAsking(switchState)) {
       send();
     }
-  }
-
-  function holdToTurnOff(event: PointerEvent): void {
-    if (event.button !== PRIMARY_BUTTON || !event.isPrimary) {
-      return;
-    }
-
-    letGo();
-    holding = true;
-    holdTimer = window.setTimeout(() => {
-      holdTimer = null;
-      holding = false;
-      turnOff();
-    }, critical.hold_seconds * MILLISECONDS_PER_SECOND);
-  }
-
-  /** Let go, or slid off, before the hold was up: nothing happens. */
-  function letGo(): void {
-    if (holdTimer !== null) {
-      window.clearTimeout(holdTimer);
-      holdTimer = null;
-    }
-
-    holding = false;
-  }
-
-  // The question gone, by an answer or some other way, takes a hold on its answer with it.
-  $effect(() => {
-    if (!asking) {
-      letGo();
-    }
-  });
-
-  $effect(() => () => letGo());
-
-  /* Written in from the left, the way a row arrives, once the view before it has gone. */
-  function writeIn(_node: Element): TransitionConfig {
-    return {
-      delay: VIEW_WIPE_MS,
-      duration: VIEW_WIPE_MS,
-      css: (progress) => `clip-path: inset(0 ${(1 - progress) * PERCENT}% 0 0)`,
-    };
-  }
-
-  /* Struck out to the right, the way a row leaves. */
-  function strikeOut(_node: Element): TransitionConfig {
-    return {
-      duration: VIEW_WIPE_MS,
-      css: (_progress, remaining) => `clip-path: inset(0 0 0 ${remaining * PERCENT}%)`,
-    };
   }
 </script>
 
@@ -203,12 +152,17 @@
   >
     <!-- Both views share the one cell, and the question's room is always held, so the window is
          as big as the larger from the start and never reflows. -->
-    <div class="critical-switch-window__view critical-switch-window__view--room" aria-hidden="true">
-      <p class="critical-switch-window__question">{question}</p>
-      <div class="critical-switch-window__answers">
-        <span class="critical-switch-window__answer">{labels.critical_switch_cancel}</span>
-        <span class="critical-switch-window__answer">{labels.critical_switch_turn_off}</span>
-      </div>
+    <div class="critical-switch-window__view critical-switch-window__view--room" aria-hidden="true" inert>
+      <HoldQuestion
+        {question}
+        cancelLabel={labels.critical_switch_cancel}
+        confirmLabel={labels.critical_switch_turn_off}
+        colour={colour ?? UNCOLOURED_OFF}
+        {holdMs}
+        disabled
+        oncancel={() => {}}
+        onconfirm={() => {}}
+      />
     </div>
 
     {#if !asking}
@@ -234,25 +188,15 @@
       </div>
     {:else}
       <div class="critical-switch-window__view" in:writeIn out:strikeOut>
-        <p class="critical-switch-window__question">{question}</p>
-        <div class="critical-switch-window__answers">
-          <button type="button" class="critical-switch-window__answer" onclick={() => (asking = false)}>
-            {labels.critical_switch_cancel}
-          </button>
-          <button
-            type="button"
-            class="critical-switch-window__answer critical-switch-window__answer--turn-off"
-            class:critical-switch-window__answer--holding={holding}
-            style:--critical-switch-hold="{critical.hold_seconds}s"
-            onpointerdown={holdToTurnOff}
-            onpointerup={letGo}
-            onpointerleave={letGo}
-            onpointercancel={letGo}
-            oncontextmenu={(event) => event.preventDefault()}
-          >
-            <span class="critical-switch-window__word">{labels.critical_switch_turn_off}</span>
-          </button>
-        </div>
+        <HoldQuestion
+          {question}
+          cancelLabel={labels.critical_switch_cancel}
+          confirmLabel={labels.critical_switch_turn_off}
+          colour={colour ?? UNCOLOURED_OFF}
+          {holdMs}
+          oncancel={() => (asking = false)}
+          onconfirm={turnOff}
+        />
       </div>
     {/if}
   </div>
@@ -363,101 +307,5 @@
   .critical-switch-window__side--lit {
     color: var(--color-background);
     font-weight: var(--weight-regular);
-  }
-
-  /* The answers: two buttons, each a pill as tall as the switch, across as wide as it. */
-  .critical-switch-window__answers {
-    display: flex;
-    gap: var(--critical-switch-answer-gap);
-    width: var(--critical-switch-control-width);
-  }
-
-  .critical-switch-window__answer {
-    position: relative;
-    isolation: isolate;
-    flex: 1 1 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: var(--critical-switch-control-height);
-    padding: 0 1em;
-    border: var(--critical-switch-track) solid var(--color-dim);
-    border-radius: var(--critical-switch-round);
-    background: transparent;
-    color: var(--color-muted);
-    font: inherit;
-    font-size: var(--critical-switch-control-size);
-    font-weight: var(--weight-light);
-    cursor: pointer;
-  }
-
-  /*
-   * The answer that turns it off is in what it turns the card to, and as it is held a thumb of
-   * that colour fills in under it from the left, the shape the switch's is, so it is plain how
-   * long is left to go. Its word is dark wherever the fill is under it, as the switch's lit word
-   * is: the word spans the whole button, so a split in its colour moves across with the fill.
-   */
-  .critical-switch-window__answer--turn-off {
-    color: var(--critical-switch-off-colour);
-    touch-action: none;
-    -webkit-touch-callout: none;
-    user-select: none;
-  }
-
-  .critical-switch-window__answer--turn-off::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: var(--critical-switch-inset);
-    border-radius: var(--critical-switch-round);
-    background: var(--critical-switch-off-colour);
-    clip-path: inset(0 100% 0 0 round var(--critical-switch-round));
-  }
-
-  .critical-switch-window__answer--holding::before {
-    animation: critical-switch-fill var(--critical-switch-hold) linear forwards;
-  }
-
-  @keyframes critical-switch-fill {
-    to {
-      clip-path: inset(0 0 0 0 round var(--critical-switch-round));
-    }
-  }
-
-  .critical-switch-window__word {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-image: linear-gradient(
-      90deg,
-      var(--color-background) 0 50%,
-      var(--critical-switch-off-colour) 50% 100%
-    );
-    background-size: 200% 100%;
-    background-position: 100% 0;
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-  }
-
-  .critical-switch-window__answer--holding .critical-switch-window__word {
-    animation: critical-switch-split var(--critical-switch-hold) linear forwards;
-  }
-
-  @keyframes critical-switch-split {
-    to {
-      background-position: 0 0;
-    }
-  }
-
-  .critical-switch-window__question {
-    max-width: 100%;
-    margin: 0;
-    color: var(--color-foreground);
-    font-size: var(--critical-switch-question-size);
-    font-weight: var(--weight-thin);
-    text-align: center;
   }
 </style>

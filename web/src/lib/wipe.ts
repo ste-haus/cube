@@ -99,3 +99,28 @@ export function wipeFromStart(_node: HTMLElement, { duration = WIPE_MS, delay = 
     css: (progress) => `clip-path: inset(0 ${(WHOLE - cubicInOut(progress)) * PERCENT}% 0 0);`,
   };
 }
+
+// Half the wipe each way when one view replaces another in the same place
+const VIEW_SHARE = 0.5;
+const VIEW_WIPE_MS = WIPE_MS * VIEW_SHARE;
+
+/**
+ * One view written in over the room another has just left, as a switch gives way to its
+ * question: written in from the left once the view before it has been struck out. The two share
+ * one cell, so nothing around them moves.
+ */
+export function writeIn(_node: Element): TransitionConfig {
+  return {
+    delay: VIEW_WIPE_MS,
+    duration: VIEW_WIPE_MS,
+    css: (progress) => `clip-path: inset(0 ${(WHOLE - progress) * PERCENT}% 0 0)`,
+  };
+}
+
+/** The view giving way: struck out to the right, the way a row leaves. */
+export function strikeOut(_node: Element): TransitionConfig {
+  return {
+    duration: VIEW_WIPE_MS,
+    css: (_progress, remaining) => `clip-path: inset(0 0 0 ${remaining * PERCENT}%)`,
+  };
+}

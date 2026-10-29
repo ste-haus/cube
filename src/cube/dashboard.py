@@ -660,8 +660,8 @@ class Labels(BaseModel):
     travel_destination: str = Field(default="Destination", description="A route's window: where it goes")
     travel_checked: str = Field(default="Checked", description="A route's window: when its time was asked for")
     travel_checked_note: str = Field(
-        default="checked",
-        description="A route's window: how fresh its time to leave is, in brackets after it",
+        default="Checked",
+        description="A route's window: how fresh its time to leave is, after it and a middle dot",
     )
     travel_all_day: str = Field(default="All day", description="A route's window: an event with no start time")
     travel_countdown: str = Field(default="T", description="A route's window: what its countdown to leave starts with")
@@ -748,6 +748,122 @@ class Labels(BaseModel):
     )
     critical_switch_cancel: str = Field(
         default="Cancel", description="A critical switch's window: the button that leaves it on"
+    )
+    route_tools_title: str = Field(
+        default="Travel routes",
+        description="The route controls' window: its heading",
+    )
+    route_tools_empty: str = Field(
+        default="No routes are currently displayed.",
+        description="The route controls' window: what it says with no route on the map",
+    )
+    route_tools_via: str = Field(
+        default="via {count} points",
+        description="The route controls' window: a route's via pins; `{count}` is replaced",
+    )
+    route_tools_cached: str = Field(
+        default="Cached {when}",
+        description="The route controls' window: when a route's base was built; `{when}` is replaced",
+    )
+    route_tools_when: str = Field(
+        default="{day} · {time}",
+        description="The route controls' window: when a base built today or yesterday was built; `{day}` and `{time}` are replaced",
+    )
+    route_tools_age: str = Field(
+        default="{age} ago · {weekday} {time}",
+        description="The route controls' window: when a base older than yesterday was built; `{age}`, `{weekday}` and `{time}` are replaced",
+    )
+    route_tools_today: str = Field(
+        default="today",
+        description="The route controls' window: a base built today, in its cached line and question",
+    )
+    route_tools_yesterday: str = Field(
+        default="yesterday",
+        description="The route controls' window: a base built yesterday, in its cached line and question",
+    )
+    route_tools_just_now: str = Field(
+        default="just now",
+        description="The route controls' window: a base built in the last minute",
+    )
+    route_tools_day: str = Field(
+        default="day",
+        description="The route controls' window: a base's age, one day",
+    )
+    route_tools_days: str = Field(
+        default="days",
+        description="The route controls' window: a base's age in days",
+    )
+    route_tools_week: str = Field(
+        default="week",
+        description="The route controls' window: a base's age, one week",
+    )
+    route_tools_weeks: str = Field(
+        default="weeks",
+        description="The route controls' window: a base's age in weeks",
+    )
+    route_tools_month: str = Field(
+        default="month",
+        description="The route controls' window: a base's age, one month",
+    )
+    route_tools_months: str = Field(
+        default="months",
+        description="The route controls' window: a base's age in months",
+    )
+    route_tools_year: str = Field(
+        default="year",
+        description="The route controls' window: a base's age, one year",
+    )
+    route_tools_years: str = Field(
+        default="years",
+        description="The route controls' window: a base's age in years",
+    )
+    route_tools_confirm_age: str = Field(
+        default="Replace the route from {age} ago?",
+        description="The route controls' window: what a row asks before replacing a base older than yesterday; `{age}` is replaced",
+    )
+    route_tools_confirm_unknown: str = Field(
+        default="Replace this route?",
+        description="The route controls' window: what a row asks before replacing a base it has no time for",
+    )
+    route_tools_unknown: str = Field(
+        default="Unknown",
+        description="The route controls' window: a distance or time it does not have",
+    )
+    route_tools_unknown_destination: str = Field(
+        default="Unknown destination",
+        description="The route controls' window: a route with no destination",
+    )
+    route_tools_regenerate_route: str = Field(
+        default="Replace the route for {name}",
+        description="The route controls' window: what a screen reader calls a route's refresh icon; `{name}` is replaced",
+    )
+    route_tools_regenerating: str = Field(
+        default="Replacing the route for {name}",
+        description="The route controls' window: what a screen reader calls a route's refresh icon while it runs; `{name}` is replaced",
+    )
+    route_tools_regenerated: str = Field(
+        default="Route replaced · conditions in ~{minutes} min",
+        description="The route controls' window: a route's base replaced; `{minutes}` is replaced with how long until Home Assistant next reads its conditions",
+    )
+    route_tools_regenerated_untimed: str = Field(
+        default="Route replaced",
+        description="The route controls' window: a route's base replaced, when Home Assistant doesn't say when its conditions are next read",
+    )
+    route_tools_failed: str = Field(
+        default="Could not replace the route",
+        description="The route controls' window: a replacement that failed without saying why",
+    )
+    route_tools_confirm: str = Field(
+        default="Replace {day}'s route?",
+        description="The route controls' window: what a row asks before replacing a base built today or yesterday; `{day}` is replaced",
+    )
+    route_tools_regenerate: str = Field(
+        default="Replace",
+        description="The route controls' window: the answer that is held to replace a route's base",
+    )
+    route_tools_cancel: str = Field(
+        default="Keep",
+        description="The route controls' window: the answer that keeps a route's base as it is",
     )
 
 
@@ -1304,6 +1420,13 @@ DEFAULT_LEAVE_NOW_ICON = "mdi:run-fast"
 DEFAULT_DEPARTED_ICON = "mdi:account-arrow-right-outline"
 
 
+class RouteTools(BaseModel):
+    """The map whose displayed base routes can be rebuilt from a panel."""
+
+    entity_id: str
+    map_entity_id: str
+
+
 class DepartureFaceOptions(CameraFaceOptions):
     """What to look at on the way out: the traffic, and how long the trips under way will take.
 
@@ -1318,6 +1441,7 @@ class DepartureFaceOptions(CameraFaceOptions):
     """
 
     map: MapCameras
+    route_tools: RouteTools | None = None
     travel_times: list[TravelTime] = Field(min_length=1)
     send_event: str | None = Field(
         default=None,
@@ -1411,6 +1535,9 @@ class DepartureFaceOptions(CameraFaceOptions):
     def require_a_map_to_fall_back_to(self) -> Self:
         require_a_map_to_fall_back_to(self.map, DEPARTURE_MAP_OWNER)
 
+        if self.route_tools and self.route_tools.map_entity_id not in [camera.entity_id for camera in self.map]:
+            raise ValueError("Route tools must name one of the departure face's maps")
+
         return self
 
     @property
@@ -1421,8 +1548,9 @@ class DepartureFaceOptions(CameraFaceOptions):
     def entities(self) -> list[str]:
         routes = [entity_id for travel in self.travel_times for entity_id in travel.entities]
         maps = [camera.visible_when for camera in self.map if camera.visible_when]
+        tools = [self.route_tools.entity_id] if self.route_tools else []
 
-        return routes + maps + ([self.incidents_entity_id] if self.incidents_entity_id else [])
+        return routes + maps + tools + ([self.incidents_entity_id] if self.incidents_entity_id else [])
 
     @property
     def events(self) -> list[str]:

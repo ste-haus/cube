@@ -6,6 +6,38 @@ const API_ROOT = "/api";
 const FACE_ROOT = "/faces";
 const PROFILE_PARAMETER = "profile";
 
+const JSON_CONTENT_TYPE = "application/json";
+const POST_METHOD = "POST";
+
+/** What a base route rebuild answers; `next_poll_minutes` is missing from a Home Assistant that doesn't say. */
+export interface RegeneratedRoute {
+  next_poll_minutes?: number | null;
+}
+
+export async function regenerateBaseRoute(entityId: string, trip: string): Promise<RegeneratedRoute> {
+  const response = await fetch(`${API_ROOT}/travel-routes/regenerate`, {
+    method: POST_METHOD,
+    headers: { "Content-Type": JSON_CONTENT_TYPE },
+    body: JSON.stringify({ entity_id: entityId, trip }),
+  });
+  if (!response.ok) {
+    // Without a detail the caller says it failed in its own words
+    throw new Error((await errorDetail(response)) ?? "");
+  }
+
+  return response.json();
+}
+
+// A proxy in front of the API can answer with a page rather than FastAPI's JSON
+async function errorDetail(response: Response): Promise<string | null> {
+  try {
+    const body = await response.json();
+    return typeof body?.detail === "string" ? body.detail : null;
+  } catch {
+    return null;
+  }
+}
+
 const WS_SCHEME = "ws:";
 const WSS_SCHEME = "wss:";
 const HTTPS_PROTOCOL = "https:";

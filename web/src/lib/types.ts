@@ -350,6 +350,7 @@ export interface TravelTime {
 export type MapsLink = "apple" | "google";
 
 export interface DepartureFaceOptions {
+  route_tools?: { entity_id: string; map_entity_id: string } | null;
   map: MapCamera[];
   travel_times: TravelTime[];
   /** Minutes before a trip's time to leave that it is imminent, and that it is soon. */
@@ -647,6 +648,35 @@ export interface Labels {
   critical_switch_off: string;
   critical_switch_turn_off: string;
   critical_switch_cancel: string;
+  route_tools_title: string;
+  route_tools_empty: string;
+  route_tools_via: string;
+  route_tools_cached: string;
+  route_tools_when: string;
+  route_tools_age: string;
+  route_tools_today: string;
+  route_tools_yesterday: string;
+  route_tools_just_now: string;
+  route_tools_day: string;
+  route_tools_days: string;
+  route_tools_week: string;
+  route_tools_weeks: string;
+  route_tools_month: string;
+  route_tools_months: string;
+  route_tools_year: string;
+  route_tools_years: string;
+  route_tools_confirm_age: string;
+  route_tools_confirm_unknown: string;
+  route_tools_unknown: string;
+  route_tools_unknown_destination: string;
+  route_tools_regenerate_route: string;
+  route_tools_regenerating: string;
+  route_tools_regenerated: string;
+  route_tools_regenerated_untimed: string;
+  route_tools_failed: string;
+  route_tools_confirm: string;
+  route_tools_regenerate: string;
+  route_tools_cancel: string;
 }
 
 export interface Theme {
