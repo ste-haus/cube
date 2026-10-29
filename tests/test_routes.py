@@ -60,9 +60,10 @@ def test_a_displayed_route_calls_the_fixed_response_service(settings, tmp_path):
     with TestClient(create_app(configured(settings, tmp_path))) as client:
         upstream = client.app.state.hub.client
         upstream.states[ROUTES_ENTITY] = LIVE_STATE
-        upstream.query_service = AsyncMock(return_value={"ok": True, "trip": TRIP})
+        upstream.query_service = AsyncMock(return_value={"ok": True, "trip": TRIP, "next_poll_minutes": 4})
         response = client.post(ROUTE, json=REQUEST)
         assert response.status_code == OK
+        assert response.json()["next_poll_minutes"] == 4
         upstream.query_service.assert_awaited_once_with(
             "pyscript",
             "traffic_base_regenerate",

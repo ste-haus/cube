@@ -153,6 +153,9 @@ ROUTES_ATTRIBUTE = "routes"
 TRIP_FIELD = "trip"
 CACHED_AT_FIELD = "cached_at"
 LENGTH_FIELD = "length_m"
+NEXT_POLL_FIELD = "next_poll_minutes"
+# How long the stub says it is until the next congestion poll, as the hass repo works it out
+SAMPLE_NEXT_POLL_MINUTES = 4
 OK_FIELD = "ok"
 ERROR_FIELD = "error"
 UNKNOWN_TRIP_ERROR = "Could not replace the route: it is not a commute or an event under way"
@@ -224,7 +227,15 @@ def regenerate_route(states: dict[str, dict[str, Any]], trip: str | None) -> tup
     if rebuilt is None:
         return {OK_FIELD: False, ERROR_FIELD: UNKNOWN_TRIP_ERROR}, []
 
-    return {OK_FIELD: True, TRIP_FIELD: trip, CACHED_AT_FIELD: now, LENGTH_FIELD: rebuilt.get(LENGTH_FIELD)}, touched
+    answer = {
+        OK_FIELD: True,
+        TRIP_FIELD: trip,
+        CACHED_AT_FIELD: now,
+        LENGTH_FIELD: rebuilt.get(LENGTH_FIELD),
+        NEXT_POLL_FIELD: SAMPLE_NEXT_POLL_MINUTES,
+    }
+
+    return answer, touched
 
 
 def clear_master(state: dict[str, Any]) -> None:

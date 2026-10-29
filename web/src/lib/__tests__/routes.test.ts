@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageOf, ageText, firstAddressLine, wholeAge, routeCachedAt, routeDistance, routeQuestion, routeSummary, routeUnit } from "../routes";
+import { ageOf, ageText, firstAddressLine, replacedMessage, wholeAge, routeCachedAt, routeDistance, routeQuestion, routeSummary, routeUnit } from "../routes";
 import type { Labels } from "../types";
 
 const ADDRESS = "123 Example Street";
@@ -30,6 +30,8 @@ const LABELS = {
   route_tools_confirm_age: "Replace the route from {age} ago?",
   route_tools_confirm_unknown: "Replace this route?",
   route_tools_unknown: "Unknown",
+  route_tools_regenerated: "Route replaced · conditions in ~{minutes} min",
+  route_tools_regenerated_untimed: "Route replaced",
   route_tools_unknown_destination: "Unknown destination",
 } as Labels;
 
@@ -97,6 +99,14 @@ describe("route details", () => {
     expect(routeQuestion(at(2026, 10, 14), NOW, LABELS)).toBe("Replace the route from 2 weeks ago?");
     expect(routeQuestion(at(2024, 7, 16), NOW, LABELS)).toBe("Replace the route from 2 years ago?");
     expect(routeQuestion(null, NOW, LABELS)).toBe("Replace this route?");
+  });
+});
+
+describe("replaced route", () => {
+  it("says when conditions are next read, if Home Assistant said", () => {
+    expect(replacedMessage(4, LABELS)).toBe("Route replaced · conditions in ~4 min");
+    expect(replacedMessage(null, LABELS)).toBe("Route replaced");
+    expect(replacedMessage(undefined, LABELS)).toBe("Route replaced");
   });
 });
 

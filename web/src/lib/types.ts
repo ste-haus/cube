@@ -672,6 +672,7 @@ export interface Labels {
   route_tools_regenerate_route: string;
   route_tools_regenerating: string;
   route_tools_regenerated: string;
+  route_tools_regenerated_untimed: string;
   route_tools_failed: string;
   route_tools_confirm: string;
   route_tools_regenerate: string;

@@ -842,8 +842,12 @@ class Labels(BaseModel):
         description="The route controls' window: what a screen reader calls a route's refresh icon while it runs; `{name}` is replaced",
     )
     route_tools_regenerated: str = Field(
-        default="Route replaced · conditions in ~5 min",
-        description="The route controls' window: a route's base replaced",
+        default="Route replaced · conditions in ~{minutes} min",
+        description="The route controls' window: a route's base replaced; `{minutes}` is replaced with how long until Home Assistant next reads its conditions",
+    )
+    route_tools_regenerated_untimed: str = Field(
+        default="Route replaced",
+        description="The route controls' window: a route's base replaced, when Home Assistant doesn't say when its conditions are next read",
     )
     route_tools_failed: str = Field(
         default="Could not replace the route",

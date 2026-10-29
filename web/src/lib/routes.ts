@@ -163,6 +163,13 @@ export function routeCachedAt(value: string | null, now: Date, labels: Labels): 
   return fill(labels.route_tools_cached, { when });
 }
 
+/** What a replaced route says: when its conditions are next read, if Home Assistant said. */
+export function replacedMessage(nextPollMinutes: number | null | undefined, labels: Labels): string {
+  return typeof nextPollMinutes === "number" && Number.isFinite(nextPollMinutes)
+    ? fill(labels.route_tools_regenerated, { minutes: String(nextPollMinutes) })
+    : labels.route_tools_regenerated_untimed;
+}
+
 /** What replacing a route's base asks: "Replace today's route?", or "Replace the route from 3 days ago?". */
 export function routeQuestion(value: string | null, now: Date, labels: Labels): string {
   const date = builtAt(value);

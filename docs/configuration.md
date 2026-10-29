@@ -645,7 +645,8 @@ labels:
   route_tools_unknown_destination: Unknown destination
   route_tools_regenerate_route: "Replace the route for {name}"
   route_tools_regenerating: "Replacing the route for {name}"
-  route_tools_regenerated: Route replaced · conditions in ~5 min
+  route_tools_regenerated: "Route replaced · conditions in ~{minutes} min"
+  route_tools_regenerated_untimed: Route replaced
   route_tools_failed: Could not replace the route
   route_tools_confirm: "Replace {day}'s route?"
   route_tools_regenerate: Replace

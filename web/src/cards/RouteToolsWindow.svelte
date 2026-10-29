@@ -11,7 +11,7 @@
   import { regenerateBaseRoute } from "../lib/api";
   import { fill, wantsLightType } from "../lib/incidents";
   import type { Box } from "../lib/picture";
-  import { routeCachedAt, routeQuestion, routeSummary, type BaseRouteDetails } from "../lib/routes";
+  import { replacedMessage, routeCachedAt, routeQuestion, routeSummary, type BaseRouteDetails } from "../lib/routes";
   import { ha } from "../lib/state.svelte";
   import type { DistanceUnit, Labels } from "../lib/types";
   import { strikeOut, writeIn } from "../lib/wipe";
@@ -89,8 +89,8 @@
     window.clearTimeout(messageTimers[trip]);
     delete messages[trip];
     try {
-      await regenerateBaseRoute(entityId, trip);
-      show(trip, labels.route_tools_regenerated);
+      const replaced = await regenerateBaseRoute(entityId, trip);
+      show(trip, replacedMessage(replaced.next_poll_minutes, labels));
     } catch (error) {
       show(trip, (error instanceof Error && error.message) || labels.route_tools_failed);
     } finally {
