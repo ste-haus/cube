@@ -585,7 +585,7 @@ labels:
   travel_distance: Distance
   travel_destination: Destination
   travel_checked: Checked
-  travel_checked_note: Checked
+  travel_checked_note: checked
   travel_all_day: All day
   travel_countdown: T
   travel_away: Away
