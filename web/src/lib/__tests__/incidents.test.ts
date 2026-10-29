@@ -289,13 +289,13 @@ describe("incidentWhen", () => {
 
   it("counts down one of a day or less, with its times", () => {
     expect(when(at(5, 11, 0), at(5, 12, 37))).toBe(
-      "Clears in ~1 hr 15 min (11:00 to 12:37)",
+      "Clears in ~1 hr 15 min · 11:00 to 12:37",
     );
     expect(when(at(5, 11, 0), at(5, 12, 7))).toBe(
-      "Clears in ~45 min (11:00 to 12:07)",
+      "Clears in ~45 min · 11:00 to 12:07",
     );
     expect(when(at(5, 11, 0), at(5, 13, 22))).toBe(
-      "Clears in ~2 hr (11:00 to 13:22)",
+      "Clears in ~2 hr · 11:00 to 13:22",
     );
   });
 
@@ -303,31 +303,31 @@ describe("incidentWhen", () => {
     const end = new Date(NOW.getTime() + 30_000);
 
     expect(when(at(5, 11, 0), end)).toBe(
-      "Clears in ~1 min (11:00 to 11:22)",
+      "Clears in ~1 min · 11:00 to 11:22",
     );
   });
 
   it("gives no dates for one that crosses midnight", () => {
     expect(when(at(4, 23, 40), at(5, 13, 10))).toBe(
-      "Clears in ~1 hr 48 min (23:40 to 13:10)",
+      "Clears in ~1 hr 48 min · 23:40 to 13:10",
     );
   });
 
   it("tells an ongoing one by the day it clears", () => {
     expect(when(at(1, 16, 7), at(5, 18, 0))).toBe(
-      "Clears Today (ongoing since Oct 1)",
+      "Clears Today · ongoing since Oct 1",
     );
     expect(when(at(1, 16, 7), at(9, 10, 0))).toBe(
-      "Clears Friday (ongoing since Oct 1)",
+      "Clears Friday · ongoing since Oct 1",
     );
     expect(when(at(1, 16, 7), at(12, 10, 0))).toBe(
-      "Clears Oct 12 (ongoing since Oct 1)",
+      "Clears Oct 12 · ongoing since Oct 1",
     );
   });
 
   it("gives the time an ongoing one began today", () => {
     expect(when(at(5, 8, 0), at(9, 10, 0))).toBe(
-      "Clears Friday (ongoing since 08:00)",
+      "Clears Friday · ongoing since 08:00",
     );
   });
 
@@ -336,29 +336,29 @@ describe("incidentWhen", () => {
       "Should have cleared at 11:15",
     );
     expect(when(at(1, 16, 7), at(5, 10, 0))).toBe(
-      "Should have cleared at 10:00 (ongoing since Oct 1)",
+      "Should have cleared at 10:00 · ongoing since Oct 1",
     );
     expect(when(at(1, 16, 7), at(3, 10, 0))).toBe(
-      "Should have cleared Oct 3 (ongoing since Oct 1)",
+      "Should have cleared Oct 3 · ongoing since Oct 1",
     );
   });
 
   it("gives only the end of one with no start", () => {
     expect(when(null, at(5, 11, 47))).toBe(
-      "Clears in ~25 min (until 11:47)",
+      "Clears in ~25 min · until 11:47",
     );
     expect(when(null, at(9, 10, 0))).toBe("Clears Friday");
   });
 
   it("says when one yet to begin starts", () => {
     expect(when(at(5, 14, 22), at(5, 16, 0))).toBe(
-      "Starts in 3 hr (14:22 to 16:00)",
+      "Starts in 3 hr · 14:22 to 16:00",
     );
     expect(when(at(8, 14, 0), at(8, 16, 0))).toBe(
-      "Starts Thursday (14:00 to 16:00)",
+      "Starts Thursday · 14:00 to 16:00",
     );
     expect(when(at(5, 20, 0), at(20, 6, 0))).toBe(
-      "Starts in 8 hr 38 min (until Oct 20)",
+      "Starts in 8 hr 38 min · until Oct 20",
     );
   });
 

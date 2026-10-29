@@ -660,7 +660,7 @@ class Labels(BaseModel):
     travel_destination: str = Field(default="Destination", description="A route's window: where it goes")
     travel_checked: str = Field(default="Checked", description="A route's window: when its time was asked for")
     travel_checked_note: str = Field(
-        default="Checked",
+        default="checked",
         description="A route's window: how fresh its time to leave is, after it and a middle dot",
     )
     travel_all_day: str = Field(default="All day", description="A route's window: an event with no start time")

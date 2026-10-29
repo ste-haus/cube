@@ -1,6 +1,7 @@
 <script lang="ts">
   import { HOLD_MS, RETICLE_RELEASE_MS, TAP_SLOP_PX } from "../lib/cube.svelte";
   import { fetchHistory, fireEvent } from "../lib/api";
+  import { DETAIL_SEPARATOR } from "../lib/format";
   import Icon from "../lib/Icon.svelte";
   import { PANE_RESET_MS } from "../lib/panes.svelte";
   import type { Box } from "../lib/picture";
@@ -67,8 +68,6 @@
   const TRENDING_UP_ICON = "mdi:trending-up";
   const TRENDING_DOWN_ICON = "mdi:trending-down";
   // How long the phone says it has sent, or could not, before it offers to again.
-  // A detail after the main value it is about; see STYLE.md
-  const DETAIL_SEPARATOR = " · ";
   const SENT_MS = 4000;
   const MILLISECONDS = "ms";
   const PRIMARY_BUTTON = 0;

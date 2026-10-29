@@ -1,4 +1,4 @@
-import { daysUntil, strftime } from "./format";
+import { DETAIL_SEPARATOR, daysUntil, strftime } from "./format";
 
 /*
  * Traffic incidents, as Home Assistant lists them in a sensor's `incidents` attribute: HERE's
@@ -323,9 +323,9 @@ function duration(ms: number, labels: WhenLabels): string {
 }
 
 /**
- * When an incident clears, as of `now`. One spanning a day or less is counted down, its times in
- * parentheses: "Clears in ~1 hr 15 min (11:22 to 12:37)". A longer one is told by the
- * day it clears and when it began: "Clears Friday (ongoing since Oct 1)". One not yet
+ * When an incident clears, as of `now`. One spanning a day or less is counted down, its times
+ * after it: "Clears in ~1 hr 15 min · 11:22 to 12:37". A longer one is told by the day it clears
+ * and when it began: "Clears Friday · ongoing since Oct 1". One not yet
  * begun says when it starts, one past its end that it should have cleared, and one with no end
  * only when it began.
  */
@@ -356,7 +356,7 @@ export function incidentWhen(
       ? `${labels.incidents_until} ${dayAhead(end, now, labels)}`
       : fill(labels.incidents_range, { start: time(start), end: time(end) });
 
-    return `${opening} (${span})`;
+    return `${opening}${DETAIL_SEPARATOR}${span}`;
   }
 
   if (!ongoing) {
@@ -369,7 +369,7 @@ export function incidentWhen(
         ? `${labels.incidents_until} ${time(end)}`
         : fill(labels.incidents_range, { start: time(start), end: time(end) });
 
-    return `${fill(labels.incidents_clears_in, { duration: duration(end.getTime() - now.getTime(), labels) })} (${span})`;
+    return `${fill(labels.incidents_clears_in, { duration: duration(end.getTime() - now.getTime(), labels) })}${DETAIL_SEPARATOR}${span}`;
   }
 
   // Past its end today, it gives the time; on an earlier day, the date.
@@ -387,5 +387,5 @@ export function incidentWhen(
   const began =
     daysUntil(start, now) === TODAY ? time(start) : strftime(start, DATE_FORMAT);
 
-  return `${clears} (${fill(labels.incidents_ongoing, { day: began })})`;
+  return `${clears}${DETAIL_SEPARATOR}${fill(labels.incidents_ongoing, { day: began })}`;
 }

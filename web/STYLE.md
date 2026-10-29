@@ -25,7 +25,7 @@ The one idea underneath all of it: **a mark or a motion means the same thing eve
 
 ## Details after a value
 
-A line leads with what it is for, and anything about that follows a middle dot with a space either side, ` · `, never brackets: `23:34 · Checked 5 minutes ago`, `Cached 8 days ago · Tue 02:12`, `Botanica · 18.4 mi · via 1 points`. Several details chain on the same separator, in order of importance. The dot sits in the label's template where the words are configurable, so a translation can move it with them, and in a named constant where a component joins two pieces itself.
+A line leads with what it is for, and anything about that follows a middle dot with a space either side, ` · `, never brackets: `23:34 · checked 5 minutes ago`, `Cached 8 days ago · Tue 02:12`, `Botanica · 18.4 mi · via 1 points`. Several details chain on the same separator, in order of importance. What follows the dot is supplementary rather than a new sentence, so it stays lowercase unless it starts with a proper noun (`· Tue 02:12`): `Clears Friday · ongoing since Oct 1`. The dot sits in the label's template where the words are configurable, so a translation can move it with them, and in `DETAIL_SEPARATOR` in `src/lib/format.ts` where code joins two pieces itself.
 
 ## Rhythm
 

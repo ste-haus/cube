@@ -19,6 +19,9 @@ const TEENS_END = 13;
 const ORDINAL_SUFFIXES: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
 const DEFAULT_ORDINAL_SUFFIX = "th";
 
+/** Between a value and a detail about it, lowercase after it unless a proper noun; see STYLE.md. */
+export const DETAIL_SEPARATOR = " · ";
+
 const TWO_DIGITS = 2;
 const HOURS_PER_HALF_DAY = 12;
 const MS_PER_SECOND = 1000;
