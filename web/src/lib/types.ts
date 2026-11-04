@@ -456,6 +456,8 @@ export interface CriticalSwitch {
 export interface NetworkStats {
   title: string;
   rows: NetworkStat[];
+  /** `small` to match a small containers card's rows, or `regular`. */
+  size: "small" | "regular";
   switch: CriticalSwitch | null;
 }
 

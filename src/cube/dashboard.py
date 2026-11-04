@@ -1832,11 +1832,18 @@ class NetworkStat(BaseModel):
     unit: str | None = Field(default=None, description="Set after the value, such as `%` or `°`")
 
 
+DEFAULT_STATS_SIZE = "regular"
+
+
 class NetworkStats(BaseModel):
     """A card of readings, one to a row."""
 
     title: str
     rows: list[NetworkStat] = Field(min_length=1)
+    size: Literal["small", "regular"] = Field(
+        default=DEFAULT_STATS_SIZE,
+        description="`small` to set its rows as a small containers card sets its own, or `regular`",
+    )
     switch: CriticalSwitch | None = None
 
     @property
