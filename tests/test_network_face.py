@@ -16,6 +16,7 @@ from cube.dashboard import (
     DEFAULT_LATENCY_FULL_MS,
     DEFAULT_MEDIA_COLUMNS,
     DEFAULT_MEDIA_TITLE,
+    DEFAULT_STATS_SIZE,
     DEFAULT_WAN_HISTORY_MINUTES,
     MAX_WAN_HISTORY_MINUTES,
     Dashboard,
@@ -164,12 +165,23 @@ def test_the_defaults_are_as_documented():
     assert options["media"]["hide_idle"] is False
     assert options["containers"][0]["columns"] == DEFAULT_CONTAINERS_COLUMNS
     assert options["containers"][0]["size"] == DEFAULT_CONTAINERS_SIZE
+    assert options["stats"]["size"] == DEFAULT_STATS_SIZE
+    assert options["bus"]["size"] == DEFAULT_STATS_SIZE
 
 
 def test_a_containers_card_is_small_or_regular():
     with pytest.raises(ValidationError):
         Dashboard.model_validate(
             network_face(containers=[{"name": "server", "entity_id": SERVER_STATUS, "size": "huge"}])
+        )
+
+
+def test_a_card_of_readings_is_small_or_regular():
+    with pytest.raises(ValidationError):
+        Dashboard.model_validate(
+            network_face(
+                bus={"title": "Bus", "rows": [{"label": "Changes", "entity_id": STATE_CHANGES}], "size": "huge"}
+            )
         )
 
 

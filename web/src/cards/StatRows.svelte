@@ -10,7 +10,7 @@
 
   const UNKNOWN = "—";
 
-  let { rows }: { rows: NetworkStat[] } = $props();
+  let { rows, size = "regular" }: { rows: NetworkStat[]; size?: "small" | "regular" } = $props();
 
   function valueOf(row: NetworkStat): number | null {
     const reading = ha.reading({ entity_id: row.entity_id, attribute: row.attribute });
@@ -20,7 +20,7 @@
   }
 </script>
 
-<dl class="stat-rows">
+<dl class="stat-rows stat-rows--{size}">
   {#each rows as row (row.label)}
     <dt class="stat-rows__label">
       <span class="stat-rows__icon">{#if row.icon}<Icon name={row.icon} />{/if}</span>
@@ -44,6 +44,12 @@
     gap: 0.3em 1em;
     margin: 0;
     font-size: var(--network-host-detail-size);
+  }
+
+  /* The type and spacing of a small containers card's rows, so a card beside one lines up with it. */
+  .stat-rows--small {
+    row-gap: 0.25em;
+    font-size: var(--network-host-small-size);
   }
 
   .stat-rows__label {

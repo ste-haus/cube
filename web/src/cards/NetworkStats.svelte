@@ -9,5 +9,5 @@
 
 <section class="network-card">
   <h3 class="network-card__title card-title">{stats.title}</h3>
-  <StatRows rows={stats.rows} />
+  <StatRows rows={stats.rows} size={stats.size} />
 </section>
