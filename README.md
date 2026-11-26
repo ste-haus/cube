@@ -134,7 +134,7 @@ One websocket connection, and four REST paths. Nothing else is ever requested.
 |---|---|---|---|
 | websocket | `/api/websocket` | continuously | `auth`, then one `subscribe_entities` over the allowlist, plus `call_service` per toggle or value set |
 | REST | `/api/calendars/{entity_id}` | one call per configured calendar, every 5 minutes, per panel | merged, filtered, and sorted by the proxy |
-| REST | `/api/history/period/{start}` | once each time a travel route's window opens, per panel | one entity on the allowlist, at most a day back, for the window's trend arrow |
+| REST | `/api/history/period/{start}` | once each time a travel route's window opens, and every 5 minutes for each network host, WAN, and rack card, per panel | one entity on the allowlist per call, at most a day back: a travel window's trend arrow, a host's or WAN's 24-hour uptime strip and its sparklines, a rack's temperature and fan curves |
 | REST | `/api/camera_proxy/{entity_id}` | once per camera refresh, per panel, and only for cameras on the face being looked at | a still; this is what the panel actually uses |
 | REST | `/api/camera_proxy_stream/{entity_id}` | never, as shipped | MJPEG relay, available but unused by the current panel |
 
