@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { bannerOf, type Banner } from "../lib/banner";
+  import { bannerOf, PART_SEPARATOR, type Banner } from "../lib/banner";
   import { drop } from "../lib/drop";
   import Icon from "../lib/Icon.svelte";
   import { ha } from "../lib/state.svelte";
@@ -7,7 +7,8 @@
   /*
    * A band of information over the map while its sensor is on, saying what the sensor's `message`
    * and `detail` say on one line. It is information, not an alert, so it is outlined in its
-   * `color` rather than filled, and its type stays the panel's own. It slides down out from under
+   * `color` rather than filled; its icon and its message take the colour too, and its detail stays
+   * in the panel's own type. It slides down out from under
    * the map's heading as the incident band does, under that band when both are up, and takes no
    * taps: the map under it still enlarges.
    */
@@ -33,7 +34,9 @@
     <div class="notice-banner__drop">
       <div class="notice-banner__band" style:--notice-colour={shown.colour}>
         <span class="notice-banner__icon"><Icon name={shown.icon} /></span>
-        <span class="notice-banner__text">{shown.text}</span>
+        <span class="notice-banner__text">
+          {#if shown.message}<span class="notice-banner__message">{shown.message}</span>{/if}{#if shown.message && shown.detail}{PART_SEPARATOR}{/if}{shown.detail}
+        </span>
       </div>
     </div>
   </div>
@@ -65,6 +68,11 @@
 
   .notice-banner__icon {
     flex: 0 0 auto;
+    color: var(--notice-colour);
+    transition: color var(--colour-fade) ease;
+  }
+
+  .notice-banner__message {
     color: var(--notice-colour);
     transition: color var(--colour-fade) ease;
   }

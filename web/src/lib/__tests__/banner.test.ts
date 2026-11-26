@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bannerColour, bannerLine, bannerOf, DEFAULT_BANNER_COLOUR, DEFAULT_BANNER_ICON } from "../banner";
+import { bannerColour, bannerOf, bannerPart, DEFAULT_BANNER_COLOUR, DEFAULT_BANNER_ICON } from "../banner";
 
 const CRITICAL = "#ff3030";
 
@@ -8,16 +8,14 @@ function attributes(values: Record<string, unknown>): (name: string) => unknown 
   return (name) => values[name] ?? null;
 }
 
-describe("bannerLine", () => {
-  it("reads the message and the detail on one line", () => {
-    expect(bannerLine("Alaska Airlines 3222 from PDX", "lands in 42 min · claim 1")).toBe(
-      "Alaska Airlines 3222 from PDX · lands in 42 min · claim 1",
-    );
+describe("bannerPart", () => {
+  it("reads a part trimmed", () => {
+    expect(bannerPart("  Alaska Airlines 3222 from PDX ")).toBe("Alaska Airlines 3222 from PDX");
   });
 
-  it("reads either alone when the other is empty", () => {
-    expect(bannerLine("Alaska Airlines 3222", null)).toBe("Alaska Airlines 3222");
-    expect(bannerLine("  ", "cancelled")).toBe("cancelled");
+  it("is empty without one", () => {
+    expect(bannerPart(null)).toBe("");
+    expect(bannerPart(42)).toBe("");
   });
 });
 
@@ -42,12 +40,16 @@ describe("bannerOf", () => {
   it("raises a band while its sensor is on", () => {
     expect(
       bannerOf(true, attributes({ message: "AS3222", detail: "lands 11:20", icon: "mdi:airplane-landing", color: "#43A047" }), CRITICAL),
-    ).toEqual({ text: "AS3222 · lands 11:20", icon: "mdi:airplane-landing", colour: "#43A047" });
+    ).toEqual({ message: "AS3222", detail: "lands 11:20", icon: "mdi:airplane-landing", colour: "#43A047" });
   });
 
   it("raises none while it is off, or with nothing to say", () => {
     expect(bannerOf(false, attributes({ message: "AS3222" }), CRITICAL)).toBeNull();
     expect(bannerOf(true, attributes({}), CRITICAL)).toBeNull();
+  });
+
+  it("raises either part alone when the other is empty", () => {
+    expect(bannerOf(true, attributes({ message: "  ", detail: "cancelled" }), CRITICAL)).toMatchObject({ message: "", detail: "cancelled" });
   });
 
   it("falls back to an information icon", () => {
