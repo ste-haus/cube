@@ -275,6 +275,9 @@
   --incident-banner-size: 1.3rem;
   --incident-banner-padding: 0.5rem 1rem;
   --incident-banner-gap: 0.8rem;
+  /* The outlined information band under it: the same size, its border taking the place of the fill. */
+  --notice-banner-border: 2px;
+  --notice-banner-padding: calc(0.5rem - var(--notice-banner-border)) calc(1rem - var(--notice-banner-border));
   --incidents-window-width: 46vw;
   /* A critical switch's window: the switch, and the question turning it off asks first. */
   --critical-switch-window-width: 30rem;

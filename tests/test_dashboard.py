@@ -1271,6 +1271,7 @@ TRAFFIC_CAMERA = "camera.traffic"
 TRAVEL_CAMERA = "camera.travel"
 ROUTES_LIVE = "binary_sensor.travel_routes_live"
 TRAFFIC_INCIDENTS = "sensor.traffic_incidents"
+FLIGHT_BANNER = "sensor.banner_flight"
 COMMUTE_ONLY = [{"entity_id": COMMUTE_TIME, "name": "Commute"}]
 
 
@@ -1322,6 +1323,23 @@ def test_a_departure_faces_incidents_are_subscribed_and_not_controlled():
 
 def test_a_departure_face_has_no_incidents_unless_named():
     assert departure().profiles["hall"].faces["back"].options["incidents_entity_id"] is None
+
+
+def test_a_departure_faces_banner_is_subscribed_and_not_controlled():
+    dashboard = Dashboard.model_validate(
+        departure_face(
+            map=TRAFFIC_CAMERA,
+            travel_times=[{"entity_id": COMMUTE_TIME, "name": "Commute"}],
+            banner_entity_id=FLIGHT_BANNER,
+        )
+    )
+
+    assert FLIGHT_BANNER in dashboard.allowed_entities
+    assert not dashboard.may_toggle(FLIGHT_BANNER)
+
+
+def test_a_departure_face_has_no_banner_unless_named():
+    assert departure().profiles["hall"].faces["back"].options["banner_entity_id"] is None
 
 
 def test_a_departure_faces_map_may_be_a_bare_camera():

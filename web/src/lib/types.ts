@@ -374,6 +374,8 @@ export interface DepartureFaceOptions {
   maps: MapsLink;
   /** A sensor whose `incidents` attribute lists the traffic incidents to raise a banner for. */
   incidents_entity_id: string | null;
+  /** A sensor raising an outlined band over the map while it is on; see `lib/banner.ts`. */
+  banner_entity_id: string | null;
 }
 
 /** A stop on the network map; one with branches is an interchange, and an inline stop is drawn across the line. */
