@@ -40,7 +40,7 @@ describe("bannerOf", () => {
   it("raises a band while its sensor is on", () => {
     expect(
       bannerOf(true, attributes({ message: "AS3222", detail: "lands 11:20", icon: "mdi:airplane-landing", color: "#43A047" }), CRITICAL),
-    ).toEqual({ message: "AS3222", detail: "lands 11:20", icon: "mdi:airplane-landing", colour: "#43A047" });
+    ).toEqual({ message: "AS3222", detail: "lands 11:20", icon: "mdi:airplane-landing", picture: null, colour: "#43A047" });
   });
 
   it("raises none while it is off, or with nothing to say", () => {
@@ -50,6 +50,13 @@ describe("bannerOf", () => {
 
   it("raises either part alone when the other is empty", () => {
     expect(bannerOf(true, attributes({ message: "  ", detail: "cancelled" }), CRITICAL)).toMatchObject({ message: "", detail: "cancelled" });
+  });
+
+  it("shows its picture when it has one", () => {
+    expect(bannerOf(true, attributes({ message: "AS3222", entity_picture: "https://example.com/AS.png" }), CRITICAL)?.picture).toBe(
+      "https://example.com/AS.png",
+    );
+    expect(bannerOf(true, attributes({ message: "AS3222", entity_picture: "" }), CRITICAL)?.picture).toBeNull();
   });
 
   it("falls back to an information icon", () => {

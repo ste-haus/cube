@@ -302,13 +302,14 @@ When the face has a `send_event`, a trip names a person, and the event's locatio
 
 A tap anywhere closes it. The window's words are `labels.travel_drive`, `travel_in_traffic`, `travel_distance`, `travel_destination`, `travel_checked`, `travel_checked_note`, `travel_away`, `travel_send` (what a screen reader calls the event that sends), `travel_sent` (what it calls the tick), and `travel_send_failed` (what it calls the crossed-out phone).
 
-While `banner_entity_id` is `on`, an outlined band slides down between the map's heading and the map, under the incident band when both are up, and slides back up once it goes off. It reads the sensor's `message` and `detail` attributes on one line with a middle dot between them, either alone when the other is empty, cut off with an ellipsis if it runs past the band, after its `icon` (`mdi:information-outline` without one). Its outline, its icon and its `message` take its `color`, and its `detail` and the dot stay in the panel's own type: `primary` or `secondary` for the panel's colours, `muted`, `critical` for the master warning's red (`mcw.warning_color`), or any CSS colour as it stands, and `muted` without one. It is information rather than an alert, so it is outlined rather than filled, and it takes no taps: a tap on it is the map's. Nothing is raised while `message` and `detail` are both empty. For a flight being tracked, Home Assistant might set:
+While `banner_entity_id` is `on`, an outlined band slides down between the map's heading and the map, under the incident band when both are up, and slides back up once it goes off. It reads the sensor's `message` and `detail` attributes on one line with a middle dot between them, either alone when the other is empty, cut off with an ellipsis if it runs past the band, after its `icon` (`mdi:information-outline` without one), or its `entity_picture` with rounded corners in the icon's place when it has one, as an airline's logo. Its outline, its icon and its `message` take its `color`, and its `detail` and the dot stay in the panel's own type: `primary` or `secondary` for the panel's colours, `muted`, `critical` for the master warning's red (`mcw.warning_color`), or any CSS colour as it stands, and `muted` without one. It is information rather than an alert, so it is outlined rather than filled, and it takes no taps: a tap on it is the map's. Nothing is raised while `message` and `detail` are both empty. For a flight being tracked, Home Assistant might set:
 
 ```yaml
 state: "on"
 message: Alaska Airlines 3222 from PDX
 detail: lands in 42 min · 10 min late · claim 1
 icon: mdi:airplane-landing
+entity_picture: https://airlabs.co/img/airline/m/AS.png
 color: "#FFFFFF"
 ```
 
