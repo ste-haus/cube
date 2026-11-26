@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { cubicInOut } from "svelte/easing";
-  import type { TransitionConfig } from "svelte/transition";
   import { TAP_SLOP_PX } from "../lib/cube.svelte";
+  import { drop } from "../lib/drop";
   import Icon from "../lib/Icon.svelte";
   import { bannerText, incidentsOf, severityColour, wantsLightType, worstSeverity, type Incident } from "../lib/incidents";
   import type { Box } from "../lib/picture";
@@ -19,10 +18,6 @@
 
   const INCIDENTS_ATTRIBUTE = "incidents";
   const BANNER_ICON = "mdi:car-brake-alert";
-  const SLIDE_MS = 420;
-  const WHOLE = 1;
-  const PERCENT = 100;
-  const PIXELS = "px";
 
   let { entityId, criticalColour, labels }: { entityId: string; criticalColour: string; labels: Labels } = $props();
 
@@ -46,21 +41,6 @@
   let away = $state(false);
   let band = $state<HTMLElement | null>(null);
   let pressedAt: { x: number; y: number } | null = null;
-
-  /*
-   * Down from under the heading and back up into it: the room opens as the band drops into it, so
-   * the map moves aside as it comes rather than being drawn over.
-   */
-  function drop(node: HTMLElement): TransitionConfig {
-    const height = node.offsetHeight;
-
-    return {
-      duration: SLIDE_MS,
-      easing: cubicInOut,
-      css: (progress) =>
-        `height: ${height * progress}${PIXELS}; overflow: hidden; --incident-drop: ${(progress - WHOLE) * PERCENT}%;`,
-    };
-  }
 
   function press(event: PointerEvent): void {
     pressedAt = { x: event.clientX, y: event.clientY };
@@ -125,7 +105,7 @@
 <style>
   .incident-banner__drop {
     padding-bottom: var(--incident-banner-gap);
-    transform: translateY(var(--incident-drop, 0));
+    transform: translateY(var(--banner-drop, 0));
   }
 
   .incident-banner__band {

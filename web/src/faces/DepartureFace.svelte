@@ -4,6 +4,7 @@
   import Forecast from "../cards/Forecast.svelte";
   import Gauges from "../cards/Gauges.svelte";
   import IncidentBanner from "../cards/IncidentBanner.svelte";
+  import NoticeBanner from "../cards/NoticeBanner.svelte";
   import Indicators from "../cards/Indicators.svelte";
   import Transcript from "../cards/Transcript.svelte";
   import TravelTimes from "../cards/TravelTimes.svelte";
@@ -30,7 +31,8 @@
    * Under them, the map and, beside it, the travel times with the dashboard's own fuel
    * gauges straight under them and the forecast under those stand together as one block, against
    * the top and centred across the face. While there are traffic incidents, a band naming their
-   * roads drops down between the map's heading and the map. The map is the first of `map` whose
+   * roads drops down between the map's heading and the map, and while `banner_entity_id` is on, an
+   * outlined band saying what it says drops down under that. The map is the first of `map` whose
    * `visible_when` is on, else the last; a swap rebuilds the camera, so the one swapped out stops
    * fetching and the one swapped in fetches at once.
    *
@@ -98,6 +100,12 @@
                 entityId={options.incidents_entity_id}
                 criticalColour={config.mcw?.warning_color ?? DEFAULT_CRITICAL_COLOUR}
                 labels={config.labels}
+              />
+            {/if}
+            {#if options.banner_entity_id}
+              <NoticeBanner
+                entityId={options.banner_entity_id}
+                criticalColour={config.mcw?.warning_color ?? DEFAULT_CRITICAL_COLOUR}
               />
             {/if}
           {/snippet}

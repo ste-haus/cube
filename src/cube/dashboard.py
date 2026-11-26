@@ -1506,6 +1506,10 @@ class DepartureFaceOptions(CameraFaceOptions):
         default=None,
         description="A sensor whose `incidents` attribute lists the traffic incidents to raise a banner over the map for",
     )
+    banner_entity_id: str | None = Field(
+        default=None,
+        description="A sensor whose `message`, `detail`, `icon` and `color` attributes raise an outlined band over the map while it is on",
+    )
 
     @model_validator(mode="after")
     def require_soon_before_imminent(self) -> Self:
@@ -1550,7 +1554,9 @@ class DepartureFaceOptions(CameraFaceOptions):
         maps = [camera.visible_when for camera in self.map if camera.visible_when]
         tools = [self.route_tools.entity_id] if self.route_tools else []
 
-        return routes + maps + tools + ([self.incidents_entity_id] if self.incidents_entity_id else [])
+        bands = [entity_id for entity_id in (self.incidents_entity_id, self.banner_entity_id) if entity_id]
+
+        return routes + maps + tools + bands
 
     @property
     def events(self) -> list[str]:
