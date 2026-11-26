@@ -8,7 +8,8 @@
    * A band of information over the map while its sensor is on, saying what the sensor's `message`
    * and `detail` say on one line. It is information, not an alert, so it is outlined in its
    * `color` rather than filled; its icon and its message take the colour too, and its detail stays
-   * in the panel's own type. It slides down out from under
+   * in the panel's own type. A sensor with an `entity_picture` shows that, with rounded corners, in
+   * place of its icon. It slides down out from under
    * the map's heading as the incident band does, under that band when both are up, and takes no
    * taps: the map under it still enlarges.
    */
@@ -33,7 +34,11 @@
   <div class="notice-banner" transition:drop>
     <div class="notice-banner__drop">
       <div class="notice-banner__band" style:--notice-colour={shown.colour}>
-        <span class="notice-banner__icon"><Icon name={shown.icon} /></span>
+        {#if shown.picture}
+          <img class="notice-banner__picture" src={shown.picture} alt="" />
+        {:else}
+          <span class="notice-banner__icon"><Icon name={shown.icon} /></span>
+        {/if}
         <span class="notice-banner__text">
           {#if shown.message}<span class="notice-banner__message">{shown.message}</span>{/if}{#if shown.message && shown.detail}{PART_SEPARATOR}{/if}{shown.detail}
         </span>
@@ -70,6 +75,14 @@
     flex: 0 0 auto;
     color: var(--notice-colour);
     transition: color var(--colour-fade) ease;
+  }
+
+  .notice-banner__picture {
+    flex: 0 0 auto;
+    width: var(--notice-banner-picture);
+    height: var(--notice-banner-picture);
+    border-radius: var(--notice-banner-picture-radius);
+    object-fit: cover;
   }
 
   .notice-banner__message {

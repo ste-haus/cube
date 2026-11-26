@@ -1,12 +1,13 @@
 /*
  * A band of information over the departure face's map, raised by a sensor while it is on: what it
- * says, an icon, and the colour of its outline, its icon and its message. Home Assistant writes the
+ * says, an icon or a picture, and the colour of its outline, its icon and its message. Home Assistant writes the
  * words, so the band knows nothing about what it is reporting.
  */
 
 export const MESSAGE_ATTRIBUTE = "message";
 export const DETAIL_ATTRIBUTE = "detail";
 export const ICON_ATTRIBUTE = "icon";
+export const PICTURE_ATTRIBUTE = "entity_picture";
 export const COLOUR_ATTRIBUTE = "color";
 
 // The two parts are read as one line, a middle dot between them, as the panel separates details elsewhere.
@@ -26,6 +27,7 @@ export interface Banner {
   message: string;
   detail: string;
   icon: string;
+  picture: string | null;
   colour: string;
 }
 
@@ -65,11 +67,13 @@ export function bannerOf(
   }
 
   const icon = attribute(ICON_ATTRIBUTE);
+  const picture = bannerPart(attribute(PICTURE_ATTRIBUTE));
 
   return {
     message,
     detail,
     icon: typeof icon === "string" && icon !== "" ? icon : DEFAULT_BANNER_ICON,
+    picture: picture === "" ? null : picture,
     colour: bannerColour(attribute(COLOUR_ATTRIBUTE), critical),
   };
 }
