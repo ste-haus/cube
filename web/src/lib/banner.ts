@@ -1,7 +1,7 @@
 /*
  * A band of information over the departure face's map, raised by a sensor while it is on: what it
- * says, an icon, and the colour of its outline. Home Assistant writes the words, so the band knows
- * nothing about what it is reporting.
+ * says, an icon, and the colour of its outline, its icon and its message. Home Assistant writes the
+ * words, so the band knows nothing about what it is reporting.
  */
 
 export const MESSAGE_ATTRIBUTE = "message";
@@ -23,17 +23,15 @@ const CRITICAL = "critical";
 export const DEFAULT_BANNER_COLOUR = "var(--color-muted)";
 
 export interface Banner {
-  text: string;
+  message: string;
+  detail: string;
   icon: string;
   colour: string;
 }
 
-/** The line a band reads: its message and its detail, either alone when the other is empty. */
-export function bannerLine(message: unknown, detail: unknown): string {
-  return [message, detail]
-    .filter((part): part is string => typeof part === "string" && part.trim() !== "")
-    .map((part) => part.trim())
-    .join(PART_SEPARATOR);
+/** A part of the line as it is read, or empty when the sensor gives none. */
+export function bannerPart(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 /** `primary`, `secondary`, `muted`, `critical` (the master warning's red), or a CSS colour. */
@@ -60,15 +58,17 @@ export function bannerOf(
     return null;
   }
 
-  const text = bannerLine(attribute(MESSAGE_ATTRIBUTE), attribute(DETAIL_ATTRIBUTE));
-  if (text === "") {
+  const message = bannerPart(attribute(MESSAGE_ATTRIBUTE));
+  const detail = bannerPart(attribute(DETAIL_ATTRIBUTE));
+  if (message === "" && detail === "") {
     return null;
   }
 
   const icon = attribute(ICON_ATTRIBUTE);
 
   return {
-    text,
+    message,
+    detail,
     icon: typeof icon === "string" && icon !== "" ? icon : DEFAULT_BANNER_ICON,
     colour: bannerColour(attribute(COLOUR_ATTRIBUTE), critical),
   };
